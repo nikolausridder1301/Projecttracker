@@ -4,7 +4,7 @@ import { useLookups, useStore } from "../data/store";
 import { PRIORITY_LABEL, STATUS_LABEL, type Id, type Priority, type Task, type TaskStatus } from "../data/types";
 import { endOfWeek, formatDate, todayIso } from "../logic/dates";
 import { compareTasks, isActive, splitDone } from "../logic/tasks";
-import { CompanySelect, Empty, TopicSelect, usePersisted } from "../ui/common";
+import { CompanySelect, Empty, usePersisted } from "../ui/common";
 import { TaskList, TaskRow } from "../ui/tasks";
 import { useCaptureContext } from "../ui/uiState";
 
@@ -64,8 +64,10 @@ export function applyFilter(tasks: Task[], f: TaskFilter, today = todayIso()): T
 export function TasksPage() {
   const { db } = useStore();
   const [f, setF] = usePersisted<TaskFilter>("tasks", INITIAL);
-  useCaptureContext(f.company || undefined, f.topic || undefined);
+  useCaptureContext(f.company || undefined);
   const tasks = useMemo(() => applyFilter(db.tasks, f), [db.tasks, f]);
+  // Früher gespeicherte Gruppierung „nach Thema“ gibt es nicht mehr
+  const groupBy = f.groupBy === "topic" ? "company" : f.groupBy;
   const set = (patch: Partial<TaskFilter>) => setF({ ...f, ...patch });
 
   return (
@@ -75,7 +77,7 @@ export function TasksPage() {
         <span className="muted">{tasks.length}</span>
       </div>
       <TaskFilterBar f={f} set={set} reset={() => setF({ ...INITIAL, groupBy: f.groupBy })} />
-      {tasks.length === 0 ? <Empty>Keine Aufgaben für diese Filter.</Empty> : <TaskSections tasks={tasks} groupBy={f.groupBy} />}
+      {tasks.length === 0 ? <Empty>Keine Aufgaben für diese Filter.</Empty> : <TaskSections tasks={tasks} groupBy={groupBy} />}
     </div>
   );
 }
@@ -104,7 +106,7 @@ export function TaskFilterBar({
 
   // Zahl der "versteckten" Filter, damit sichtbar ist, dass etwas aktiv ist
   const personFilter = f.assignee !== "" && f.assignee !== "me" && f.assignee !== "delegated";
-  const advanced = [f.topic, personFilter ? "x" : "", f.status, f.priority, f.due, f.showDone ? "x" : ""].filter(Boolean).length;
+  const advanced = [personFilter ? "x" : "", f.status, f.priority, f.due, f.showDone ? "x" : ""].filter(Boolean).length;
 
   return (
     <div className="filters">
@@ -128,10 +130,6 @@ export function TaskFilterBar({
         </button>
         {open && (
           <div className="popover">
-            <label>
-              Thema
-              <TopicSelect value={f.topic} onChange={(v) => set({ topic: v })} emptyLabel="Alle" />
-            </label>
             <label>
               Person
               <select value={personFilter ? f.assignee : ""} onChange={(e) => set({ assignee: e.target.value })}>
@@ -179,7 +177,6 @@ export function TaskFilterBar({
               <select value={f.groupBy} onChange={(e) => set({ groupBy: e.target.value as TaskFilter["groupBy"] })}>
                 <option value="">Nicht gruppieren</option>
                 <option value="company">nach Firma</option>
-                <option value="topic">nach Thema</option>
                 <option value="person">nach Verantwortlichem</option>
                 <option value="status">nach Status</option>
               </select>

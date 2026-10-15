@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { useStore } from "../data/store";
 import { TRAFFIC_LABEL, type Company, type TrafficLight } from "../data/types";
 import { formatDate, todayIso } from "../logic/dates";
+import { suggestTraffic } from "../logic/milestones";
 import { sinceLabel, validateTrafficChange } from "../logic/traffic";
 import { AutoText, CompanyLogo, TrafficDot } from "./common";
 
@@ -45,7 +46,7 @@ export function TrafficHistoryList({ companyId, limit }: { companyId: string; li
 }
 
 export function TrafficDialog({ company, onClose }: { company: Company; onClose: () => void }) {
-  const { update, insert, toast } = useStore();
+  const { db, update, insert, toast } = useStore();
   const [light, setLight] = useState<TrafficLight>(company.traffic_light);
   const [comment, setComment] = useState(company.traffic_comment);
   const [busy, setBusy] = useState(false);
@@ -76,6 +77,11 @@ export function TrafficDialog({ company, onClose }: { company: Company; onClose:
   };
 
   const needsReason = light !== "green";
+  // Vorschlag aus den Meilensteinen dieser Firma (die Entscheidung bleibt bei dir)
+  const suggestion = suggestTraffic(
+    db.milestone_status.filter((m) => m.deleted_at === null && m.company_id === company.id),
+    today,
+  );
 
   return (
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
@@ -99,6 +105,20 @@ export function TrafficDialog({ company, onClose }: { company: Company; onClose:
             <X size={18} />
           </button>
         </div>
+
+        {suggestion && (
+          <div className="traffic-suggestion">
+            <TrafficDot light={suggestion.light} />
+            <span className="grow">
+              Meilensteine: {suggestion.reason} → Vorschlag <strong>{TRAFFIC_LABEL[suggestion.light]}</strong>
+            </span>
+            {light !== suggestion.light && (
+              <button type="button" className="btn small" onClick={() => setLight(suggestion.light)}>
+                Übernehmen
+              </button>
+            )}
+          </div>
+        )}
 
         <div className="traffic-options" role="radiogroup" aria-label="Ampel">
           {LIGHTS.map((l) => (

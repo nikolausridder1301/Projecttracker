@@ -206,7 +206,7 @@ function VendorPage({ vendorName }: { vendorName: string }) {
 
 function VendorPanel({ item, vendorName, onClose }: { item: VendorItem; vendorName: string; onClose: () => void }) {
   const { update, insert, trash, toast } = useStore();
-  const { companies, topics, people, companyById } = useLookups();
+  const { companies, people, companyById } = useLookups();
   const [title, setTitle] = useState(item.title);
   const [body, setBody] = useState(item.body);
   const [answer, setAnswer] = useState(item.answer);
@@ -240,7 +240,6 @@ function VendorPanel({ item, vendorName, onClose }: { item: VendorItem; vendorNa
   const groupCompanies = companies.filter((c) => !c.is_external);
 
   // Selten gebrauchte Eigenschaften nur zeigen, wenn gesetzt oder über „Mehr…“
-  const showTopic = more || item.topic_id !== null;
   const showContact = more || item.contact_person_id !== null;
 
   const toBestPractice = async () => {
@@ -312,18 +311,6 @@ function VendorPanel({ item, vendorName, onClose }: { item: VendorItem; vendorNa
               ]}
               onChange={(v) => save({ priority: (v || "medium") as Priority })}
             />
-            {showTopic && (
-              <ChipSelect
-                title="Thema"
-                value={item.topic_id ?? ""}
-                placeholder="Thema"
-                options={[
-                  { value: "", label: "Kein Thema" },
-                  ...topics.filter((t) => !t.archived || t.id === item.topic_id).map((t) => ({ value: t.id, label: t.name })),
-                ]}
-                onChange={(v) => save({ topic_id: v || null })}
-              />
-            )}
             {showContact && (
               <ChipSelect
                 title="Ansprechpartner"
@@ -346,7 +333,7 @@ function VendorPanel({ item, vendorName, onClose }: { item: VendorItem; vendorNa
               />
             )}
             {!more && (
-              <button type="button" className="chip chip-empty" onClick={() => setMore(true)} title="Thema, Ansprechpartner, Kategorie">
+              <button type="button" className="chip chip-empty" onClick={() => setMore(true)} title="Ansprechpartner, Kategorie">
                 <span className="chip-text">Mehr…</span>
               </button>
             )}

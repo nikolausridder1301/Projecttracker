@@ -26,14 +26,13 @@ function CaptureDialog({
   onClose: () => void;
 }) {
   const { insert, toast } = useStore();
-  const { companies, topics, people, categories } = useLookups();
+  const { companies, people, categories } = useLookups();
   const navigate = useNavigate();
 
   const defaultCompany = prefill.companyId ?? context.companyId ?? overarchingCompany(companies)?.id ?? "";
   const [type, setType] = useState<CaptureType>(prefill.type ?? "task");
   const [title, setTitle, clearTitle] = useDraft("capture-title", "", prefill.title);
   const [companyId, setCompanyId] = useState<Id>(defaultCompany);
-  const [topicId, setTopicId] = useState<Id | "">(prefill.topicId ?? context.topicId ?? "");
   const [assignee, setAssignee] = useState<Id | "">("");
   const [due, setDue] = useState("");
   const [priority, setPriority] = useState<Priority>("medium");
@@ -64,7 +63,7 @@ function CaptureDialog({
             title: title.trim(),
             description: "",
             company_id: cid,
-            topic_id: topicId || null,
+            topic_id: null,
             assignee_person_id: assignee || null,
             status: "open" as const,
             blocked_reason: "",
@@ -85,7 +84,7 @@ function CaptureDialog({
             body: "",
             kind,
             company_id: companyId,
-            topic_id: topicId || null,
+            topic_id: null,
             meeting_date: kind === "meeting" ? todayIso() : null,
             participant_ids: [],
             participants_text: "",
@@ -99,7 +98,7 @@ function CaptureDialog({
             title: title.trim(),
             url: url.trim(),
             company_id: companyId,
-            topic_id: topicId || null,
+            topic_id: null,
             category_id: categoryId || null,
             description: "",
           },
@@ -164,13 +163,6 @@ function CaptureDialog({
               <span className="chip-text">Mehrere Firmen</span>
             </button>
           )}
-          <ChipSelect
-            title="Thema"
-            value={topicId}
-            placeholder="Thema"
-            options={[{ value: "", label: "Kein Thema" }, ...topics.filter((t) => !t.archived).map((t) => ({ value: t.id, label: t.name }))]}
-            onChange={setTopicId}
-          />
           {type === "task" && (
             <>
               <ChipSelect

@@ -1,5 +1,5 @@
 import { ChevronDown, ClipboardCopy, NotebookPen } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useLookups, useStore } from "../data/store";
 import { NOTE_KIND_LABEL, type Id } from "../data/types";
@@ -16,7 +16,7 @@ import { CATEGORY_ICON } from "./Tacto";
 import { FollowUpRow } from "./Today";
 
 // Meeting-Vorbereitung: Person oder Firma wählen → alles Relevante auf einen Blick,
-// filterbar nach Thema, mit Agenda und Protokoll-Start.
+// mit Agenda und Protokoll-Start.
 
 const parseTarget = (v: string): MeetingTarget | null =>
   v.startsWith("p:") ? { kind: "person", id: v.slice(2) } : v.startsWith("c:") ? { kind: "company", id: v.slice(2) } : null;
@@ -28,7 +28,6 @@ export function MeetingPage() {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const [saved, setSaved] = usePersisted<{ target: string }>("meeting", { target: "" });
-  const [topic, setTopic] = useState<Id | null>(null);
   const today = todayIso();
 
   // Aufruf von Personen-/Firmenseite (?p=… / ?c=…) übernimmt die Auswahl
@@ -50,10 +49,8 @@ export function MeetingPage() {
     return exists ? t : null;
   }, [saved.target, people, companies]);
 
-  useEffect(() => setTopic(null), [saved.target]);
-
-  const briefing = useMemo(() => (target ? buildBriefing(db, target, today, topic) : null), [db, target, today, topic]);
-  useCaptureContext(briefing?.company?.id, topic ?? undefined);
+  const briefing = useMemo(() => (target ? buildBriefing(db, target, today) : null), [db, target, today]);
+  useCaptureContext(briefing?.company?.id);
 
   const options = [
     ...people
@@ -91,7 +88,7 @@ export function MeetingPage() {
           body: agendaText(briefing, personName),
           kind: "meeting",
           company_id: companyId,
-          topic_id: topic,
+          topic_id: null,
           meeting_date: today,
           participant_ids: briefing.person ? [briefing.person.id] : [],
           participants_text: "",
@@ -134,7 +131,7 @@ export function MeetingPage() {
       </Dropdown>
 
       {!b ? (
-        <Empty>Wähle eine Person oder Firma – dann siehst du alle offenen Punkte, Notizen und Themen für das Gespräch.</Empty>
+        <Empty>Wähle eine Person oder Firma – dann siehst du alle offenen Punkte und Notizen für das Gespräch.</Empty>
       ) : (
         <>
           <div className="card meeting-head">
@@ -161,22 +158,8 @@ export function MeetingPage() {
             </div>
           </div>
 
-          {b.topics.length > 0 && (
-            <div className="chips meeting-topics" role="group" aria-label="Nach Thema filtern">
-              <button className={`chip${topic === null ? " tone-blue" : ""}`} onClick={() => setTopic(null)}>
-                <span className="chip-text">Alle Themen</span>
-              </button>
-              {b.topics.map((t) => (
-                <button key={t.id} className={`chip${topic === t.id ? " tone-blue" : ""}`} onClick={() => setTopic(topic === t.id ? null : t.id)}>
-                  <span className="chip-text">{t.name}</span>
-                  <span className="muted">{t.count}</span>
-                </button>
-              ))}
-            </div>
-          )}
-
           {totalOpen === 0 && b.doneSince.length === 0 && b.notes.length === 0 ? (
-            <Empty>Nichts offen{topic ? " zu diesem Thema" : ""}.</Empty>
+            <Empty>Nichts offen.</Empty>
           ) : (
             <div className="meeting-grid">
               <div className="meeting-col">
@@ -200,7 +183,7 @@ export function MeetingPage() {
                   </Section>
                 )}
                 {b.delegatedToPerson.length + b.myTasks.length + b.otherTasks.length === 0 && (
-                  <div className="card empty-inline">Keine offenen Aufgaben{topic ? " zu diesem Thema" : ""}.</div>
+                  <div className="card empty-inline">Keine offenen Aufgaben.</div>
                 )}
               </div>
               <div className="meeting-col">

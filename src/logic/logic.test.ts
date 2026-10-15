@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { demoSeed } from "../data/seed";
-import type { Task, VendorItem } from "../data/types";
+import type { MilestoneStatus, Task, VendorItem } from "../data/types";
 import { addWorkdays, endOfWeek, formatDate, relativeLabel } from "./dates";
 import { copyProjectMasterData, suggestShort } from "./projects";
 import { moveItem, orderNav } from "./nav";
 import { agendaText, buildBriefing } from "./briefing";
+import { isOverdue, progress, suggestTraffic } from "./milestones";
 import { search } from "./search";
 import { sinceLabel, validateTrafficChange } from "./traffic";
 import { affectsCompany, ageLabel, isOpenItem, jourFixeText, newVendorItem, showTicket, statusPatch } from "./vendor";
@@ -347,5 +348,24 @@ describe("briefing", () => {
     expect(text).toContain("## Offen bei Anna Beispiel\n- [ ] Anna blockiert (blockiert: x)");
     expect(text).toContain("- [ ] Max bei HAZ (Max Muster)");
     expect(text).toContain("## Seit dem letzten Treffen erledigt\n- Erledigt neu");
+  });
+});
+
+describe("milestones", () => {
+  const today = "2026-10-15";
+  const C = (status: MilestoneStatus["status"], target_date: string | null = null) => ({ status, target_date });
+  it("Ampel-Vorschlag: verzögert/überfällig → Rot, kritisch → Gelb, sonst Grün", () => {
+    expect(suggestTraffic([C("on_track"), C("delayed"), C("at_risk")], today)).toEqual({ light: "red", reason: "1 verzögert, 1 kritisch" });
+    expect(suggestTraffic([C("on_track", "2026-10-01")], today)?.light).toBe("red");
+    expect(suggestTraffic([C("at_risk"), C("done")], today)).toEqual({ light: "yellow", reason: "1 kritisch" });
+    expect(suggestTraffic([C("done"), C("on_track")], today)?.light).toBe("green");
+    expect(suggestTraffic([C("n_a")], today)).toBeNull();
+  });
+  it("Fortschritt ohne „nicht relevant“", () => {
+    expect(progress([C("done"), C("n_a"), C("on_track")], 13)).toEqual({ done: 1, total: 12 });
+  });
+  it("überfällig nur, wenn nicht abgeschlossen", () => {
+    expect(isOverdue(C("on_track", "2026-10-01"), today)).toBe(true);
+    expect(isOverdue(C("done", "2026-10-01"), today)).toBe(false);
   });
 });

@@ -505,37 +505,6 @@ export function CompanySelect({
   );
 }
 
-export function TopicSelect({
-  value,
-  onChange,
-  emptyLabel = "– kein Thema –",
-  className,
-}: {
-  value: Id | "";
-  onChange: (v: Id | "") => void;
-  emptyLabel?: string;
-  className?: string;
-}) {
-  const { topics } = useLookups();
-  return (
-    <select className={className} value={value} onChange={(e) => onChange(e.target.value)}>
-      <option value="">{emptyLabel}</option>
-      {topics
-        .filter((t) => !t.archived || t.id === value)
-        .map((t) => (
-          <option key={t.id} value={t.id}>
-            {t.name}
-          </option>
-        ))}
-    </select>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Entwürfe (SPEC 7.4): Eingaben überleben Neuladen / Verbindungsabbruch
-// ---------------------------------------------------------------------------
-
-/** `override`: vorgegebener Wert (z. B. aus „Aufgabe daraus“) hat Vorrang vor einem alten Entwurf. */
 export function useDraft(key: string, initial = "", override?: string): [string, (v: string) => void, () => void] {
   const storageKey = `projecttracker-draft:${key}`;
   const [value, setValue] = useState<string>(() => {
