@@ -2344,3 +2344,22 @@ button.traffic-tile:hover {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+.meeting-grid.single {
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 860px;
+}
+.meeting-empty {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 20px;
+}
+.meeting-empty-icon {
+  color: var(--green);
+}
+.meeting-empty-title {
+  font-weight: 600;
+  margin-bottom: 2px;
+}

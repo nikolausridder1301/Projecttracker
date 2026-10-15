@@ -113,7 +113,6 @@ export function agendaText(b: Briefing, personName: (id: Id | null) => string): 
     "Anbieter-Themen",
     b.vendorItems.map((v) => `- [ ] ${v.title}${statusDef(v) ? ` (${statusDef(v)!.label})` : ""}`),
   );
-  section("Seit dem letzten Treffen erledigt", b.doneSince.map((t) => `- ${t.title}`));
   if (parts.length === 0) return "Keine offenen Punkte.";
   return parts.join("\n").trim();
 }
