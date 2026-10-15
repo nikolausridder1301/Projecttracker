@@ -1,0 +1,15 @@
+node_modules/
+dist/
+*.local
+*.tsbuildinfo
+
+# Maschinenspezifisch (script-shell für den Pfad mit "&"), siehe README.md
+.npmrc
+
+.env
+.env.*
+!.env.example
+
+*.log
+.DS_Store
+.claude/scheduled_tasks.lock
