@@ -1,11 +1,12 @@
 -- Projecttracker – Datenbankschema (SPEC.md Abschnitt 5)
--- Im Supabase-Dashboard unter "SQL Editor" einmal komplett ausführen.
+-- Im Supabase-Dashboard unter "SQL Editor" einmal komplett ausführen
+-- (oder per Supabase-Connector als Migration einspielen).
 
 -- ---------------------------------------------------------------------------
 -- Hilfsfunktion: updated_at automatisch pflegen
 -- ---------------------------------------------------------------------------
 create or replace function set_updated_at() returns trigger
-language plpgsql as $$
+language plpgsql set search_path = '' as $$
 begin
   new.updated_at = now();
   return new;
@@ -150,10 +151,33 @@ create index on links (company_id);
 create index on task_followups (task_id);
 
 -- ---------------------------------------------------------------------------
--- updated_at-Trigger und Row Level Security für alle Tabellen
--- Nur eingeloggte Nutzer (es gibt genau einen) dürfen lesen und schreiben.
--- Der anon key allein sieht nichts.
+-- Zugriff: nur freigeschaltete Nutzer (Einzelnutzer-Betrieb, SPEC.md 3).
+-- Ein Login allein reicht nicht – die User-ID muss in allowed_users stehen.
+-- So bleiben die Daten geschützt, selbst wenn die Registrierung
+-- versehentlich eingeschaltet wäre. Eintrag siehe ANLEITUNG.md.
 -- ---------------------------------------------------------------------------
+create table allowed_users (
+  user_id uuid primary key references auth.users (id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+alter table allowed_users enable row level security;
+revoke all on allowed_users from anon, authenticated;
+
+-- Prüffunktion liegt im nicht per API erreichbaren Schema "private".
+-- allowed_users hat bewusst keine Policy: über die API weder les- noch schreibbar.
+create schema if not exists private;
+revoke all on schema private from public, anon;
+grant usage on schema private to authenticated;
+
+create or replace function private.is_allowed() returns boolean
+language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from public.allowed_users where user_id = auth.uid())
+$$;
+revoke all on function private.is_allowed() from public, anon;
+grant execute on function private.is_allowed() to authenticated;
+
+-- updated_at-Trigger und Row Level Security für alle Datentabellen.
+-- Der anon key allein sieht nichts.
 do $$
 declare
   t text;
@@ -164,8 +188,9 @@ begin
   ] loop
     execute format('create trigger %I before update on %I for each row execute function set_updated_at()', t || '_updated_at', t);
     execute format('alter table %I enable row level security', t);
-    execute format('create policy %I on %I for all to authenticated using (true) with check (true)', t || '_owner', t);
+    execute format('create policy %I on %I for all to authenticated using ((select private.is_allowed())) with check ((select private.is_allowed()))', t || '_owner', t);
     execute format('revoke all on %I from anon', t);
+    execute format('grant select, insert, update, delete on %I to authenticated', t);
   end loop;
 end;
 $$;
@@ -174,6 +199,6 @@ $$;
 -- Keep-alive (SPEC.md 7.3): liest keine Daten, nur für den Ping-Workflow.
 -- ---------------------------------------------------------------------------
 create or replace function ping() returns integer
-language sql stable as $$ select 1 $$;
+language sql stable set search_path = '' as $$ select 1 $$;
 
 grant execute on function ping() to anon;

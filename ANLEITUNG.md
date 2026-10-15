@@ -19,13 +19,20 @@ Einmalig, ca. 20 Minuten. Danach läuft alles automatisch: Jeder Push auf `main`
 1. **Authentication → Sign In / Providers** (bzw. *Providers*): Schalter **„Allow new users to sign up"** ausschalten → *Save*. Damit kann sich niemand sonst ein Konto anlegen.
 2. **Authentication → Users → Add user → Create new user**: deine E-Mail und ein Passwort eintragen, **„Auto Confirm User"** anhaken → *Create user*.
    Das Passwort gibst du nur hier und später in der Login-Maske ein – nirgendwo sonst.
+3. **Login freischalten:** Ein Login allein sieht noch keine Daten – die User-ID muss in der Freigabeliste stehen. Im **SQL Editor** ausführen (E-Mail anpassen):
+
+   ```sql
+   insert into allowed_users (user_id) select id from auth.users where email = 'deine@mail.de';
+   ```
+
+   Erwartet: „Success. 1 row affected". So bleiben die Daten geschützt, selbst wenn die Registrierung je versehentlich eingeschaltet wäre.
 
 ## 4. Zugangsdaten für die App kopieren
 
 **Project Settings → API Keys** (bzw. *Data API*):
 
 - **Project URL**, z. B. `https://abcdefgh.supabase.co`
-- **anon / public key** (alternativ der „publishable key" `sb_publishable_…`)
+- **publishable key** `sb_publishable_…` (alternativ der ältere anon key `eyJ…`)
 
 Beide sind für den Browser gedacht und dürfen öffentlich sein – geschützt werden die Daten durch Login + Row Level Security.
 ⚠️ Den **service_role**- bzw. **secret**-Key niemals verwenden oder weitergeben.
