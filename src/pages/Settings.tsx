@@ -3,7 +3,8 @@ import { useState } from "react";
 import { resetDemoData } from "../data/backend";
 import { useLookups, useStore } from "../data/store";
 import type { Company, LinkCategory, Topic } from "../data/types";
-import { formatDateTime, todayIso } from "../logic/dates";
+import { formatDateTime } from "../logic/dates";
+import { useBackup } from "../ui/backup";
 import { CompanyLogo } from "../ui/common";
 
 export function SettingsPage() {
@@ -43,21 +44,7 @@ export function SettingsPage() {
 }
 
 function ExportButton() {
-  const { db, update, insert } = useStore();
-  const run = async () => {
-    const data = { exported_at: new Date().toISOString(), version: 1, tables: db };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `projecttracker-backup-${todayIso()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    const now = new Date().toISOString();
-    const meta = db.app_meta[0];
-    if (meta) await update("app_meta", meta.id, { last_export_at: now }).catch(() => {});
-    else await insert("app_meta", [{ last_export_at: now }]).catch(() => {});
-  };
+  const { run } = useBackup();
   return (
     <button className="btn primary" onClick={() => void run()}>
       <Download size={16} /> Export als JSON
