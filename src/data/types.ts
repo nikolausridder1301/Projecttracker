@@ -11,12 +11,27 @@ interface Base {
   deleted_at: IsoDateTime | null;
 }
 
+/** Datensätze, die zu genau einem Projekt gehören. */
+interface InProject {
+  project_id: Id;
+}
+
 export type TrafficLight = "green" | "yellow" | "red";
 export type TaskStatus = "open" | "in_progress" | "blocked" | "done";
 export type Priority = "high" | "medium" | "low";
 export type NoteKind = "note" | "meeting" | "decision";
 
-export interface Company extends Base {
+export interface Project extends Base {
+  name: string;
+  short: string;
+  color: string;
+  /** Firma (externer Partner), deren Anbieter-Bereich im Menü erscheint; null = aus */
+  vendor_company_id: Id | null;
+  sort: number;
+  archived: boolean;
+}
+
+export interface Company extends Base, InProject {
   name: string;
   short: string;
   color: string;
@@ -30,18 +45,18 @@ export interface Company extends Base {
   sort: number;
 }
 
-export interface Topic extends Base {
+export interface Topic extends Base, InProject {
   name: string;
   sort: number;
   archived: boolean;
 }
 
-export interface LinkCategory extends Base {
+export interface LinkCategory extends Base, InProject {
   name: string;
   sort: number;
 }
 
-export interface Person extends Base {
+export interface Person extends Base, InProject {
   name: string;
   company_id: Id | null;
   role: string;
@@ -55,7 +70,7 @@ export interface ChecklistItem {
   done: boolean;
 }
 
-export interface Task extends Base {
+export interface Task extends Base, InProject {
   title: string;
   description: string;
   company_id: Id;
@@ -79,7 +94,7 @@ export interface TaskFollowup extends Base {
   note: string;
 }
 
-export interface Note extends Base {
+export interface Note extends Base, InProject {
   title: string;
   body: string;
   kind: NoteKind;
@@ -90,7 +105,7 @@ export interface Note extends Base {
   participants_text: string;
 }
 
-export interface Link extends Base {
+export interface Link extends Base, InProject {
   title: string;
   url: string;
   company_id: Id;
@@ -107,8 +122,8 @@ export interface Attachment extends Base {
 
 export type VendorCategory = "feature" | "question" | "bug" | "best_practice" | "claim";
 
-/** Tacto-Punkt (Feature Request, Frage, Bug, Best Practice, Fail & Claim). */
-export interface VendorItem extends Base {
+/** Anbieter-Punkt (Feature Request, Frage, Bug, Best Practice, Fail & Claim). */
+export interface VendorItem extends Base, InProject {
   title: string;
   body: string;
   category: VendorCategory;
@@ -124,7 +139,7 @@ export interface VendorItem extends Base {
   promised: string;
   actual: string;
   evidence_url: string;
-  /** Datum, an dem der Punkt erstmals an Tacto ging */
+  /** Datum, an dem der Punkt erstmals an den Anbieter ging */
   reported_at: IsoDate | null;
   status_changed_at: IsoDateTime | null;
 }
@@ -134,6 +149,7 @@ export interface AppMeta extends Base {
 }
 
 export interface Tables {
+  projects: Project;
   companies: Company;
   topics: Topic;
   link_categories: LinkCategory;
@@ -150,6 +166,7 @@ export interface Tables {
 export type TableName = keyof Tables;
 
 export const TABLE_NAMES: TableName[] = [
+  "projects",
   "companies",
   "topics",
   "link_categories",
@@ -165,8 +182,20 @@ export const TABLE_NAMES: TableName[] = [
 
 export type Db = { [K in TableName]: Tables[K][] };
 
-/** Felder, die beim Anlegen vom Backend gesetzt werden. */
-export type NewRow<K extends TableName> = Omit<Tables[K], keyof Base> & { id?: Id };
+/** Tabellen mit project_id – werden in der App auf das aktuelle Projekt gefiltert. */
+export const PROJECT_TABLES = [
+  "companies",
+  "topics",
+  "link_categories",
+  "people",
+  "notes",
+  "tasks",
+  "links",
+  "vendor_items",
+] as const satisfies readonly TableName[];
+
+/** Felder, die beim Anlegen vom Backend gesetzt werden. project_id ergänzt der Store. */
+export type NewRow<K extends TableName> = Omit<Tables[K], keyof Base | "project_id"> & { id?: Id; project_id?: Id };
 export type Patch<K extends TableName> = Partial<Omit<Tables[K], "id" | "created_at" | "updated_at">>;
 
 export const STATUS_LABEL: Record<TaskStatus, string> = {

@@ -5,7 +5,10 @@ import type { Db } from "./types";
 
 export function demoSeed(): Db {
   const now = new Date().toISOString();
-  const base = () => ({ id: crypto.randomUUID(), created_at: now, updated_at: now, deleted_at: null });
+  const projectId = crypto.randomUUID();
+  const meta = () => ({ id: crypto.randomUUID(), created_at: now, updated_at: now, deleted_at: null });
+  // Alle Beispieldaten gehören zum Demo-Projekt „Tacto“
+  const base = () => ({ ...meta(), project_id: projectId });
   const today = todayIso();
 
   const companies = (
@@ -110,7 +113,21 @@ export function demoSeed(): Db {
     }),
   ];
 
+  const projects = [
+    {
+      ...meta(),
+      id: projectId,
+      name: "Tacto",
+      short: "TAC",
+      color: "#ea7a0c",
+      vendor_company_id: companies.find((c) => c.is_external)?.id ?? null,
+      sort: 0,
+      archived: false,
+    },
+  ];
+
   return {
+    projects,
     companies,
     topics,
     link_categories,
@@ -120,7 +137,7 @@ export function demoSeed(): Db {
     task_followups: [],
     links: [],
     attachments: [],
-    app_meta: [{ ...base(), last_export_at: null }],
+    app_meta: [{ ...meta(), last_export_at: null }],
     vendor_items: [],
   };
 }

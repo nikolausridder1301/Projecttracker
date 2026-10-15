@@ -5,13 +5,22 @@ import { useLookups, useStore } from "../data/store";
 import { TRAFFIC_LABEL, type Company, type TrafficLight } from "../data/types";
 import { formatDate, relativeLabel, todayIso } from "../logic/dates";
 import { todayView } from "../logic/tasks";
-import { CompanyLogo, TrafficDot } from "../ui/common";
+import { CompanyLogo, TrafficDot, usePersisted } from "../ui/common";
 import { FollowUpForm, TaskList, TaskRow, useTaskActions } from "../ui/tasks";
 
 export function TodayPage() {
-  const { db } = useStore();
+  const { db, allDb, projects } = useStore();
+  const [scope, setScope] = usePersisted<{ all: boolean }>("today", { all: false });
   const today = todayIso();
-  const v = useMemo(() => todayView(db.tasks, today), [db.tasks, today]);
+  const multi = projects.filter((p) => !p.archived).length > 1;
+  const all = multi && scope.all;
+  // „Alle Projekte“: Aufgaben aller nicht archivierten Projekte
+  const tasks = useMemo(() => {
+    if (!all) return db.tasks;
+    const active = new Set(projects.filter((p) => !p.archived).map((p) => p.id));
+    return allDb.tasks.filter((t) => active.has(t.project_id));
+  }, [all, db.tasks, allDb.tasks, projects]);
+  const v = useMemo(() => todayView(tasks, today), [tasks, today]);
   const mine = v.overdue.length + v.today.length + v.week.length;
   const allClear = mine + v.followUp.length + v.blocked.length === 0;
   const weekday = new Date().toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" });
@@ -21,9 +30,20 @@ export function TodayPage() {
       <div className="page-head">
         <h1>Heute</h1>
         <span className="muted">{weekday}</span>
+        <span className="spacer" />
+        {multi && (
+          <div className="seg-group">
+            <button className={`seg${!all ? " active" : ""}`} onClick={() => setScope({ all: false })}>
+              Dieses Projekt
+            </button>
+            <button className={`seg${all ? " active" : ""}`} onClick={() => setScope({ all: true })}>
+              Alle Projekte
+            </button>
+          </div>
+        )}
       </div>
 
-      <TrafficBar />
+      {!all && <TrafficBar />}
 
       {allClear ? (
         <div className="all-clear">
@@ -47,7 +67,7 @@ export function TodayPage() {
                   list.length > 0 && (
                     <div key={label}>
                       <h4 className={`bucket${red ? " overdue" : ""}`}>{label}</h4>
-                      <TaskList tasks={[...list]} />
+                      <TaskList tasks={[...list]} showProject={all} />
                     </div>
                   ),
               )}
@@ -61,7 +81,7 @@ export function TodayPage() {
               </h2>
               <div className="task-list">
                 {v.followUp.map((t) => (
-                  <FollowUpRow key={t.id} taskId={t.id} />
+                  <FollowUpRow key={t.id} taskId={t.id} showProject={all} />
                 ))}
               </div>
             </section>
@@ -72,7 +92,7 @@ export function TodayPage() {
               <h2 className="group-title">
                 Blockiert <span className="muted">{v.blocked.length}</span>
               </h2>
-              <TaskList tasks={v.blocked} />
+              <TaskList tasks={v.blocked} showProject={all} />
             </section>
           )}
         </div>
@@ -82,8 +102,8 @@ export function TodayPage() {
 }
 
 /** Delegierte Aufgabe mit direktem "Nachgehakt"/Mail. */
-export function FollowUpRow({ taskId }: { taskId: string }) {
-  const { db } = useStore();
+export function FollowUpRow({ taskId, showProject }: { taskId: string; showProject?: boolean }) {
+  const { allDb: db } = useStore();
   const { mailto } = useTaskActions();
   const [open, setOpen] = useState(false);
   const task = db.tasks.find((t) => t.id === taskId);
@@ -97,6 +117,7 @@ export function FollowUpRow({ taskId }: { taskId: string }) {
     <div className="followup-wrap">
       <TaskRow
         task={task}
+        showProject={showProject}
         extra={
           <>
             {task.follow_up_date && (

@@ -33,7 +33,8 @@ import {
   statusDef,
   statusPatch,
 } from "../logic/vendor";
-import { AutoText, ChipMulti, ChipSelect, CompanySelect, usePersisted } from "../ui/common";
+import { AutoText, ChipMulti, ChipSelect, CompanySelect, Empty, usePersisted } from "../ui/common";
+import { useVendor } from "../ui/vendor";
 
 export const CATEGORY_ICON: Record<VendorCategory, LucideIcon> = {
   feature: Lightbulb,
@@ -50,6 +51,21 @@ interface Filter {
 }
 
 export function TactoPage() {
+  const vendor = useVendor();
+  if (!vendor) {
+    return (
+      <div className="page">
+        <div className="page-head">
+          <h1>Anbieter</h1>
+        </div>
+        <Empty>Dieses Projekt hat keinen Anbieter-Bereich. Einschalten kannst du ihn in den Projekteinstellungen.</Empty>
+      </div>
+    );
+  }
+  return <VendorPage vendorName={vendor.name} />;
+}
+
+function VendorPage({ vendorName }: { vendorName: string }) {
   const { db, insert, toast } = useStore();
   const { companies, people } = useLookups();
   const [f, setF] = usePersisted<Filter>("tacto", { category: "feature", showDone: false, company: "" });
@@ -101,7 +117,7 @@ export function TactoPage() {
   };
 
   const copyJourFixe = async () => {
-    const text = jourFixeText(alive, companies, people, today);
+    const text = jourFixeText(alive, companies, people, today, vendorName);
     try {
       await navigator.clipboard.writeText(text);
       toast("Offene Punkte für den Jour fixe kopiert");
@@ -116,7 +132,7 @@ export function TactoPage() {
   return (
     <div className="page">
       <div className="page-head">
-        <h1>Tacto</h1>
+        <h1>{vendorName}</h1>
         <span className="spacer" />
         <button className="btn" onClick={() => void copyJourFixe()} title="Alle offenen Punkte als Text für den Jour fixe kopieren">
           <ClipboardCopy size={16} /> <span className="btn-label">Für Jour fixe kopieren</span>
@@ -167,7 +183,7 @@ export function TactoPage() {
                 </span>
               </span>
               {sd && <span className={`status-pill${sd.tone ? ` tone-${sd.tone}` : ""}`}>{sd.label}</span>}
-              {hasStatus && <span className="age">{ageLabel(i, today)}</span>}
+              {hasStatus && <span className="age">{ageLabel(i, today, vendorName)}</span>}
             </button>
           );
         })}
@@ -181,14 +197,14 @@ export function TactoPage() {
         </button>
       )}
 
-      {selected && <VendorPanel key={selected.id} item={selected} onClose={() => openItem(null)} />}
+      {selected && <VendorPanel key={selected.id} item={selected} vendorName={vendorName} onClose={() => openItem(null)} />}
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
 
-function VendorPanel({ item, onClose }: { item: VendorItem; onClose: () => void }) {
+function VendorPanel({ item, vendorName, onClose }: { item: VendorItem; vendorName: string; onClose: () => void }) {
   const { update, insert, trash, toast } = useStore();
   const { companies, topics, people, companyById } = useLookups();
   const [title, setTitle] = useState(item.title);
@@ -212,8 +228,8 @@ function VendorPanel({ item, onClose }: { item: VendorItem; onClose: () => void 
   const save = (patch: Parameters<typeof update<"vendor_items">>[2]) => void update("vendor_items", item.id, patch).catch(() => {});
   const blurText = (key: "body" | "promised" | "actual" | "ticket", v: string) => v !== item[key] && save({ [key]: v });
 
-  // Ansprechpartner: Tacto-Kontakte zuerst
-  const tacto = companies.find((c) => c.is_external);
+  // Ansprechpartner: Kontakte des Anbieters zuerst
+  const tacto = companies.find((c) => c.name === vendorName) ?? companies.find((c) => c.is_external);
   const contactOptions = [
     { value: "", label: "Kein Ansprechpartner" },
     ...people
@@ -339,8 +355,8 @@ function VendorPanel({ item, onClose }: { item: VendorItem; onClose: () => void 
           {showTicket(item) && (
             <input
               className="plain-input"
-              placeholder="Ticket-Nr. oder Link bei Tacto…"
-              aria-label="Ticket bei Tacto"
+              placeholder={`Ticket-Nr. oder Link bei ${vendorName}…`}
+              aria-label={`Ticket bei ${vendorName}`}
               value={ticket}
               onChange={(e) => setTicket(e.target.value)}
               onBlur={() => blurText("ticket", ticket.trim())}
@@ -375,7 +391,7 @@ function VendorPanel({ item, onClose }: { item: VendorItem; onClose: () => void 
                   save(answer.trim() && item.status !== "answered" ? { answer, ...statusPatch(item, "answered", today) } : { answer });
                 }}
                 minRows={2}
-                placeholder="Antwort von Tacto…"
+                placeholder={`Antwort von ${vendorName}…`}
               />
               {(answer || item.answer).trim() && (
                 <div>
@@ -397,7 +413,7 @@ function VendorPanel({ item, onClose }: { item: VendorItem; onClose: () => void 
                     onChange={setPromised}
                     onBlur={() => blurText("promised", promised)}
                     minRows={2}
-                    placeholder="Was Tacto zugesagt hat…"
+                    placeholder={`Was ${vendorName} zugesagt hat…`}
                   />
                 </div>
                 <div className="field-block">
@@ -437,7 +453,7 @@ function VendorPanel({ item, onClose }: { item: VendorItem; onClose: () => void 
 
           <p className="meta-line">
             Angelegt {formatDate(item.created_at.slice(0, 10))}
-            {item.reported_at && ` · an Tacto gemeldet ${formatDate(item.reported_at)}`}
+            {item.reported_at && ` · an ${vendorName} gemeldet ${formatDate(item.reported_at)}`}
           </p>
         </div>
       </aside>

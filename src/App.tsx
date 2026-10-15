@@ -70,6 +70,7 @@ function DataGate({ backend, email }: { backend: Backend; email: string }) {
               <Route path="wartet" element={<WaitingPage />} />
               <Route path="notizen" element={<NotesPage />} />
               <Route path="notizen/:id" element={<NoteDetailPage />} />
+              <Route path="anbieter" element={<TactoPage />} />
               <Route path="tacto" element={<TactoPage />} />
               <Route path="links" element={<LinksPage />} />
               <Route path="personen" element={<PeoplePage />} />

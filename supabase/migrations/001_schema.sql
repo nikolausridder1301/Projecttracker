@@ -16,8 +16,24 @@ $$;
 -- ---------------------------------------------------------------------------
 -- Tabellen
 -- ---------------------------------------------------------------------------
+-- Projekte: alle Datentabellen hängen über project_id an genau einem Projekt
+create table projects (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  short text not null,
+  color text not null default '#2563c9',
+  -- Firma (externer Partner), deren Anbieter-Bereich im Menü erscheint; null = aus
+  vendor_company_id uuid,
+  sort integer not null default 0,
+  archived boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  deleted_at timestamptz
+);
+
 create table companies (
   id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references projects (id),
   name text not null,
   short text not null,
   color text not null default '#5a6577',
@@ -36,6 +52,7 @@ create table companies (
 
 create table topics (
   id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references projects (id),
   name text not null,
   sort integer not null default 0,
   archived boolean not null default false,
@@ -46,6 +63,7 @@ create table topics (
 
 create table link_categories (
   id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references projects (id),
   name text not null,
   sort integer not null default 0,
   created_at timestamptz not null default now(),
@@ -55,6 +73,7 @@ create table link_categories (
 
 create table people (
   id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references projects (id),
   name text not null,
   company_id uuid references companies (id),
   role text not null default '',
@@ -68,6 +87,7 @@ create table people (
 
 create table notes (
   id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references projects (id),
   title text not null,
   body text not null default '',
   kind text not null default 'note' check (kind in ('note', 'meeting', 'decision')),
@@ -83,6 +103,7 @@ create table notes (
 
 create table tasks (
   id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references projects (id),
   title text not null,
   description text not null default '',
   company_id uuid not null references companies (id),
@@ -115,6 +136,7 @@ create table task_followups (
 
 create table links (
   id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references projects (id),
   title text not null,
   url text not null check (url ~* '^https?://'),
   company_id uuid not null references companies (id),
@@ -140,6 +162,7 @@ create table attachments (
 -- Tacto-Punkte: Feature Requests, Fragen, Bugs, Best Practices, Fails & Claims
 create table vendor_items (
   id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references projects (id),
   title text not null,
   body text not null default '',
   category text not null check (category in ('feature', 'question', 'bug', 'best_practice', 'claim')),
@@ -169,6 +192,17 @@ create table app_meta (
   deleted_at timestamptz
 );
 
+alter table projects add constraint projects_vendor_company_fk
+  foreign key (vendor_company_id) references companies (id) on delete set null;
+
+create index on companies (project_id);
+create index on topics (project_id);
+create index on link_categories (project_id);
+create index on people (project_id);
+create index on notes (project_id);
+create index on tasks (project_id);
+create index on links (project_id);
+create index on vendor_items (project_id);
 create index on tasks (company_id);
 create index on tasks (assignee_person_id);
 create index on tasks (group_id);
@@ -210,7 +244,7 @@ declare
   t text;
 begin
   foreach t in array array[
-    'companies', 'topics', 'link_categories', 'people', 'notes', 'tasks',
+    'projects', 'companies', 'topics', 'link_categories', 'people', 'notes', 'tasks',
     'task_followups', 'links', 'attachments', 'app_meta', 'vendor_items'
   ] loop
     execute format('create trigger %I before update on %I for each row execute function set_updated_at()', t || '_updated_at', t);

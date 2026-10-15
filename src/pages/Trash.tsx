@@ -9,7 +9,7 @@ const KINDS: { table: TableName; label: string }[] = [
   { table: "tasks", label: "Aufgabe" },
   { table: "notes", label: "Notiz" },
   { table: "links", label: "Link" },
-  { table: "vendor_items", label: "Tacto-Punkt" },
+  { table: "vendor_items", label: "Anbieter-Punkt" },
   { table: "people", label: "Person" },
 ];
 

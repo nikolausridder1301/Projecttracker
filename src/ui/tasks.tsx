@@ -6,6 +6,7 @@ import { addWorkdays, formatDate, relativeLabel, todayIso } from "../logic/dates
 import { checklistProgress, groupProgress, validateTask } from "../logic/tasks";
 import { AttachedLinks } from "./links";
 import { AutoText, Avatar, ChipDate, ChipSelect, CompanyBadge, Disclosure } from "./common";
+import { ProjectBadge } from "./ProjectSwitcher";
 import { useUi } from "./uiState";
 
 // ---------------------------------------------------------------------------
@@ -46,10 +47,22 @@ export function useTaskActions() {
 // Zeile: Titel links, rechts nur Firma, Person (Initialen) und Fälligkeit.
 // ---------------------------------------------------------------------------
 
-export function TaskRow({ task, showCompany = true, extra }: { task: Task; showCompany?: boolean; extra?: React.ReactNode }) {
-  const { db } = useStore();
-  const { personById, companyById } = useLookups();
+export function TaskRow({
+  task,
+  showCompany = true,
+  showProject = false,
+  extra,
+}: {
+  task: Task;
+  showCompany?: boolean;
+  /** Projekt-Kürzel zeigen („Heute – Alle Projekte“) */
+  showProject?: boolean;
+  extra?: React.ReactNode;
+}) {
+  const { allDb: db, project: currentProject, setProject } = useStore();
+  const { personById, companyById, projectById } = useLookups();
   const { openTask } = useUi();
+  const taskProject = projectById.get(task.project_id);
   const { setDone } = useTaskActions();
   const today = todayIso();
   const cl = checklistProgress(task);
@@ -78,7 +91,14 @@ export function TaskRow({ task, showCompany = true, extra }: { task: Task; showC
         onChange={(e) => void setDone(task, e.target.checked)}
         aria-label={done ? "Als offen markieren" : "Als erledigt markieren"}
       />
-      <button className="task-main" onClick={() => openTask(task.id)}>
+      <button
+        className="task-main"
+        onClick={() => {
+          // Aufgabe aus anderem Projekt: dorthin wechseln, damit Auswahllisten passen
+          if (task.project_id !== currentProject?.id) setProject(task.project_id);
+          openTask(task.id);
+        }}
+      >
         <span className="task-title">
           {task.priority === "high" && !done && <Flag size={14} className="tone-red flag" aria-label="Hohe Priorität" />}
           {task.title}
@@ -87,6 +107,7 @@ export function TaskRow({ task, showCompany = true, extra }: { task: Task; showC
       </button>
       <span className="task-right">
         {extra}
+        {showProject && taskProject && <ProjectBadge color={taskProject.color} short={taskProject.short} />}
         {showCompany && <CompanyBadge id={task.company_id} />}
         {person && <Avatar name={person.name} title={`Delegiert an ${person.name}`} />}
         <span className={`due${overdue ? " overdue" : ""}`} title={task.due_date ? `Fällig ${formatDate(task.due_date)}` : undefined}>
@@ -445,12 +466,22 @@ function TaskEditor({ task, onClose }: { task: Task; onClose: () => void }) {
 }
 
 /** Aufgaben eines bestimmten Filters als Liste. */
-export function TaskList({ tasks, showCompany = true, empty }: { tasks: Task[]; showCompany?: boolean; empty?: string }) {
+export function TaskList({
+  tasks,
+  showCompany = true,
+  showProject = false,
+  empty,
+}: {
+  tasks: Task[];
+  showCompany?: boolean;
+  showProject?: boolean;
+  empty?: string;
+}) {
   if (tasks.length === 0) return empty ? <div className="empty-inline">{empty}</div> : null;
   return (
     <div className="task-list">
       {tasks.map((t) => (
-        <TaskRow key={t.id} task={t} showCompany={showCompany} />
+        <TaskRow key={t.id} task={t} showCompany={showCompany} showProject={showProject} />
       ))}
     </div>
   );

@@ -9,6 +9,7 @@ import { affectsCompany, ageLabel, categoryDef, isOpenItem, statusDef } from "..
 import { CompanyLogo, Empty, TrafficDot } from "../ui/common";
 import { LinkRow } from "../ui/links";
 import { useCaptureContext, useUi } from "../ui/uiState";
+import { useVendor } from "../ui/vendor";
 import { CATEGORY_ICON } from "./Tacto";
 import { TrafficPicker } from "./Today";
 import { GroupedTasks, TaskFilterBar, applyFilter, type TaskFilter } from "./Tasks";
@@ -92,7 +93,8 @@ function CompanyView({ company }: { company: Company }) {
 
   const tasks = useMemo(() => applyFilter(db.tasks, f), [db.tasks, f]);
   const notes = db.notes.filter((n) => isActive(n) && n.company_id === company.id).sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
-  // Offene Tacto-Punkte, die diese Gesellschaft betreffen (auf der Tacto-Seite selbst: alle offenen)
+  const vendor = useVendor();
+  // Offene Anbieter-Punkte, die diese Gesellschaft betreffen (auf der Anbieter-Firma selbst: alle offenen)
   const vendorItems = db.vendor_items
     .filter((i) => isActive(i) && isOpenItem(i) && (company.is_external || affectsCompany(i, company.id)))
     .sort((a, b) => (a.reported_at ?? a.created_at) < (b.reported_at ?? b.created_at) ? -1 : 1);
@@ -130,7 +132,7 @@ function CompanyView({ company }: { company: Company }) {
             ["tasks", `Aufgaben (${db.tasks.filter((t) => isActive(t) && isOpen(t) && t.company_id === company.id).length})`],
             ["notes", `Notizen (${notes.length})`],
             ["links", `Links (${links.length})`],
-            ["tacto", `Tacto (${vendorItems.length})`],
+            ...(vendor ? ([["tacto", `${vendor.name} (${vendorItems.length})`]] as [Tab, string][]) : []),
           ] as [Tab, string][]
         ).map(([k, label]) => (
           <button key={k} className={`tab${tab === k ? " active" : ""}`} onClick={() => setTab(k)}>
@@ -181,21 +183,21 @@ function CompanyView({ company }: { company: Company }) {
         ))}
       {tab === "tacto" &&
         (vendorItems.length === 0 ? (
-          <Empty>Keine offenen Tacto-Punkte.</Empty>
+          <Empty>Keine offenen Punkte.</Empty>
         ) : (
           <div className="card list-card">
             {vendorItems.map((i) => {
               const Icon = CATEGORY_ICON[i.category];
               const sd = statusDef(i);
               return (
-                <Link key={i.id} to={`/tacto?id=${i.id}`} className="vendor-row">
+                <Link key={i.id} to={`/anbieter?id=${i.id}`} className="vendor-row">
                   <Icon size={18} className="row-icon" />
                   <span className="note-main">
                     <span className="task-title">{i.title}</span>
                     <span className="task-sub">{categoryDef(i.category).label}</span>
                   </span>
                   {sd && <span className={`status-pill${sd.tone ? ` tone-${sd.tone}` : ""}`}>{sd.label}</span>}
-                  <span className="age">{ageLabel(i, todayIso())}</span>
+                  <span className="age">{ageLabel(i, todayIso(), vendor?.name)}</span>
                 </Link>
               );
             })}
