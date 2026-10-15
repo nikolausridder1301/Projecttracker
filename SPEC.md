@@ -116,7 +116,7 @@ Alle Tabellen: `id uuid`, `created_at`, `updated_at`, `deleted_at` (Papierkorb, 
 
 Look wie tacto (helle Flächen, Akzent `#2563c9`, Ampelfarben als Soft-Badges, Inter, Karten mit 16 px Radius). Linke Seitenleiste:
 
-**Heute** · **Aufgaben** · **Wartet auf…** · **Notizen** · **Links** · **Personen** · **Firmen** · *(unten)* Papierkorb · Einstellungen · Export · Abmelden.
+**Heute** · **Aufgaben** · **Delegiert** · **Notizen** · **Links** · **Personen** · **Firmen** · *(unten)* Papierkorb · Einstellungen · Export · Abmelden.
 
 Oben: SK-Logo, globale Suche, „+ Neu“-Button. Firmen erscheinen überall als Badge (Logo klein bzw. Kürzel in Firmenfarbe).
 
@@ -137,7 +137,7 @@ Sind 2–4 leer: Hinweis „Alles erledigt für heute.“ Browser-Tab-Titel zeig
 - Detailansicht als Seitenpanel: alle Felder, Checkliste mit Fortschritt (3/7), Nachhak-Verlauf, angehängte Links, Herkunfts-Protokoll.
 - **„Für mehrere Firmen anlegen“:** Mehrfachauswahl Firmen → je Firma eine eigene Aufgabe mit gemeinsamer `group_id`. In Liste und Detail sichtbar als Gruppe mit Fortschritt („5/7 erledigt“, fehlende Firmen benannt).
 
-### 6.4 Wartet auf…
+### 6.4 Delegiert (früher „Wartet auf…“)
 
 Alle delegierten offenen Aufgaben, gruppiert nach Person (mit Firma). Je Aufgabe: Fälligkeit, nächstes Nachhak-Datum, Anzahl bisheriger Nachfragen, letzte Notiz.
 

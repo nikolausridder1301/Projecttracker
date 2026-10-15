@@ -7,7 +7,7 @@ import { isActive, isDelegated, isOpen } from "../logic/tasks";
 import { CompanyBadge, Empty } from "../ui/common";
 import { FollowUpRow } from "./Today";
 
-// "Wartet auf…" (SPEC 6.4): alle offenen Delegationen nach Person.
+// „Delegiert“ (SPEC 6.4): alle offenen Delegationen nach Person.
 
 export function WaitingPage() {
   const { db } = useStore();
@@ -30,9 +30,9 @@ export function WaitingPage() {
   return (
     <div className="page">
       <div className="page-head">
-        <h1>Wartet auf…</h1>
+        <h1>Delegiert</h1>
         <span className="muted">
-          {total} offene Delegationen{dueNow > 0 && ` · ${dueNow} heute nachhaken`}
+          {total} offen{dueNow > 0 && ` · ${dueNow} heute nachhaken`}
         </span>
       </div>
       {groups.length === 0 ? (

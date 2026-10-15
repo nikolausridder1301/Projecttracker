@@ -69,6 +69,7 @@ function DataGate({ backend, email }: { backend: Backend; email: string }) {
             <Route element={<Layout email={email} onSignOut={() => void backend.signOut()} />}>
               <Route index element={<TodayPage />} />
               <Route path="aufgaben" element={<TasksPage />} />
+              <Route path="delegiert" element={<WaitingPage />} />
               <Route path="wartet" element={<WaitingPage />} />
               <Route path="meeting" element={<MeetingPage />} />
               <Route path="fortschritt" element={<ProgressPage />} />
