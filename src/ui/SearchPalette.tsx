@@ -6,7 +6,7 @@ import { useUi } from "./uiState";
 
 // Globale Suche (SPEC 6.9), geöffnet mit Strg+K.
 
-const TYPE_LABEL: Record<HitType, string> = { task: "Aufgaben", note: "Notizen", vendor: "Tacto", link: "Links", person: "Personen" };
+const TYPE_LABEL: Record<HitType, string> = { task: "Aufgaben", note: "Notizen", vendor: "Anbieter", link: "Links", person: "Personen" };
 
 export function SearchPalette() {
   const { searchOpen, setSearchOpen } = useUi();
@@ -29,7 +29,7 @@ function Palette({ onClose }: { onClose: () => void }) {
     if (h.type === "task") openTask(h.id);
     else if (h.type === "note") navigate(`/notizen/${h.id}`);
     else if (h.type === "person") navigate(`/personen/${h.id}`);
-    else if (h.type === "vendor") navigate(`/tacto?id=${h.id}`);
+    else if (h.type === "vendor") navigate(`/anbieter?id=${h.id}`);
     else {
       const l = db.links.find((x) => x.id === h.id);
       if (l) window.open(l.url, "_blank", "noopener,noreferrer");

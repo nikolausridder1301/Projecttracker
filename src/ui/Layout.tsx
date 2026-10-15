@@ -5,25 +5,30 @@ import { useStore } from "../data/store";
 import { todayIso } from "../logic/dates";
 import { todayCount, todayView } from "../logic/tasks";
 import { useBackup } from "./backup";
-import { SK_LOGO } from "./common";
+import { ProjectSwitcher } from "./ProjectSwitcher";
+import { useVendor } from "./vendor";
 import { QuickCapture } from "./QuickCapture";
 import { SearchPalette } from "./SearchPalette";
 import { TaskPanel } from "./tasks";
 import { useUi } from "./uiState";
 
-const NAV = [
-  { to: "/", label: "Heute", icon: Sun },
-  { to: "/aufgaben", label: "Aufgaben", icon: CheckSquare },
-  { to: "/wartet", label: "Wartet auf…", icon: Hourglass },
-  { to: "/notizen", label: "Notizen", icon: NotebookPen },
-  { to: "/tacto", label: "Tacto", icon: Sparkles },
-  { to: "/links", label: "Links", icon: Link2 },
-  { to: "/personen", label: "Personen", icon: Users },
-  { to: "/firmen", label: "Firmen", icon: Building2 },
-];
+/** Menü; der Anbieter-Bereich erscheint nur, wenn das Projekt einen hat. */
+function navItems(vendorName: string | null) {
+  return [
+    { to: "/", label: "Heute", icon: Sun },
+    { to: "/aufgaben", label: "Aufgaben", icon: CheckSquare },
+    { to: "/wartet", label: "Wartet auf…", icon: Hourglass },
+    { to: "/notizen", label: "Notizen", icon: NotebookPen },
+    ...(vendorName ? [{ to: "/anbieter", label: vendorName, icon: Sparkles }] : []),
+    { to: "/links", label: "Links", icon: Link2 },
+    { to: "/personen", label: "Personen", icon: Users },
+    { to: "/firmen", label: "Firmen", icon: Building2 },
+  ];
+}
 
 export function Layout({ email, onSignOut }: { email: string; onSignOut: () => void }) {
   const { db, backend } = useStore();
+  const vendor = useVendor();
   const { openCapture, setSearchOpen, capture, searchOpen, openTaskId } = useUi();
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
@@ -59,12 +64,9 @@ export function Layout({ email, onSignOut }: { email: string; onSignOut: () => v
   return (
     <div className={`app${menuOpen ? " menu-open" : ""}`}>
       <aside className="sidebar">
-        <div className="brand">
-          <img src={SK_LOGO} alt="SK Group" width={32} height={32} />
-          <span>Projecttracker</span>
-        </div>
+        <ProjectSwitcher />
         <nav>
-          {NAV.map((n) => (
+          {navItems(vendor?.name ?? null).map((n) => (
             <NavLink key={n.to} to={n.to} end={n.to === "/"} className="nav-item">
               <n.icon size={18} className="nav-icon" aria-hidden />
               {n.label}

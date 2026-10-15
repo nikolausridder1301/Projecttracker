@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { demoSeed } from "../data/seed";
 import type { Task, VendorItem } from "../data/types";
 import { addWorkdays, endOfWeek, formatDate, relativeLabel } from "./dates";
+import { copyProjectMasterData, suggestShort } from "./projects";
 import { search } from "./search";
 import { affectsCompany, ageLabel, isOpenItem, jourFixeText, newVendorItem, showTicket, statusPatch } from "./vendor";
 import { compareTasks, groupProgress, isValidUrl, todayCount, todayView, validateTask } from "./tasks";
@@ -11,6 +12,7 @@ const T = (o: Partial<Task>): Task => ({
   created_at: "",
   updated_at: "",
   deleted_at: null,
+  project_id: "p1",
   title: "x",
   description: "",
   company_id: "c1",
@@ -128,6 +130,7 @@ describe("vendor", () => {
     created_at: "2026-10-01T08:00:00Z",
     updated_at: "",
     deleted_at: null,
+    project_id: "p1",
     title: "x",
     body: "",
     category: "bug",
@@ -158,7 +161,7 @@ describe("vendor", () => {
     expect(statusPatch(V({}), "open", "2026-10-15").reported_at).toBeNull();
   });
   it("Alter bei Tacto", () => {
-    expect(ageLabel(V({ status: "reported", reported_at: "2026-09-22" }), "2026-10-15")).toBe("seit 23 T. bei Tacto");
+    expect(ageLabel(V({ status: "reported", reported_at: "2026-09-22" }), "2026-10-15", "Tacto")).toBe("seit 23 T. bei Tacto");
     expect(ageLabel(V({ status: "open" }), "2026-10-06")).toBe("seit 5 T. offen");
     expect(ageLabel(V({ status: "fixed" }), "2026-10-15")).toBe("");
   });
@@ -187,10 +190,35 @@ describe("vendor", () => {
       [{ id: "c1", short: "FEST" }],
       [],
       "2026-10-15",
+      "Tacto",
     );
     expect(text).toContain("Feature Requests (1)");
-    expect(text).toContain("- Schnittstelle (Bei Tacto angefragt · Alle Firmen · Prio hoch");
+    expect(text).toContain("Offene Punkte Tacto – Stand 15.10.2026");
+    expect(text).toContain("- Schnittstelle (Angefragt · Alle Firmen · Prio hoch");
     expect(text).toContain("- Export bricht ab (Gemeldet · FEST · seit 5 T. bei Tacto)");
     expect(text).not.toContain("Alt");
+  });
+});
+
+describe("projects", () => {
+  it("kopiert Stammdaten mit neuen IDs und hängt Firmenbezüge um", () => {
+    const db = demoSeed();
+    const src = db.projects[0].id;
+    let n = 0;
+    const copy = copyProjectMasterData(db, src, "neu", () => `id${++n}`);
+    expect(copy.companies).toHaveLength(db.companies.length);
+    expect(copy.companies.every((c) => c.project_id === "neu" && c.traffic_light === "green")).toBe(true);
+    const newCompanyIds = new Set(copy.companies.map((c) => c.id));
+    expect(copy.people.every((p) => p.company_id === null || newCompanyIds.has(p.company_id))).toBe(true);
+    expect(copy.topics).toHaveLength(db.topics.length);
+    expect(copy.link_categories).toHaveLength(db.link_categories.length);
+    // Anbieter (Tacto) zeigt auf die kopierte Firma
+    const vendor = copy.companies.find((c) => c.id === copy.vendorCompanyId);
+    expect(vendor?.name).toBe("Tacto");
+  });
+  it("Kürzel-Vorschlag", () => {
+    expect(suggestShort("ERP-Einführung")).toBe("EE");
+    expect(suggestShort("Tacto")).toBe("TAC");
+    expect(suggestShort("Neue Einkaufs Plattform")).toBe("NEP");
   });
 });

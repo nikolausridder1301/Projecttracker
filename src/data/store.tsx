@@ -1,11 +1,16 @@
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
 import type { Backend } from "./backend";
-import type { Db, Id, NewRow, Patch, TableName, Tables } from "./types";
+import { PROJECT_TABLES, type Db, type Id, type NewRow, type Patch, type Project, type TableName, type Tables } from "./types";
 
 // Zentraler Datenspeicher: alle Tabellen werden beim Start einmal geladen
 // (Einzelnutzer, überschaubare Datenmengen) und danach optimistisch
 // aktualisiert. Schlägt das Speichern fehl, wird der lokale Stand
 // zurückgerollt und ein Fehler gemeldet – nichts geht still verloren.
+//
+// Projekte: `db` enthält nur die Daten des aktuellen Projekts – so arbeiten
+// alle Ansichten unverändert projektbezogen. `allDb` ist der Gesamtbestand
+// (Export, „Alle Projekte“, Projektwechsel). Neue Datensätze bekommen die
+// project_id des aktuellen Projekts automatisch.
 
 export interface Toast {
   id: number;
@@ -15,8 +20,14 @@ export interface Toast {
 }
 
 interface StoreValue {
+  /** Daten des aktuellen Projekts */
   db: Db;
+  /** Alle Daten aller Projekte */
+  allDb: Db;
   backend: Backend;
+  project: Project | undefined;
+  projects: Project[];
+  setProject(id: Id): void;
   insert<K extends TableName>(table: K, rows: NewRow<K>[]): Promise<Tables[K][]>;
   update<K extends TableName>(table: K, id: Id, patch: Patch<K>): Promise<void>;
   /** Papierkorb: setzt deleted_at, mit "Rückgängig" für 5 Sekunden. */
@@ -30,13 +41,58 @@ interface StoreValue {
 }
 
 const Ctx = createContext<StoreValue | null>(null);
+const PROJECT_KEY = "projecttracker-project";
+const isProjectTable = (t: TableName) => (PROJECT_TABLES as readonly string[]).includes(t);
+
+function readStoredProject(): Id | null {
+  try {
+    return localStorage.getItem(PROJECT_KEY);
+  } catch {
+    return null;
+  }
+}
+
+/** Gefilterte Sicht auf ein Projekt; Nachhaken/Anhänge folgen ihren Aufgaben/Links. */
+export function scopeDb(all: Db, projectId: Id | undefined): Db {
+  if (!projectId) return all;
+  const scoped = { ...all } as Db;
+  for (const t of PROJECT_TABLES) {
+    (scoped as Record<string, unknown[]>)[t] = (all[t] as { project_id: Id }[]).filter((r) => r.project_id === projectId);
+  }
+  const taskIds = new Set(scoped.tasks.map((t) => t.id));
+  const linkIds = new Set(scoped.links.map((l) => l.id));
+  scoped.task_followups = all.task_followups.filter((f) => taskIds.has(f.task_id));
+  scoped.attachments = all.attachments.filter((a) => linkIds.has(a.link_id));
+  return scoped;
+}
 
 export function StoreProvider({ backend, initial, children }: { backend: Backend; initial: Db; children: ReactNode }) {
-  const [db, setDb] = useState<Db>(initial);
+  const [allDb, setDb] = useState<Db>(initial);
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [projectId, setProjectId] = useState<Id | null>(readStoredProject);
   const nextToast = useRef(1);
-  const dbRef = useRef(db);
-  dbRef.current = db;
+  const dbRef = useRef(allDb);
+  dbRef.current = allDb;
+
+  const projects = useMemo(
+    () => allDb.projects.filter((p) => p.deleted_at === null).sort((a, b) => a.sort - b.sort || a.name.localeCompare(b.name, "de")),
+    [allDb.projects],
+  );
+  // Gespeichertes Projekt, sonst erstes aktives
+  const project = projects.find((p) => p.id === projectId) ?? projects.find((p) => !p.archived) ?? projects[0];
+  const projectRef = useRef(project);
+  projectRef.current = project;
+
+  const db = useMemo(() => scopeDb(allDb, project?.id), [allDb, project?.id]);
+
+  const setProject = useCallback((id: Id) => {
+    setProjectId(id);
+    try {
+      localStorage.setItem(PROJECT_KEY, id);
+    } catch {
+      /* ignorieren */
+    }
+  }, []);
 
   const dismissToast = useCallback((id: number) => setToasts((l) => l.filter((t) => t.id !== id)), []);
 
@@ -55,7 +111,9 @@ export function StoreProvider({ backend, initial, children }: { backend: Backend
   const insert = useCallback(
     async <K extends TableName>(table: K, rows: NewRow<K>[]) => {
       try {
-        const created = await backend.insert(table, rows);
+        const pid = projectRef.current?.id;
+        const prepared = isProjectTable(table) ? rows.map((r) => ({ project_id: pid, ...r })) : rows;
+        const created = await backend.insert(table, prepared);
         setDb((d) => ({ ...d, [table]: [...(d[table] as Tables[K][]), ...created] }));
         return created;
       } catch (e) {
@@ -83,10 +141,7 @@ export function StoreProvider({ backend, initial, children }: { backend: Backend
     [backend, toast],
   );
 
-  const restore = useCallback(
-    (table: TableName, id: Id) => update(table, id, { deleted_at: null } as never),
-    [update],
-  );
+  const restore = useCallback((table: TableName, id: Id) => update(table, id, { deleted_at: null } as never), [update]);
 
   const trash = useCallback(
     async (table: TableName, id: Id, label: string) => {
@@ -113,8 +168,8 @@ export function StoreProvider({ backend, initial, children }: { backend: Backend
   }, [backend]);
 
   const value = useMemo<StoreValue>(
-    () => ({ db, backend, insert, update, trash, restore, purge, toast, toasts, dismissToast, reload }),
-    [db, backend, insert, update, trash, restore, purge, toast, toasts, dismissToast, reload],
+    () => ({ db, allDb, backend, project, projects, setProject, insert, update, trash, restore, purge, toast, toasts, dismissToast, reload }),
+    [db, allDb, backend, project, projects, setProject, insert, update, trash, restore, purge, toast, toasts, dismissToast, reload],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
@@ -125,27 +180,29 @@ export function useStore(): StoreValue {
   return v;
 }
 
-/** Bequeme, gefilterte Sichten (ohne Papierkorb), sortiert. */
+/** Bequeme, gefilterte Sichten (aktuelles Projekt, ohne Papierkorb), sortiert. */
 export function useLookups() {
-  const { db } = useStore();
+  const { db, allDb } = useStore();
   return useMemo(() => {
     const alive = <T extends { deleted_at: string | null }>(l: T[]) => l.filter((r) => r.deleted_at === null);
     const companies = alive(db.companies).sort((a, b) => a.sort - b.sort);
     const topics = alive(db.topics).sort((a, b) => a.sort - b.sort);
     const people = alive(db.people).sort((a, b) => a.name.localeCompare(b.name, "de"));
     const categories = alive(db.link_categories).sort((a, b) => a.sort - b.sort);
+    // Nachschlagen über alle Projekte (z. B. „Heute – Alle Projekte“)
     const byId = <T extends { id: Id }>(l: T[]) => new Map(l.map((r) => [r.id, r]));
     return {
       companies,
       topics,
       people,
       categories,
-      companyById: byId(db.companies),
-      topicById: byId(db.topics),
-      personById: byId(db.people),
-      categoryById: byId(db.link_categories),
-      noteById: byId(db.notes),
-      linkById: byId(db.links),
+      companyById: byId(allDb.companies),
+      topicById: byId(allDb.topics),
+      personById: byId(allDb.people),
+      categoryById: byId(allDb.link_categories),
+      noteById: byId(allDb.notes),
+      linkById: byId(allDb.links),
+      projectById: byId(allDb.projects),
     };
-  }, [db]);
+  }, [db, allDb]);
 }

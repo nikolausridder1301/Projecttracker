@@ -1,4 +1,4 @@
-// Tacto-Punkte: Kategorien, Status-Abläufe, Alter und Jour-fixe-Text.
+// Anbieter-Punkte (z. B. Tacto): Kategorien, Status-Abläufe, Alter und Jour-fixe-Text.
 import type { Company, Id, IsoDate, Person, VendorCategory, VendorItem } from "../data/types";
 import { daysBetween, formatDate } from "./dates";
 
@@ -7,7 +7,7 @@ export interface StatusDef {
   label: string;
   /** erledigt = zählt nicht mehr als offen */
   final?: boolean;
-  /** ab diesem Status liegt der Punkt bei Tacto (setzt reported_at) */
+  /** ab diesem Status liegt der Punkt beim Anbieter (setzt reported_at) */
   atVendor?: boolean;
   tone?: "blue" | "green" | "red";
 }
@@ -32,7 +32,7 @@ export const CATEGORIES: CategoryDef[] = [
     placeholder: "Neuen Feature Request erfassen…",
     statuses: [
       { value: "idea", label: "Idee" },
-      { value: "requested", label: "Bei Tacto angefragt", atVendor: true, tone: "blue" },
+      { value: "requested", label: "Angefragt", atVendor: true, tone: "blue" },
       { value: "promised", label: "Zugesagt", atVendor: true, tone: "blue" },
       { value: "done", label: "Umgesetzt", final: true, tone: "green" },
       { value: "rejected", label: "Abgelehnt", final: true },
@@ -109,7 +109,7 @@ export function newVendorItem(category: VendorCategory, title: string, companyId
   };
 }
 
-/** Ticketfeld erst zeigen, wenn der Punkt bei Tacto ist (oder schon eins eingetragen ist). */
+/** Ticketfeld erst zeigen, wenn der Punkt beim Anbieter ist (oder schon eins eingetragen ist). */
 export function showTicket(item: Pick<VendorItem, "category" | "status" | "ticket">): boolean {
   const sd = statusDef(item);
   return item.ticket !== "" || !!sd?.atVendor || !!sd?.final;
@@ -130,7 +130,7 @@ export function isOpenItem(item: Pick<VendorItem, "category" | "status">): boole
   return !statusDef(item)?.final;
 }
 
-/** Felder, die sich beim Statuswechsel mit ändern (reported_at beim ersten Weg zu Tacto). */
+/** Felder, die sich beim Statuswechsel mit ändern (reported_at beim ersten Weg zum Anbieter). */
 export function statusPatch(item: Pick<VendorItem, "category" | "reported_at">, status: string, today: IsoDate) {
   const def = categoryDef(item.category).statuses.find((s) => s.value === status);
   return {
@@ -141,11 +141,11 @@ export function statusPatch(item: Pick<VendorItem, "category" | "reported_at">, 
 }
 
 /** „seit 23 T. bei Tacto" bzw. „seit 5 T. offen" – nur für offene Punkte. */
-export function ageLabel(item: VendorItem, today: IsoDate): string {
+export function ageLabel(item: VendorItem, today: IsoDate, vendorName = "Anbieter"): string {
   if (!isOpenItem(item)) return "";
   const since = item.reported_at ?? item.created_at.slice(0, 10);
   const days = Math.max(0, daysBetween(since, today));
-  const where = statusDef(item)?.atVendor ? "bei Tacto" : "offen";
+  const where = statusDef(item)?.atVendor ? `bei ${vendorName}` : "offen";
   return days === 0 ? `seit heute ${where}` : `seit ${days} T. ${where}`;
 }
 
@@ -159,14 +159,15 @@ export function companiesLabel(ids: Id[], companies: Pick<Company, "id" | "short
   return ids.map((id) => companies.find((c) => c.id === id)?.short ?? "?").join(", ");
 }
 
-/** Text für den Jour fixe mit Tacto: alle offenen Punkte nach Kategorie. */
+/** Text für den Jour fixe mit dem Anbieter: alle offenen Punkte nach Kategorie. */
 export function jourFixeText(
   items: VendorItem[],
   companies: Pick<Company, "id" | "short">[],
   people: Pick<Person, "id" | "name">[],
   today: IsoDate,
+  vendorName = "Anbieter",
 ): string {
-  const lines: string[] = [`Offene Punkte Tacto – Stand ${formatDate(today)}`, ""];
+  const lines: string[] = [`Offene Punkte ${vendorName} – Stand ${formatDate(today)}`, ""];
   for (const cat of CATEGORIES) {
     const open = items.filter((i) => i.deleted_at === null && i.category === cat.value && isOpenItem(i));
     if (open.length === 0) continue;
@@ -178,7 +179,7 @@ export function jourFixeText(
         i.priority === "high" ? "Prio hoch" : "",
         i.ticket ? `Ticket ${i.ticket}` : "",
         i.contact_person_id ? people.find((p) => p.id === i.contact_person_id)?.name : "",
-        ageLabel(i, today),
+        ageLabel(i, today, vendorName),
       ].filter(Boolean);
       lines.push(`- ${i.title} (${meta.join(" · ")})`);
     }

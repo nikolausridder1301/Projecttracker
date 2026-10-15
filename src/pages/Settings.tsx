@@ -8,7 +8,7 @@ import { useBackup } from "../ui/backup";
 import { CompanyLogo } from "../ui/common";
 
 export function SettingsPage() {
-  const { db, backend } = useStore();
+  const { db, backend, project } = useStore();
   const lastExport = db.app_meta[0]?.last_export_at ?? null;
   return (
     <div className="page narrow">
@@ -16,10 +16,13 @@ export function SettingsPage() {
         <h1>Einstellungen</h1>
       </div>
 
+      {/* key: beim Projektwechsel Formular neu befüllen */}
+      <ProjectSettings key={project?.id} />
+
       <section className="card">
         <h2>Backup</h2>
         <p className="muted">
-          Lädt alle Daten (inkl. Papierkorb) als JSON-Datei herunter. Lege sie in deinem OneDrive ab.
+          Lädt alle Daten aller Projekte (inkl. Papierkorb) als JSON-Datei herunter. Lege sie in deinem OneDrive ab.
           {lastExport ? ` Letzter Export: ${formatDateTime(lastExport)}.` : " Noch kein Export."}
         </p>
         <ExportButton />
@@ -40,6 +43,70 @@ export function SettingsPage() {
       <TopicsSettings />
       <CategoriesSettings />
     </div>
+  );
+}
+
+function ProjectSettings() {
+  const { project, projects, update, toast } = useStore();
+  const { companies } = useLookups();
+  const [v, setV] = useState(project);
+  if (!project || !v) return null;
+  const save = (k: "name" | "short") => () => {
+    const val = k === "short" ? v[k].trim().toUpperCase() : v[k].trim();
+    if (!val) return setV(project);
+    if (val !== project[k]) void update("projects", project.id, { [k]: val }).catch(() => {});
+  };
+  const activeCount = projects.filter((p) => !p.archived).length;
+  return (
+    <section className="card">
+      <h2>Projekt</h2>
+      <div className="settings-grid">
+        <label className="field">
+          <span className="muted small">Name</span>
+          <input value={v.name} onChange={(e) => setV({ ...v, name: e.target.value })} onBlur={save("name")} />
+        </label>
+        <label className="field">
+          <span className="muted small">Kürzel</span>
+          <input className="short-input" maxLength={4} value={v.short} onChange={(e) => setV({ ...v, short: e.target.value })} onBlur={save("short")} />
+        </label>
+        <label className="field">
+          <span className="muted small">Farbe</span>
+          <input
+            type="color"
+            value={v.color}
+            onChange={(e) => setV({ ...v, color: e.target.value })}
+            onBlur={() => v.color !== project.color && void update("projects", project.id, { color: v.color }).catch(() => {})}
+          />
+        </label>
+        <label className="field">
+          <span className="muted small">Anbieter-Bereich im Menü</span>
+          <select
+            value={project.vendor_company_id ?? ""}
+            onChange={(e) => void update("projects", project.id, { vendor_company_id: e.target.value || null }).catch(() => {})}
+          >
+            <option value="">Aus</option>
+            {companies.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+                {c.is_external ? "" : " (Gesellschaft)"}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <p className="muted small settings-hint">
+        Firmen, Personen, Themen und Kategorien unten gelten nur für dieses Projekt.
+      </p>
+      <button
+        className="btn ghost"
+        onClick={() => {
+          if (!project.archived && activeCount <= 1) return toast("Das letzte aktive Projekt kann nicht archiviert werden.", "error");
+          void update("projects", project.id, { archived: !project.archived }).catch(() => {});
+        }}
+      >
+        {project.archived ? "Projekt reaktivieren" : "Projekt archivieren"}
+      </button>
+    </section>
   );
 }
 
@@ -65,6 +132,7 @@ function CompaniesSettings() {
             <th>Name</th>
             <th>Kürzel</th>
             <th>Farbe</th>
+            <th title="Externer Partner, z. B. Software-Anbieter – nicht Teil von „Alle Gesellschaften“">Partner</th>
           </tr>
         </thead>
         <tbody>
@@ -116,6 +184,15 @@ function CompanyRow({ company }: { company: Company }) {
       </td>
       <td>
         <input type="color" value={v.color} onChange={(e) => setV({ ...v, color: e.target.value })} onBlur={save("color")} />
+      </td>
+      <td>
+        <input
+          type="checkbox"
+          className="check"
+          checked={company.is_external}
+          onChange={(e) => void update("companies", company.id, { is_external: e.target.checked }).catch(() => {})}
+          aria-label={`${company.name} ist externer Partner`}
+        />
       </td>
     </tr>
   );
