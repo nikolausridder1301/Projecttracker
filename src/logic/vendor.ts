@@ -16,6 +16,10 @@ export interface CategoryDef {
   value: VendorCategory;
   label: string;
   plural: string;
+  /** kurzer Reitername */
+  short: string;
+  /** Platzhalter der Erfassungszeile */
+  placeholder: string;
   statuses: StatusDef[];
 }
 
@@ -24,6 +28,8 @@ export const CATEGORIES: CategoryDef[] = [
     value: "feature",
     label: "Feature Request",
     plural: "Feature Requests",
+    short: "Features",
+    placeholder: "Neuen Feature Request erfassen…",
     statuses: [
       { value: "idea", label: "Idee" },
       { value: "requested", label: "Bei Tacto angefragt", atVendor: true, tone: "blue" },
@@ -36,6 +42,8 @@ export const CATEGORIES: CategoryDef[] = [
     value: "question",
     label: "Frage",
     plural: "Fragen",
+    short: "Fragen",
+    placeholder: "Neue Frage erfassen…",
     statuses: [
       { value: "open", label: "Offen" },
       { value: "asked", label: "Gestellt", atVendor: true, tone: "blue" },
@@ -46,6 +54,8 @@ export const CATEGORIES: CategoryDef[] = [
     value: "bug",
     label: "Bug",
     plural: "Bugs",
+    short: "Bugs",
+    placeholder: "Neuen Bug erfassen…",
     statuses: [
       { value: "open", label: "Offen", tone: "red" },
       { value: "reported", label: "Gemeldet", atVendor: true, tone: "blue" },
@@ -53,11 +63,20 @@ export const CATEGORIES: CategoryDef[] = [
       { value: "fixed", label: "Behoben", final: true, tone: "green" },
     ],
   },
-  { value: "best_practice", label: "Best Practice", plural: "Best Practices", statuses: [] },
+  {
+    value: "best_practice",
+    label: "Best Practice",
+    plural: "Best Practices",
+    short: "Best Practices",
+    placeholder: "Neue Best Practice erfassen…",
+    statuses: [],
+  },
   {
     value: "claim",
     label: "Fail & Claim",
     plural: "Fails & Claims",
+    short: "Claims",
+    placeholder: "Neuen Fail & Claim erfassen…",
     statuses: [
       { value: "open", label: "Offen", tone: "red" },
       { value: "escalated", label: "Eskaliert", atVendor: true, tone: "red" },
@@ -68,6 +87,33 @@ export const CATEGORIES: CategoryDef[] = [
 ];
 
 export const categoryDef = (c: VendorCategory): CategoryDef => CATEGORIES.find((d) => d.value === c)!;
+
+/** Neuer Punkt mit Standardwerten (Titel aus der Erfassungszeile). */
+export function newVendorItem(category: VendorCategory, title: string, companyIds: Id[]) {
+  return {
+    title,
+    body: "",
+    category,
+    status: initialStatus(category),
+    company_ids: companyIds,
+    topic_id: null,
+    priority: "medium" as const,
+    contact_person_id: null,
+    ticket: "",
+    answer: "",
+    promised: "",
+    actual: "",
+    evidence_url: "",
+    reported_at: null,
+    status_changed_at: null,
+  };
+}
+
+/** Ticketfeld erst zeigen, wenn der Punkt bei Tacto ist (oder schon eins eingetragen ist). */
+export function showTicket(item: Pick<VendorItem, "category" | "status" | "ticket">): boolean {
+  const sd = statusDef(item);
+  return item.ticket !== "" || !!sd?.atVendor || !!sd?.final;
+}
 
 export function initialStatus(c: VendorCategory): string {
   return categoryDef(c).statuses[0]?.value ?? "";

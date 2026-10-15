@@ -3,7 +3,7 @@ import { demoSeed } from "../data/seed";
 import type { Task, VendorItem } from "../data/types";
 import { addWorkdays, endOfWeek, formatDate, relativeLabel } from "./dates";
 import { search } from "./search";
-import { affectsCompany, ageLabel, isOpenItem, jourFixeText, statusPatch } from "./vendor";
+import { affectsCompany, ageLabel, isOpenItem, jourFixeText, newVendorItem, showTicket, statusPatch } from "./vendor";
 import { compareTasks, groupProgress, isValidUrl, todayCount, todayView, validateTask } from "./tasks";
 
 const T = (o: Partial<Task>): Task => ({
@@ -161,6 +161,17 @@ describe("vendor", () => {
     expect(ageLabel(V({ status: "reported", reported_at: "2026-09-22" }), "2026-10-15")).toBe("seit 23 T. bei Tacto");
     expect(ageLabel(V({ status: "open" }), "2026-10-06")).toBe("seit 5 T. offen");
     expect(ageLabel(V({ status: "fixed" }), "2026-10-15")).toBe("");
+  });
+  it("Ticketfeld erst ab Meldung bei Tacto", () => {
+    expect(showTicket(V({ status: "open" }))).toBe(false);
+    expect(showTicket(V({ status: "reported" }))).toBe(true);
+    expect(showTicket(V({ status: "open", ticket: "T-1" }))).toBe(true);
+    expect(showTicket(V({ category: "best_practice", status: "" }))).toBe(false);
+  });
+  it("neuer Punkt startet im ersten Status der Kategorie", () => {
+    expect(newVendorItem("feature", "A", []).status).toBe("idea");
+    expect(newVendorItem("best_practice", "B", []).status).toBe("");
+    expect(newVendorItem("claim", "C", ["x"]).company_ids).toEqual(["x"]);
   });
   it("Firmenbezug: leer = alle", () => {
     expect(affectsCompany(V({ company_ids: [] }), "a")).toBe(true);

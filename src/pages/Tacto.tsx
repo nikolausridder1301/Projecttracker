@@ -28,10 +28,12 @@ import {
   initialStatus,
   isOpenItem,
   jourFixeText,
+  newVendorItem,
+  showTicket,
   statusDef,
   statusPatch,
 } from "../logic/vendor";
-import { AutoText, ChipMulti, ChipSelect, CompanySelect, Empty, usePersisted } from "../ui/common";
+import { AutoText, ChipMulti, ChipSelect, CompanySelect, usePersisted } from "../ui/common";
 
 export const CATEGORY_ICON: Record<VendorCategory, LucideIcon> = {
   feature: Lightbulb,
@@ -43,19 +45,19 @@ export const CATEGORY_ICON: Record<VendorCategory, LucideIcon> = {
 
 interface Filter {
   category: VendorCategory;
-  scope: "open" | "closed" | "all";
+  showDone: boolean;
   company: Id | "";
-  q: string;
 }
 
 export function TactoPage() {
   const { db, insert, toast } = useStore();
   const { companies, people } = useLookups();
-  const [f, setF] = usePersisted<Filter>("tacto", { category: "feature", scope: "open", company: "", q: "" });
+  const [f, setF] = usePersisted<Filter>("tacto", { category: "feature", showDone: false, company: "" });
   const set = (p: Partial<Filter>) => setF({ ...f, ...p });
   const [params, setParams] = useSearchParams();
   const openId = params.get("id");
   const openItem = (id: Id | null) => setParams(id ? { id } : {}, { replace: true });
+  const [newTitle, setNewTitle] = useState("");
   const today = todayIso();
 
   const alive = useMemo(() => db.vendor_items.filter(isActive), [db.vendor_items]);
@@ -69,41 +71,33 @@ export function TactoPage() {
     return m;
   }, [alive]);
 
-  const hasStatus = categoryDef(f.category).statuses.length > 0;
-  const items = useMemo(() => {
-    const q = f.q.toLowerCase();
-    return alive
-      .filter((i) => i.category === f.category)
-      .filter((i) => !hasStatus || f.scope === "all" || (f.scope === "open" ? isOpenItem(i) : !isOpenItem(i)))
-      .filter((i) => !f.company || affectsCompany(i, f.company))
-      .filter((i) => !q || `${i.title} ${i.body} ${i.answer} ${i.ticket}`.toLowerCase().includes(q))
-      .sort((a, b) => {
-        if (a.priority !== b.priority) return a.priority === "high" ? -1 : b.priority === "high" ? 1 : 0;
-        return (a.reported_at ?? a.created_at) < (b.reported_at ?? b.created_at) ? -1 : 1;
-      });
-  }, [alive, f, hasStatus]);
+  const cat = categoryDef(f.category);
+  const hasStatus = cat.statuses.length > 0;
+  const inCategory = useMemo(
+    () => alive.filter((i) => i.category === f.category && (!f.company || affectsCompany(i, f.company))),
+    [alive, f.category, f.company],
+  );
+  const doneCount = hasStatus ? inCategory.filter((i) => !isOpenItem(i)).length : 0;
+  const items = useMemo(
+    () =>
+      inCategory
+        .filter((i) => !hasStatus || f.showDone || isOpenItem(i))
+        .sort((a, b) => {
+          // offene vor erledigten, dann hohe Priorität, dann älteste zuerst
+          if (isOpenItem(a) !== isOpenItem(b)) return isOpenItem(a) ? -1 : 1;
+          if (a.priority !== b.priority) return a.priority === "high" ? -1 : b.priority === "high" ? 1 : 0;
+          return (a.reported_at ?? a.created_at) < (b.reported_at ?? b.created_at) ? -1 : 1;
+        }),
+    [inCategory, hasStatus, f.showDone],
+  );
 
-  const create = async () => {
-    const [n] = await insert("vendor_items", [
-      {
-        title: "Neuer Punkt",
-        body: "",
-        category: f.category,
-        status: initialStatus(f.category),
-        company_ids: f.company ? [f.company] : [],
-        topic_id: null,
-        priority: "medium",
-        contact_person_id: null,
-        ticket: "",
-        answer: "",
-        promised: "",
-        actual: "",
-        evidence_url: "",
-        reported_at: null,
-        status_changed_at: null,
-      },
-    ]);
-    openItem(n.id);
+  // Erfassen wie in der Schnellerfassung: Titel tippen, Enter – kein Platzhalter-Eintrag
+  const create = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const title = newTitle.trim();
+    if (!title) return;
+    await insert("vendor_items", [newVendorItem(f.category, title, f.company ? [f.company] : [])]);
+    setNewTitle("");
   };
 
   const copyJourFixe = async () => {
@@ -116,7 +110,6 @@ export function TactoPage() {
     }
   };
 
-  const cat = categoryDef(f.category);
   const Icon = CATEGORY_ICON[f.category];
   const selected = alive.find((i) => i.id === openId);
 
@@ -128,68 +121,64 @@ export function TactoPage() {
         <button className="btn" onClick={() => void copyJourFixe()} title="Alle offenen Punkte als Text für den Jour fixe kopieren">
           <ClipboardCopy size={16} /> <span className="btn-label">Für Jour fixe kopieren</span>
         </button>
-        <button className="btn primary" onClick={() => void create().catch(() => {})}>
-          <Plus size={16} /> {cat.label}
-        </button>
       </div>
 
       <div className="filters">
         <div className="seg-group">
           {CATEGORIES.map((c) => (
-            <button key={c.value} className={`seg${f.category === c.value ? " active" : ""}`} onClick={() => set({ category: c.value })}>
-              {c.plural}
+            <button
+              key={c.value}
+              className={`seg${f.category === c.value ? " active" : ""}`}
+              onClick={() => set({ category: c.value })}
+              title={c.plural}
+            >
+              {c.short}
               {(counts.get(c.value) ?? 0) > 0 && <span className="seg-count">{counts.get(c.value)}</span>}
             </button>
           ))}
         </div>
-      </div>
-      <div className="filters">
-        {hasStatus && (
-          <div className="seg-group">
-            {(
-              [
-                ["open", "Offen"],
-                ["closed", "Erledigt"],
-                ["all", "Alle"],
-              ] as const
-            ).map(([v, label]) => (
-              <button key={v} className={`seg${f.scope === v ? " active" : ""}`} onClick={() => set({ scope: v })}>
-                {label}
-              </button>
-            ))}
-          </div>
-        )}
         <CompanySelect className="compact" value={f.company} onChange={(v) => set({ company: v })} allowAll="Alle Firmen" />
-        <input className="compact" placeholder="Filtern…" value={f.q} onChange={(e) => set({ q: e.target.value })} />
       </div>
 
-      {items.length === 0 ? (
-        <Empty>
-          {hasStatus && f.scope === "open" ? `Keine offenen ${cat.plural}.` : `Keine ${cat.plural}.`}
-        </Empty>
-      ) : (
-        <div className="card list-card">
-          {items.map((i) => {
-            const sd = statusDef(i);
-            return (
-              <button key={i.id} className="vendor-row" onClick={() => openItem(i.id)}>
-                <Icon size={18} className="row-icon" />
-                <span className="note-main">
-                  <span className="task-title">
-                    {i.priority === "high" && isOpenItem(i) && <Flag size={14} className="tone-red" aria-label="Hohe Priorität" />}
-                    {i.title}
-                  </span>
-                  <span className="task-sub">
-                    <span>{companiesLabel(i.company_ids, companies)}</span>
-                    {i.ticket && <span>Ticket {i.ticket}</span>}
-                  </span>
+      <div className="card list-card">
+        <form className="capture-row" onSubmit={(e) => void create(e).catch(() => {})}>
+          <Plus size={18} className="row-icon" />
+          <input
+            className="plain-input"
+            placeholder={cat.placeholder}
+            aria-label={cat.placeholder}
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+          />
+        </form>
+        {items.map((i) => {
+          const sd = statusDef(i);
+          return (
+            <button key={i.id} className={`vendor-row${!hasStatus || isOpenItem(i) ? "" : " is-done"}`} onClick={() => openItem(i.id)}>
+              <Icon size={18} className="row-icon" />
+              <span className="note-main">
+                <span className="task-title">
+                  {i.priority === "high" && isOpenItem(i) && <Flag size={14} className="tone-red" aria-label="Hohe Priorität" />}
+                  {i.title}
                 </span>
-                {sd && <span className={`status-pill${sd.tone ? ` tone-${sd.tone}` : ""}`}>{sd.label}</span>}
-                <span className="age">{ageLabel(i, today)}</span>
-              </button>
-            );
-          })}
-        </div>
+                <span className="task-sub">
+                  <span>{companiesLabel(i.company_ids, companies)}</span>
+                  {i.ticket && <span>Ticket {i.ticket}</span>}
+                </span>
+              </span>
+              {sd && <span className={`status-pill${sd.tone ? ` tone-${sd.tone}` : ""}`}>{sd.label}</span>}
+              {hasStatus && <span className="age">{ageLabel(i, today)}</span>}
+            </button>
+          );
+        })}
+        {items.length === 0 && (
+          <div className="empty-inline list-empty">{hasStatus ? `Keine offenen ${cat.plural}.` : `Noch keine ${cat.plural}.`}</div>
+        )}
+      </div>
+      {doneCount > 0 && (
+        <button className="link-btn" onClick={() => set({ showDone: !f.showDone })}>
+          {f.showDone ? "Erledigte ausblenden" : `${doneCount} erledigte anzeigen`}
+        </button>
       )}
 
       {selected && <VendorPanel key={selected.id} item={selected} onClose={() => openItem(null)} />}
@@ -209,6 +198,7 @@ function VendorPanel({ item, onClose }: { item: VendorItem; onClose: () => void 
   const [actual, setActual] = useState(item.actual);
   const [ticket, setTicket] = useState(item.ticket);
   const [evidence, setEvidence] = useState(item.evidence_url);
+  const [more, setMore] = useState(false);
   const today = todayIso();
   const def = categoryDef(item.category);
   const sd = statusDef(item);
@@ -220,7 +210,7 @@ function VendorPanel({ item, onClose }: { item: VendorItem; onClose: () => void 
   }, [onClose]);
 
   const save = (patch: Parameters<typeof update<"vendor_items">>[2]) => void update("vendor_items", item.id, patch).catch(() => {});
-  const blurText = (key: "body" | "answer" | "promised" | "actual" | "ticket", v: string) => v !== item[key] && save({ [key]: v });
+  const blurText = (key: "body" | "promised" | "actual" | "ticket", v: string) => v !== item[key] && save({ [key]: v });
 
   // Ansprechpartner: Tacto-Kontakte zuerst
   const tacto = companies.find((c) => c.is_external);
@@ -233,24 +223,17 @@ function VendorPanel({ item, onClose }: { item: VendorItem; onClose: () => void 
   ];
   const groupCompanies = companies.filter((c) => !c.is_external);
 
+  // Selten gebrauchte Eigenschaften nur zeigen, wenn gesetzt oder über „Mehr…“
+  const showTopic = more || item.topic_id !== null;
+  const showContact = more || item.contact_person_id !== null;
+
   const toBestPractice = async () => {
     await insert("vendor_items", [
       {
-        title: item.title,
+        ...newVendorItem("best_practice", item.title, item.company_ids),
         body: answer || item.answer,
-        category: "best_practice",
-        status: "",
-        company_ids: item.company_ids,
         topic_id: item.topic_id,
-        priority: "medium",
         contact_person_id: item.contact_person_id,
-        ticket: "",
-        answer: "",
-        promised: "",
-        actual: "",
-        evidence_url: "",
-        reported_at: null,
-        status_changed_at: null,
       },
     ]);
     toast("Als Best Practice übernommen");
@@ -292,15 +275,6 @@ function VendorPanel({ item, onClose }: { item: VendorItem; onClose: () => void 
                 onChange={(v) => save(statusPatch(item, v, today))}
               />
             )}
-            <ChipSelect
-              title="Kategorie"
-              value={item.category}
-              options={CATEGORIES.map((c) => ({ value: c.value, label: c.label }))}
-              onChange={(v) => {
-                const c = v as VendorCategory;
-                save({ category: c, status: initialStatus(c), status_changed_at: new Date().toISOString() });
-              }}
-            />
             <ChipMulti
               title="Betroffene Firmen"
               label={companiesLabel(item.company_ids, companies)}
@@ -308,24 +282,6 @@ function VendorPanel({ item, onClose }: { item: VendorItem; onClose: () => void 
               options={groupCompanies.map((c) => ({ value: c.id, label: c.name }))}
               selected={item.company_ids}
               onChange={(ids) => save({ company_ids: ids })}
-            />
-            <ChipSelect
-              title="Thema"
-              value={item.topic_id ?? ""}
-              placeholder="Thema"
-              options={[
-                { value: "", label: "Kein Thema" },
-                ...topics.filter((t) => !t.archived || t.id === item.topic_id).map((t) => ({ value: t.id, label: t.name })),
-              ]}
-              onChange={(v) => save({ topic_id: v || null })}
-            />
-            <ChipSelect
-              title="Ansprechpartner"
-              icon={<User size={14} />}
-              value={item.contact_person_id ?? ""}
-              placeholder="Ansprechpartner"
-              options={contactOptions}
-              onChange={(v) => save({ contact_person_id: v || null })}
             />
             <ChipSelect
               title="Priorität"
@@ -340,12 +296,51 @@ function VendorPanel({ item, onClose }: { item: VendorItem; onClose: () => void 
               ]}
               onChange={(v) => save({ priority: (v || "medium") as Priority })}
             />
+            {showTopic && (
+              <ChipSelect
+                title="Thema"
+                value={item.topic_id ?? ""}
+                placeholder="Thema"
+                options={[
+                  { value: "", label: "Kein Thema" },
+                  ...topics.filter((t) => !t.archived || t.id === item.topic_id).map((t) => ({ value: t.id, label: t.name })),
+                ]}
+                onChange={(v) => save({ topic_id: v || null })}
+              />
+            )}
+            {showContact && (
+              <ChipSelect
+                title="Ansprechpartner"
+                icon={<User size={14} />}
+                value={item.contact_person_id ?? ""}
+                placeholder="Ansprechpartner"
+                options={contactOptions}
+                onChange={(v) => save({ contact_person_id: v || null })}
+              />
+            )}
+            {more && (
+              <ChipSelect
+                title="Kategorie"
+                value={item.category}
+                options={CATEGORIES.map((c) => ({ value: c.value, label: `Kategorie: ${c.label}` }))}
+                onChange={(v) => {
+                  const c = v as VendorCategory;
+                  save({ category: c, status: initialStatus(c), status_changed_at: new Date().toISOString() });
+                }}
+              />
+            )}
+            {!more && (
+              <button type="button" className="chip chip-empty" onClick={() => setMore(true)} title="Thema, Ansprechpartner, Kategorie">
+                <span className="chip-text">Mehr…</span>
+              </button>
+            )}
           </div>
 
-          {def.statuses.length > 0 && (
+          {showTicket(item) && (
             <input
-              className="plain-input ticket-input"
+              className="plain-input"
               placeholder="Ticket-Nr. oder Link bei Tacto…"
+              aria-label="Ticket bei Tacto"
               value={ticket}
               onChange={(e) => setTicket(e.target.value)}
               onBlur={() => blurText("ticket", ticket.trim())}
@@ -397,11 +392,23 @@ function VendorPanel({ item, onClose }: { item: VendorItem; onClose: () => void 
               <div className="claim-grid">
                 <div className="field-block">
                   <span>Versprochen</span>
-                  <AutoText value={promised} onChange={setPromised} onBlur={() => blurText("promised", promised)} minRows={2} placeholder="Was Tacto zugesagt hat…" />
+                  <AutoText
+                    value={promised}
+                    onChange={setPromised}
+                    onBlur={() => blurText("promised", promised)}
+                    minRows={2}
+                    placeholder="Was Tacto zugesagt hat…"
+                  />
                 </div>
                 <div className="field-block">
                   <span>Tatsächlich</span>
-                  <AutoText value={actual} onChange={setActual} onBlur={() => blurText("actual", actual)} minRows={2} placeholder="Wie es wirklich funktioniert…" />
+                  <AutoText
+                    value={actual}
+                    onChange={setActual}
+                    onBlur={() => blurText("actual", actual)}
+                    minRows={2}
+                    placeholder="Wie es wirklich funktioniert…"
+                  />
                 </div>
               </div>
               <div className="field-block">
@@ -430,9 +437,7 @@ function VendorPanel({ item, onClose }: { item: VendorItem; onClose: () => void 
 
           <p className="meta-line">
             Angelegt {formatDate(item.created_at.slice(0, 10))}
-            {item.reported_at && ` · an Tacto ${formatDate(item.reported_at)}`}
-            {item.status_changed_at && ` · Status geändert ${formatDate(item.status_changed_at.slice(0, 10))}`}
-            {ageLabel(item, today) && ` · ${ageLabel(item, today)}`}
+            {item.reported_at && ` · an Tacto gemeldet ${formatDate(item.reported_at)}`}
           </p>
         </div>
       </aside>
