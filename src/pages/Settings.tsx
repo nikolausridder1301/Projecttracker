@@ -1,3 +1,4 @@
+import { ArrowDown, ArrowUp, Download } from "lucide-react";
 import { useState } from "react";
 import { resetDemoData } from "../data/backend";
 import { useLookups, useStore } from "../data/store";
@@ -59,7 +60,7 @@ function ExportButton() {
   };
   return (
     <button className="btn primary" onClick={() => void run()}>
-      ⬇ Export als JSON
+      <Download size={16} /> Export als JSON
     </button>
   );
 }
@@ -95,6 +96,7 @@ function CompaniesSettings() {
               color: "#5a6577",
               logo_key: null,
               is_overarching: false,
+              is_external: false,
               traffic_light: "green",
               traffic_comment: "",
               traffic_changed_at: null,
@@ -150,10 +152,10 @@ function TopicsSettings() {
         <div key={t.id} className={`row settings-row${t.archived ? " inactive" : ""}`}>
           <RenameInput value={t.name} onSave={(name) => void update("topics", t.id, { name })} />
           <button className="btn ghost small" disabled={i === 0} onClick={() => move(t, -1)} aria-label="nach oben">
-            ↑
+            <ArrowUp size={14} />
           </button>
           <button className="btn ghost small" disabled={i === all.length - 1} onClick={() => move(t, 1)} aria-label="nach unten">
-            ↓
+            <ArrowDown size={14} />
           </button>
           <button className="btn ghost small" onClick={() => void update("topics", t.id, { archived: !t.archived })}>
             {t.archived ? "Reaktivieren" : "Archivieren"}

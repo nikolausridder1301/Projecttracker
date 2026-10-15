@@ -1,3 +1,4 @@
+import { ArrowLeft } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useLookups, useStore } from "../data/store";
@@ -95,8 +96,8 @@ function CompanyView({ company }: { company: Company }) {
   return (
     <div className="page">
       <div className="page-head">
-        <Link to="/firmen" className="muted">
-          ← Firmen
+        <Link to="/firmen" className="back-link">
+          <ArrowLeft size={16} /> Firmen
         </Link>
       </div>
       <div className="card company-head">
@@ -140,7 +141,7 @@ function CompanyView({ company }: { company: Company }) {
 
       {tab === "tasks" && (
         <>
-          <TaskFilterBar f={f} set={(p) => setF({ ...f, ...p })} reset={() => setF({ ...f, topic: "", assignee: "", status: "", priority: "", due: "", showDone: false })} isFiltered={false} hideCompany />
+          <TaskFilterBar f={f} set={(p) => setF({ ...f, ...p })} reset={() => setF({ ...f, topic: "", assignee: "", status: "", priority: "", due: "", showDone: false })} hideCompany />
           {tasks.length === 0 ? <Empty>Keine Aufgaben.</Empty> : <GroupedTasks tasks={tasks} groupBy={f.groupBy} showCompany={false} />}
         </>
       )}

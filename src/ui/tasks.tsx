@@ -1,18 +1,11 @@
+import { CalendarClock, Flag, Mail, Plus, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLookups, useStore } from "../data/store";
 import { PRIORITY_LABEL, STATUS_LABEL, type Priority, type Task, type TaskStatus } from "../data/types";
 import { addWorkdays, formatDate, relativeLabel, todayIso } from "../logic/dates";
 import { checklistProgress, groupProgress, validateTask } from "../logic/tasks";
 import { AttachedLinks } from "./links";
-import {
-  AssigneeSelect,
-  CompanyBadge,
-  CompanySelect,
-  Markdown,
-  PrioBadge,
-  StatusBadge,
-  TopicSelect,
-} from "./common";
+import { AutoText, Avatar, ChipDate, ChipSelect, CompanyBadge, Disclosure } from "./common";
 import { useUi } from "./uiState";
 
 // ---------------------------------------------------------------------------
@@ -50,12 +43,12 @@ export function useTaskActions() {
 }
 
 // ---------------------------------------------------------------------------
-// Zeile
+// Zeile: Titel links, rechts nur Firma, Person (Initialen) und Fälligkeit.
 // ---------------------------------------------------------------------------
 
 export function TaskRow({ task, showCompany = true, extra }: { task: Task; showCompany?: boolean; extra?: React.ReactNode }) {
   const { db } = useStore();
-  const { topicById, personById, companyById } = useLookups();
+  const { personById, companyById } = useLookups();
   const { openTask } = useUi();
   const { setDone } = useTaskActions();
   const today = todayIso();
@@ -64,6 +57,17 @@ export function TaskRow({ task, showCompany = true, extra }: { task: Task; showC
   const person = task.assignee_person_id ? personById.get(task.assignee_person_id) : undefined;
   const done = task.status === "done";
   const overdue = !done && task.due_date !== null && task.due_date < today;
+
+  const sub: React.ReactNode[] = [];
+  if (task.status === "blocked") sub.push(<span key="b" className="tone-red">Blockiert: {task.blocked_reason}</span>);
+  if (task.status === "in_progress") sub.push(<span key="i" className="tone-blue">In Arbeit</span>);
+  if (cl.total > 0) sub.push(<span key="c">{cl.done}/{cl.total} Punkte</span>);
+  if (group && group.total > 1)
+    sub.push(
+      <span key="g" title={`Offen: ${group.openCompanyIds.map((id) => companyById.get(id)?.short).join(", ") || "–"}`}>
+        {group.done}/{group.total} Firmen
+      </span>,
+    );
 
   return (
     <div className={`task-row${done ? " is-done" : ""}`}>
@@ -75,36 +79,19 @@ export function TaskRow({ task, showCompany = true, extra }: { task: Task; showC
         aria-label={done ? "Als offen markieren" : "Als erledigt markieren"}
       />
       <button className="task-main" onClick={() => openTask(task.id)}>
-        <span className="task-title">{task.title}</span>
-        <span className="task-meta">
-          {showCompany && <CompanyBadge id={task.company_id} />}
-          {task.topic_id && <span className="muted">{topicById.get(task.topic_id)?.name}</span>}
-          {person && <span className="person-chip">→ {person.name}</span>}
-          {task.status === "blocked" && <span className="blocked-reason">⛔ {task.blocked_reason}</span>}
-          {cl.total > 0 && (
-            <span className="muted">
-              ☑ {cl.done}/{cl.total}
-            </span>
-          )}
-          {group && group.total > 1 && (
-            <span
-              className="muted"
-              title={`Offen: ${group.openCompanyIds.map((id) => companyById.get(id)?.short).join(", ") || "–"}`}
-            >
-              ⧉ {group.done}/{group.total} Firmen
-            </span>
-          )}
+        <span className="task-title">
+          {task.priority === "high" && !done && <Flag size={14} className="tone-red flag" aria-label="Hohe Priorität" />}
+          {task.title}
         </span>
+        {sub.length > 0 && <span className="task-sub">{sub}</span>}
       </button>
       <span className="task-right">
         {extra}
-        {task.status === "in_progress" && <StatusBadge status="in_progress" />}
-        <PrioBadge priority={task.priority} />
-        {task.due_date && (
-          <span className={`due${overdue ? " overdue" : ""}`} title={`Fällig ${formatDate(task.due_date)}`}>
-            {relativeLabel(task.due_date, today)}
-          </span>
-        )}
+        {showCompany && <CompanyBadge id={task.company_id} />}
+        {person && <Avatar name={person.name} title={`Delegiert an ${person.name}`} />}
+        <span className={`due${overdue ? " overdue" : ""}`} title={task.due_date ? `Fällig ${formatDate(task.due_date)}` : undefined}>
+          {task.due_date ? relativeLabel(task.due_date, today) : ""}
+        </span>
       </span>
     </div>
   );
@@ -117,26 +104,30 @@ export function TaskRow({ task, showCompany = true, extra }: { task: Task; showC
 export function FollowUpForm({ task, onDone }: { task: Task; onDone: () => void }) {
   const { followUp } = useTaskActions();
   const [note, setNote] = useState("");
-  const [next, setNext] = useState(addWorkdays(todayIso(), 3));
+  const [next, setNext] = useState<string | null>(addWorkdays(todayIso(), 3));
   return (
     <form
       className="followup-form"
       onSubmit={async (e) => {
         e.preventDefault();
-        await followUp(task, note.trim(), next || null);
+        await followUp(task, note.trim(), next);
         onDone();
       }}
     >
-      <input autoFocus placeholder="Notiz (optional), z. B. „Sagt Freitag zu“" value={note} onChange={(e) => setNote(e.target.value)} />
-      <label className="inline">
-        Nächstes Nachhaken
-        <input type="date" value={next} onChange={(e) => setNext(e.target.value)} />
-      </label>
+      <input autoFocus placeholder="Was wurde gesagt? (optional)" value={note} onChange={(e) => setNote(e.target.value)} />
+      <ChipDate
+        icon={<CalendarClock size={14} />}
+        value={next}
+        onChange={setNext}
+        placeholder="Nächstes Mal"
+        title="Nächstes Nachhaken"
+        format={(v) => `wieder ${formatDate(v)}`}
+      />
       <button className="btn primary" type="submit">
         Speichern
       </button>
-      <button className="btn" type="button" onClick={onDone}>
-        Abbrechen
+      <button className="icon-btn" type="button" onClick={onDone} aria-label="Abbrechen">
+        <X size={16} />
       </button>
     </form>
   );
@@ -171,12 +162,11 @@ export function TaskPanel() {
 
 function TaskEditor({ task, onClose }: { task: Task; onClose: () => void }) {
   const { db, update, trash, toast } = useStore();
-  const { companyById, noteById, personById } = useLookups();
-  const { mailto } = useTaskActions();
+  const { companies, topics, people, companyById, noteById, personById } = useLookups();
+  const { mailto, setDone } = useTaskActions();
   const { openCapture } = useUi();
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description);
-  const [editDesc, setEditDesc] = useState(false);
   const [blockedReason, setBlockedReason] = useState(task.blocked_reason);
   const [pendingBlocked, setPendingBlocked] = useState(false);
   const [newItem, setNewItem] = useState("");
@@ -187,18 +177,25 @@ function TaskEditor({ task, onClose }: { task: Task; onClose: () => void }) {
   const followups = db.task_followups
     .filter((f) => f.task_id === task.id && f.deleted_at === null)
     .sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+  const attachedCount = db.attachments.filter((a) => a.deleted_at === null && a.task_id === task.id).length;
   const group = task.group_id ? groupProgress(db.tasks, task.group_id) : null;
   const sourceNote = task.source_note_id ? noteById.get(task.source_note_id) : undefined;
-  const person = task.assignee_person_id ? personById.get(task.assignee_person_id) : undefined;
+  const delegated = task.assignee_person_id !== null;
+  const person = delegated ? personById.get(task.assignee_person_id!) : undefined;
+  const cl = checklistProgress(task);
+  const today = todayIso();
 
   const setStatus = (status: TaskStatus) => {
-    if (status === "blocked") {
-      if (!blockedReason.trim()) {
-        setPendingBlocked(true);
-        return;
-      }
+    if (status === "blocked" && !blockedReason.trim()) {
+      setPendingBlocked(true);
+      return;
     }
-    save({ status, done_at: status === "done" ? new Date().toISOString() : null });
+    setPendingBlocked(false);
+    save({
+      status,
+      blocked_reason: status === "blocked" ? blockedReason.trim() : task.blocked_reason,
+      done_at: status === "done" ? new Date().toISOString() : null,
+    });
   };
 
   const confirmBlocked = () => {
@@ -208,193 +205,180 @@ function TaskEditor({ task, onClose }: { task: Task; onClose: () => void }) {
     setPendingBlocked(false);
   };
 
+  const statusTone: Record<TaskStatus, string | undefined> = { open: undefined, in_progress: "blue", blocked: "red", done: "green" };
+
   return (
     <div className="editor">
       <div className="panel-head">
-        <span className="muted">Aufgabe</span>
+        <label className="done-toggle">
+          <input type="checkbox" className="check" checked={task.status === "done"} onChange={(e) => void setDone(task, e.target.checked)} />
+          <span>{task.status === "done" ? "Erledigt" : "Erledigt?"}</span>
+        </label>
         <span className="spacer" />
-        <button className="btn ghost" onClick={() => void trash("tasks", task.id, task.title).then(onClose)}>
-          Löschen
+        <button className="icon-btn" title="In den Papierkorb" onClick={() => void trash("tasks", task.id, task.title).then(onClose)}>
+          <Trash2 size={16} />
         </button>
-        <button className="btn ghost" onClick={onClose} aria-label="Schließen">
-          ✕
+        <button className="icon-btn" onClick={onClose} aria-label="Schließen" title="Schließen (Esc)">
+          <X size={18} />
         </button>
       </div>
 
-      <input
-        className="title-input"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        onBlur={() => (title.trim() ? title !== task.title && save({ title: title.trim() }) : setTitle(task.title))}
-      />
+      <div className="title-field">
+        <AutoText
+          value={title}
+          onChange={(v) => setTitle(v.replace(/\n/g, " "))}
+          onBlur={() => (title.trim() ? title !== task.title && save({ title: title.trim() }) : setTitle(task.title))}
+          minRows={1}
+          placeholder="Titel"
+        />
+      </div>
 
-      <div className="status-switch" role="radiogroup" aria-label="Status">
-        {(Object.keys(STATUS_LABEL) as TaskStatus[]).map((s) => (
-          <button
-            key={s}
-            role="radio"
-            aria-checked={task.status === s}
-            className={`seg status-${s}${task.status === s || (s === "blocked" && pendingBlocked) ? " active" : ""}`}
-            onClick={() => setStatus(s)}
-          >
-            {STATUS_LABEL[s]}
-          </button>
-        ))}
+      <div className="chips">
+        <ChipSelect
+          title="Status"
+          tone={pendingBlocked ? "red" : statusTone[task.status]}
+          value={pendingBlocked ? "blocked" : task.status}
+          options={(Object.keys(STATUS_LABEL) as TaskStatus[]).map((s) => ({ value: s, label: STATUS_LABEL[s] }))}
+          onChange={(v) => setStatus(v as TaskStatus)}
+        />
+        <ChipSelect
+          title="Firma"
+          value={task.company_id}
+          options={companies.map((c) => ({ value: c.id, label: c.short }))}
+          onChange={(v) => save({ company_id: v })}
+        />
+        <ChipSelect
+          title="Verantwortlich"
+          value={task.assignee_person_id ?? ""}
+          options={[
+            { value: "", label: "Ich" },
+            ...people.filter((p) => p.active || p.id === task.assignee_person_id).map((p) => ({ value: p.id, label: p.name })),
+          ]}
+          onChange={(v) =>
+            save({ assignee_person_id: v || null, follow_up_date: v && !task.follow_up_date ? addWorkdays(today, 3) : task.follow_up_date })
+          }
+        />
+        <ChipDate
+          title="Fällig"
+          value={task.due_date}
+          onChange={(v) => save({ due_date: v })}
+          placeholder="Fällig"
+          format={(v) => `fällig ${relativeLabel(v, today)}`}
+          tone={task.due_date && task.due_date < today && task.status !== "done" ? "red" : undefined}
+        />
+        <ChipSelect
+          title="Thema"
+          value={task.topic_id ?? ""}
+          placeholder="Thema"
+          options={[
+            { value: "", label: "Kein Thema" },
+            ...topics.filter((t) => !t.archived || t.id === task.topic_id).map((t) => ({ value: t.id, label: t.name })),
+          ]}
+          onChange={(v) => save({ topic_id: v || null })}
+        />
+        <ChipSelect
+          title="Priorität"
+          icon={<Flag size={14} />}
+          tone={task.priority === "high" ? "red" : undefined}
+          value={task.priority === "medium" ? "" : task.priority}
+          placeholder="Priorität"
+          options={[
+            { value: "", label: "Mittel" },
+            { value: "high", label: PRIORITY_LABEL.high },
+            { value: "low", label: PRIORITY_LABEL.low },
+          ]}
+          onChange={(v) => save({ priority: (v || "medium") as Priority })}
+        />
       </div>
 
       {(task.status === "blocked" || pendingBlocked) && (
-        <div className="field">
-          <label>Grund für „Blockiert“ (Pflicht)</label>
-          <div className="row">
-            <input
-              autoFocus={pendingBlocked}
-              value={blockedReason}
-              onChange={(e) => setBlockedReason(e.target.value)}
-              onBlur={() => task.status === "blocked" && blockedReason.trim() && save({ blocked_reason: blockedReason.trim() })}
-              onKeyDown={(e) => e.key === "Enter" && pendingBlocked && confirmBlocked()}
-              placeholder="Woran hängt es?"
-            />
-            {pendingBlocked && (
-              <>
-                <button className="btn primary" onClick={confirmBlocked}>
-                  Blockieren
-                </button>
-                <button className="btn" onClick={() => setPendingBlocked(false)}>
-                  Abbrechen
-                </button>
-              </>
-            )}
-          </div>
+        <div className="blocked-box">
+          <input
+            autoFocus={pendingBlocked}
+            value={blockedReason}
+            onChange={(e) => setBlockedReason(e.target.value)}
+            onBlur={() =>
+              task.status === "blocked" && blockedReason.trim() && blockedReason !== task.blocked_reason && save({ blocked_reason: blockedReason.trim() })
+            }
+            onKeyDown={(e) => e.key === "Enter" && pendingBlocked && confirmBlocked()}
+            placeholder="Woran hängt es?"
+          />
+          {pendingBlocked && (
+            <>
+              <button className="btn primary" onClick={confirmBlocked}>
+                Blockieren
+              </button>
+              <button className="icon-btn" onClick={() => setPendingBlocked(false)} aria-label="Abbrechen">
+                <X size={16} />
+              </button>
+            </>
+          )}
         </div>
       )}
 
-      <div className="grid2">
-        <div className="field">
-          <label>Firma</label>
-          <CompanySelect value={task.company_id} onChange={(v) => save({ company_id: v })} />
-        </div>
-        <div className="field">
-          <label>Thema</label>
-          <TopicSelect value={task.topic_id ?? ""} onChange={(v) => save({ topic_id: v || null })} />
-        </div>
-        <div className="field">
-          <label>Verantwortlich</label>
-          <AssigneeSelect value={task.assignee_person_id ?? ""} onChange={(v) => save({ assignee_person_id: v || null })} />
-        </div>
-        <div className="field">
-          <label>Priorität</label>
-          <select value={task.priority} onChange={(e) => save({ priority: e.target.value as Priority })}>
-            {(Object.keys(PRIORITY_LABEL) as Priority[]).map((p) => (
-              <option key={p} value={p}>
-                {PRIORITY_LABEL[p]}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="field">
-          <label>Fällig</label>
-          <input type="date" value={task.due_date ?? ""} onChange={(e) => save({ due_date: e.target.value || null })} />
-        </div>
-        {task.assignee_person_id && (
-          <div className="field">
-            <label>Nachhaken am</label>
-            <input
-              type="date"
-              value={task.follow_up_date ?? ""}
-              onChange={(e) => save({ follow_up_date: e.target.value || null })}
+      {delegated && (
+        <div className="delegation-box">
+          <div className="row">
+            {person && <Avatar name={person.name} />}
+            <span className="grow">
+              Wartet auf <strong>{person?.name ?? "?"}</strong>
+              {followups.length > 0 && <span className="muted"> · {followups.length}× nachgefragt</span>}
+            </span>
+            <ChipDate
+              icon={<CalendarClock size={14} />}
+              title="Nachhaken am"
+              value={task.follow_up_date}
+              onChange={(v) => save({ follow_up_date: v })}
+              placeholder="Nachhaken"
+              format={(v) => relativeLabel(v, today)}
+              tone={task.follow_up_date && task.follow_up_date <= today ? "red" : undefined}
             />
           </div>
-        )}
-      </div>
-
-      {task.assignee_person_id && (
-        <section className="section">
-          <div className="section-head">
-            <h3>Nachhaken</h3>
-            <span className="muted">{followups.length}× nachgefragt</span>
-            <span className="spacer" />
-            <a className="btn" href={mailto(task)} title={person?.email ? `Mail an ${person.email}` : "Keine E-Mail hinterlegt"}>
-              ✉ Mail
-            </a>
-            {!followUpOpen && (
-              <button className="btn primary" onClick={() => setFollowUpOpen(true)}>
+          {followUpOpen ? (
+            <FollowUpForm task={task} onDone={() => setFollowUpOpen(false)} />
+          ) : (
+            <div className="row">
+              <button className="btn" onClick={() => setFollowUpOpen(true)}>
                 Nachgehakt
               </button>
-            )}
-          </div>
-          {followUpOpen && <FollowUpForm task={task} onDone={() => setFollowUpOpen(false)} />}
-          {followups.length > 0 && (
-            <ul className="history">
-              {followups.map((f) => (
-                <li key={f.id}>
-                  <span className="muted">{formatDate(f.date)}</span> {f.note || <em className="muted">ohne Notiz</em>}
-                </li>
-              ))}
-            </ul>
+              <a className="btn ghost" href={mailto(task)} title={person?.email ? `Mail an ${person.email}` : "Keine E-Mail hinterlegt"}>
+                <Mail size={15} /> Mail
+              </a>
+            </div>
           )}
-        </section>
+        </div>
       )}
 
-      <section className="section">
-        <div className="section-head">
-          <h3>Beschreibung</h3>
-          <span className="spacer" />
-          <button className="btn ghost" onClick={() => setEditDesc(!editDesc)}>
-            {editDesc ? "Fertig" : "Bearbeiten"}
-          </button>
-        </div>
-        {editDesc ? (
-          <textarea
-            autoFocus
-            rows={8}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            onBlur={() => description !== task.description && save({ description })}
-            placeholder="Markdown möglich: **fett**, - Liste, [Link](https://…)"
-          />
-        ) : description.trim() ? (
-          <div onDoubleClick={() => setEditDesc(true)}>
-            <Markdown text={description} />
-          </div>
-        ) : (
-          <button className="link-btn muted" onClick={() => setEditDesc(true)}>
-            + Beschreibung hinzufügen
-          </button>
-        )}
-      </section>
+      <AutoText
+        value={description}
+        onChange={setDescription}
+        onBlur={() => description !== task.description && save({ description })}
+        placeholder="Notizen…"
+        minRows={2}
+      />
 
-      <section className="section">
-        <div className="section-head">
-          <h3>Checkliste</h3>
-          {task.checklist.length > 0 && (
-            <span className="muted">
-              {checklistProgress(task).done}/{task.checklist.length}
-            </span>
-          )}
-        </div>
+      <Disclosure title="Checkliste" meta={cl.total > 0 ? `${cl.done}/${cl.total}` : undefined} defaultOpen={cl.total > 0}>
         <ul className="checklist">
           {task.checklist.map((item, i) => (
             <li key={i}>
               <input
                 type="checkbox"
+                className="check"
                 checked={item.done}
-                onChange={() =>
-                  save({ checklist: task.checklist.map((c, j) => (j === i ? { ...c, done: !c.done } : c)) })
-                }
+                onChange={() => save({ checklist: task.checklist.map((c, j) => (j === i ? { ...c, done: !c.done } : c)) })}
               />
               <span className={item.done ? "is-done-text" : ""}>{item.text}</span>
               <button
-                className="btn ghost small"
+                className="icon-btn hover-only"
                 aria-label="Punkt entfernen"
                 onClick={() => save({ checklist: task.checklist.filter((_, j) => j !== i) })}
               >
-                ✕
+                <X size={14} />
               </button>
             </li>
           ))}
         </ul>
         <form
-          className="row"
           onSubmit={(e) => {
             e.preventDefault();
             if (!newItem.trim()) return;
@@ -402,44 +386,59 @@ function TaskEditor({ task, onClose }: { task: Task; onClose: () => void }) {
             setNewItem("");
           }}
         >
-          <input value={newItem} onChange={(e) => setNewItem(e.target.value)} placeholder="+ Punkt hinzufügen (Enter)" />
+          <input className="plain-input" value={newItem} onChange={(e) => setNewItem(e.target.value)} placeholder="Punkt hinzufügen…" />
         </form>
-      </section>
+      </Disclosure>
 
-      <section className="section">
-        <div className="section-head">
-          <h3>Links</h3>
-          <span className="spacer" />
+      <Disclosure
+        title="Links"
+        meta={attachedCount > 0 ? attachedCount : undefined}
+        defaultOpen={attachedCount > 0}
+        action={
           <button
-            className="btn ghost"
-            onClick={() => openCapture({ type: "link", companyId: task.company_id, topicId: task.topic_id ?? undefined, attachTo: { taskId: task.id } })}
+            className="icon-btn"
+            title="Neuer Link"
+            onClick={() =>
+              openCapture({ type: "link", companyId: task.company_id, topicId: task.topic_id ?? undefined, attachTo: { taskId: task.id } })
+            }
           >
-            + Neuer Link
+            <Plus size={16} />
           </button>
-        </div>
+        }
+      >
         <AttachedLinks target={{ taskId: task.id }} />
-      </section>
+      </Disclosure>
 
-      {(group || sourceNote) && (
-        <section className="section">
-          {group && group.total > 1 && (
-            <p className="muted">
-              Teil einer Gruppe: {group.done}/{group.total} Firmen erledigt
-              {group.openCompanyIds.length > 0 &&
-                ` · offen: ${group.openCompanyIds.map((id) => companyById.get(id)?.short).join(", ")}`}
-            </p>
-          )}
-          {sourceNote && (
-            <p className="muted">
-              Entstanden aus: <a href={`#/notizen/${sourceNote.id}`} onClick={onClose}>{sourceNote.title}</a>
-            </p>
-          )}
-        </section>
+      {followups.length > 0 && (
+        <Disclosure title="Verlauf" meta={followups.length}>
+          <ul className="history">
+            {followups.map((f) => (
+              <li key={f.id}>
+                <span className="muted">{formatDate(f.date)}</span> {f.note || <span className="muted">nachgefragt</span>}
+              </li>
+            ))}
+          </ul>
+        </Disclosure>
       )}
 
-      <p className="muted small">
+      <p className="meta-line">
         Angelegt {formatDate(task.created_at.slice(0, 10))}
         {task.done_at && ` · erledigt ${formatDate(task.done_at.slice(0, 10))}`}
+        {group && group.total > 1 && (
+          <>
+            {" · "}
+            {group.done}/{group.total} Firmen erledigt
+            {group.openCompanyIds.length > 0 && ` (offen: ${group.openCompanyIds.map((id) => companyById.get(id)?.short).join(", ")})`}
+          </>
+        )}
+        {sourceNote && (
+          <>
+            {" · aus "}
+            <a href={`#/notizen/${sourceNote.id}`} onClick={onClose}>
+              {sourceNote.title}
+            </a>
+          </>
+        )}
       </p>
     </div>
   );
@@ -447,7 +446,7 @@ function TaskEditor({ task, onClose }: { task: Task; onClose: () => void }) {
 
 /** Aufgaben eines bestimmten Filters als Liste. */
 export function TaskList({ tasks, showCompany = true, empty }: { tasks: Task[]; showCompany?: boolean; empty?: string }) {
-  if (tasks.length === 0) return empty ? <div className="empty small">{empty}</div> : null;
+  if (tasks.length === 0) return empty ? <div className="empty-inline">{empty}</div> : null;
   return (
     <div className="task-list">
       {tasks.map((t) => (
@@ -456,4 +455,3 @@ export function TaskList({ tasks, showCompany = true, empty }: { tasks: Task[]; 
     </div>
   );
 }
-

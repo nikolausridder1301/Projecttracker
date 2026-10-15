@@ -1,10 +1,11 @@
+import { Copy, Flag } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLookups, useStore } from "../data/store";
 import { NOTE_KIND_LABEL, PRIORITY_LABEL, type Id, type NoteKind, type Priority } from "../data/types";
-import { addWorkdays, todayIso } from "../logic/dates";
+import { addWorkdays, relativeLabel, todayIso } from "../logic/dates";
 import { isValidUrl, overarchingCompany } from "../logic/tasks";
-import { AssigneeSelect, CompanySelect, TopicSelect, useDraft } from "./common";
+import { ChipDate, ChipSelect, useDraft } from "./common";
 import { useUi, type CaptureType } from "./uiState";
 
 // Schnellerfassung (SPEC 6.5): Titel + Enter genügt, alles andere optional.
@@ -25,13 +26,12 @@ function CaptureDialog({
   onClose: () => void;
 }) {
   const { insert, toast } = useStore();
-  const { companies } = useLookups();
+  const { companies, topics, people, categories } = useLookups();
   const navigate = useNavigate();
 
   const defaultCompany = prefill.companyId ?? context.companyId ?? overarchingCompany(companies)?.id ?? "";
   const [type, setType] = useState<CaptureType>(prefill.type ?? "task");
   const [title, setTitle, clearTitle] = useDraft("capture-title", "", prefill.title);
-  const [expanded, setExpanded] = useState(false);
   const [companyId, setCompanyId] = useState<Id>(defaultCompany);
   const [topicId, setTopicId] = useState<Id | "">(prefill.topicId ?? context.topicId ?? "");
   const [assignee, setAssignee] = useState<Id | "">("");
@@ -43,7 +43,6 @@ function CaptureDialog({
   const [url, setUrl] = useState("");
   const [categoryId, setCategoryId] = useState<Id | "">("");
   const [busy, setBusy] = useState(false);
-  const { categories } = useLookups();
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -155,102 +154,86 @@ function CaptureDialog({
           <input placeholder="https://…sharepoint.com/…" value={url} onChange={(e) => setUrl(e.target.value)} />
         )}
 
-        {expanded || type !== "task" ? (
-          <div className="grid2">
-            {!(type === "task" && multi) && (
-              <div className="field">
-                <label>Firma</label>
-                <CompanySelect value={companyId} onChange={setCompanyId} />
-              </div>
-            )}
-            <div className="field">
-              <label>Thema</label>
-              <TopicSelect value={topicId} onChange={setTopicId} />
-            </div>
-            {type === "task" && (
-              <>
-                <div className="field">
-                  <label>Verantwortlich</label>
-                  <AssigneeSelect value={assignee} onChange={setAssignee} />
-                </div>
-                <div className="field">
-                  <label>Fällig</label>
-                  <input type="date" value={due} onChange={(e) => setDue(e.target.value)} />
-                </div>
-                <div className="field">
-                  <label>Priorität</label>
-                  <select value={priority} onChange={(e) => setPriority(e.target.value as Priority)}>
-                    {(Object.keys(PRIORITY_LABEL) as Priority[]).map((p) => (
-                      <option key={p} value={p}>
-                        {PRIORITY_LABEL[p]}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </>
-            )}
-            {type === "note" && (
-              <div className="field">
-                <label>Art</label>
-                <select value={kind} onChange={(e) => setKind(e.target.value as NoteKind)}>
-                  {(Object.keys(NOTE_KIND_LABEL) as NoteKind[]).map((k) => (
-                    <option key={k} value={k}>
-                      {NOTE_KIND_LABEL[k]}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-            {type === "link" && (
-              <div className="field">
-                <label>Kategorie</label>
-                <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-                  <option value="">– keine –</option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-          </div>
-        ) : null}
+        <div className="chips">
+          {!(type === "task" && multi) && (
+            <ChipSelect title="Firma" value={companyId} options={companies.map((c) => ({ value: c.id, label: c.short }))} onChange={setCompanyId} />
+          )}
+          {type === "task" && (
+            <button type="button" className={`chip${multi ? " tone-blue" : " chip-empty"}`} onClick={() => setMulti(!multi)} title="Je Firma eine eigene Aufgabe">
+              <Copy size={14} />
+              <span className="chip-text">Mehrere Firmen</span>
+            </button>
+          )}
+          <ChipSelect
+            title="Thema"
+            value={topicId}
+            placeholder="Thema"
+            options={[{ value: "", label: "Kein Thema" }, ...topics.filter((t) => !t.archived).map((t) => ({ value: t.id, label: t.name }))]}
+            onChange={setTopicId}
+          />
+          {type === "task" && (
+            <>
+              <ChipSelect
+                title="Verantwortlich"
+                value={assignee}
+                options={[{ value: "", label: "Ich" }, ...people.filter((p) => p.active).map((p) => ({ value: p.id, label: p.name }))]}
+                onChange={setAssignee}
+              />
+              <ChipDate title="Fällig" value={due || null} onChange={(v) => setDue(v ?? "")} placeholder="Fällig" format={(v) => `fällig ${relativeLabel(v, todayIso())}`} />
+              <ChipSelect
+                title="Priorität"
+                icon={<Flag size={14} />}
+                tone={priority === "high" ? "red" : undefined}
+                value={priority === "medium" ? "" : priority}
+                placeholder="Priorität"
+                options={[
+                  { value: "", label: "Mittel" },
+                  { value: "high", label: PRIORITY_LABEL.high },
+                  { value: "low", label: PRIORITY_LABEL.low },
+                ]}
+                onChange={(v) => setPriority((v || "medium") as Priority)}
+              />
+            </>
+          )}
+          {type === "note" && (
+            <ChipSelect
+              title="Art"
+              value={kind}
+              options={(Object.keys(NOTE_KIND_LABEL) as NoteKind[]).map((k) => ({ value: k, label: NOTE_KIND_LABEL[k] }))}
+              onChange={(v) => setKind(v as NoteKind)}
+            />
+          )}
+          {type === "link" && (
+            <ChipSelect
+              title="Kategorie"
+              value={categoryId}
+              placeholder="Kategorie"
+              options={[{ value: "", label: "Keine Kategorie" }, ...categories.map((c) => ({ value: c.id, label: c.name }))]}
+              onChange={setCategoryId}
+            />
+          )}
+        </div>
 
-        {type === "task" && expanded && (
-          <div className="field">
-            <label className="inline">
-              <input type="checkbox" checked={multi} onChange={(e) => setMulti(e.target.checked)} /> Für mehrere Firmen
-              anlegen (je Firma eine eigene Aufgabe)
-            </label>
-            {multi && (
-              <div className="multi-companies">
-                {companies.map((c) => (
-                  <label key={c.id} className="inline chip-check">
-                    <input type="checkbox" checked={multiIds.has(c.id)} onChange={() => toggleMulti(c.id)} />
-                    {c.short}
-                  </label>
-                ))}
-                <button
-                  type="button"
-                  className="btn ghost small"
-                  onClick={() => setMultiIds(new Set(companies.filter((c) => !c.is_overarching).map((c) => c.id)))}
-                >
-                  Alle Gesellschaften
-                </button>
-              </div>
-            )}
+        {type === "task" && multi && (
+          <div className="chip-checks">
+            {companies.map((c) => (
+              <label key={c.id} className={`chip${multiIds.has(c.id) ? " tone-blue" : " chip-empty"}`}>
+                <input type="checkbox" className="sr-only" checked={multiIds.has(c.id)} onChange={() => toggleMulti(c.id)} />
+                <span className="chip-text">{c.short}</span>
+              </label>
+            ))}
+            <button
+              type="button"
+              className="btn ghost small"
+              onClick={() => setMultiIds(new Set(companies.filter((c) => !c.is_overarching && !c.is_external).map((c) => c.id)))}
+            >
+              Alle Gesellschaften
+            </button>
           </div>
         )}
 
         <div className="row">
-          {type === "task" && !expanded && (
-            <button type="button" className="link-btn muted" onClick={() => setExpanded(true)}>
-              Weitere Felder…
-            </button>
-          )}
           <span className="spacer" />
-          <span className="muted small">Enter speichert · Esc schließt</span>
           <button className="btn primary" type="submit" disabled={busy}>
             Speichern
           </button>
