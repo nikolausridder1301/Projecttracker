@@ -88,6 +88,8 @@ function demoBackend(): Backend {
   } catch {
     db = demoSeed();
   }
+  // Ältere Demo-Stände um neu hinzugekommene Tabellen ergänzen
+  for (const t of TABLE_NAMES) (db as Record<string, unknown[]>)[t] ??= [];
   const save = () => {
     try {
       localStorage.setItem(DEMO_KEY, JSON.stringify(db));

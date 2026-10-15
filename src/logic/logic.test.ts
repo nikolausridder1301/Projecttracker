@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { demoSeed } from "../data/seed";
-import type { Task } from "../data/types";
+import type { Task, VendorItem } from "../data/types";
 import { addWorkdays, endOfWeek, formatDate, relativeLabel } from "./dates";
 import { search } from "./search";
+import { affectsCompany, ageLabel, isOpenItem, jourFixeText, statusPatch } from "./vendor";
 import { compareTasks, groupProgress, isValidUrl, todayCount, todayView, validateTask } from "./tasks";
 
 const T = (o: Partial<Task>): Task => ({
@@ -118,5 +119,67 @@ describe("search", () => {
     const start = performance.now();
     search(db, "lieferant 1999");
     expect(performance.now() - start).toBeLessThan(200);
+  });
+});
+
+describe("vendor", () => {
+  const V = (o: Partial<VendorItem>): VendorItem => ({
+    id: crypto.randomUUID(),
+    created_at: "2026-10-01T08:00:00Z",
+    updated_at: "",
+    deleted_at: null,
+    title: "x",
+    body: "",
+    category: "bug",
+    status: "open",
+    company_ids: [],
+    topic_id: null,
+    priority: "medium",
+    contact_person_id: null,
+    ticket: "",
+    answer: "",
+    promised: "",
+    actual: "",
+    evidence_url: "",
+    reported_at: null,
+    status_changed_at: null,
+    ...o,
+  });
+
+  it("offen/erledigt je Kategorie", () => {
+    expect(isOpenItem(V({ category: "bug", status: "reported" }))).toBe(true);
+    expect(isOpenItem(V({ category: "bug", status: "fixed" }))).toBe(false);
+    expect(isOpenItem(V({ category: "feature", status: "rejected" }))).toBe(false);
+    expect(isOpenItem(V({ category: "best_practice", status: "" }))).toBe(false);
+  });
+  it("Meldedatum wird beim ersten Weg zu Tacto gesetzt und bleibt", () => {
+    expect(statusPatch(V({}), "reported", "2026-10-15").reported_at).toBe("2026-10-15");
+    expect(statusPatch(V({ reported_at: "2026-10-02" }), "in_progress", "2026-10-15").reported_at).toBe("2026-10-02");
+    expect(statusPatch(V({}), "open", "2026-10-15").reported_at).toBeNull();
+  });
+  it("Alter bei Tacto", () => {
+    expect(ageLabel(V({ status: "reported", reported_at: "2026-09-22" }), "2026-10-15")).toBe("seit 23 T. bei Tacto");
+    expect(ageLabel(V({ status: "open" }), "2026-10-06")).toBe("seit 5 T. offen");
+    expect(ageLabel(V({ status: "fixed" }), "2026-10-15")).toBe("");
+  });
+  it("Firmenbezug: leer = alle", () => {
+    expect(affectsCompany(V({ company_ids: [] }), "a")).toBe(true);
+    expect(affectsCompany(V({ company_ids: ["b"] }), "a")).toBe(false);
+  });
+  it("Jour-fixe-Text listet nur offene Punkte nach Kategorie", () => {
+    const text = jourFixeText(
+      [
+        V({ title: "Export bricht ab", status: "reported", reported_at: "2026-10-10", company_ids: ["c1"] }),
+        V({ title: "Alt", status: "fixed" }),
+        V({ title: "Schnittstelle", category: "feature", status: "requested", priority: "high" }),
+      ],
+      [{ id: "c1", short: "FEST" }],
+      [],
+      "2026-10-15",
+    );
+    expect(text).toContain("Feature Requests (1)");
+    expect(text).toContain("- Schnittstelle (Bei Tacto angefragt · Alle Firmen · Prio hoch");
+    expect(text).toContain("- Export bricht ab (Gemeldet · FEST · seit 5 T. bei Tacto)");
+    expect(text).not.toContain("Alt");
   });
 });

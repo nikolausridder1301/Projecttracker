@@ -105,6 +105,30 @@ export interface Attachment extends Base {
   note_id: Id | null;
 }
 
+export type VendorCategory = "feature" | "question" | "bug" | "best_practice" | "claim";
+
+/** Tacto-Punkt (Feature Request, Frage, Bug, Best Practice, Fail & Claim). */
+export interface VendorItem extends Base {
+  title: string;
+  body: string;
+  category: VendorCategory;
+  /** Werte je Kategorie, siehe logic/vendor.ts */
+  status: string;
+  /** leer = alle Gesellschaften */
+  company_ids: Id[];
+  topic_id: Id | null;
+  priority: Priority;
+  contact_person_id: Id | null;
+  ticket: string;
+  answer: string;
+  promised: string;
+  actual: string;
+  evidence_url: string;
+  /** Datum, an dem der Punkt erstmals an Tacto ging */
+  reported_at: IsoDate | null;
+  status_changed_at: IsoDateTime | null;
+}
+
 export interface AppMeta extends Base {
   last_export_at: IsoDateTime | null;
 }
@@ -120,6 +144,7 @@ export interface Tables {
   links: Link;
   attachments: Attachment;
   app_meta: AppMeta;
+  vendor_items: VendorItem;
 }
 
 export type TableName = keyof Tables;
@@ -135,6 +160,7 @@ export const TABLE_NAMES: TableName[] = [
   "links",
   "attachments",
   "app_meta",
+  "vendor_items",
 ];
 
 export type Db = { [K in TableName]: Tables[K][] };

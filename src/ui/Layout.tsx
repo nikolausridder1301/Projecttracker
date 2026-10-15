@@ -1,4 +1,4 @@
-import { Building2, CheckSquare, Download, Hourglass, Link2, LogOut, Menu, NotebookPen, Plus, Search, Settings, Sun, Trash2, Users, X } from "lucide-react";
+import { Building2, CheckSquare, Download, Hourglass, Link2, LogOut, Menu, NotebookPen, Plus, Search, Settings, Sparkles, Sun, Trash2, Users, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useStore } from "../data/store";
@@ -16,6 +16,7 @@ const NAV = [
   { to: "/aufgaben", label: "Aufgaben", icon: CheckSquare },
   { to: "/wartet", label: "Wartet auf…", icon: Hourglass },
   { to: "/notizen", label: "Notizen", icon: NotebookPen },
+  { to: "/tacto", label: "Tacto", icon: Sparkles },
   { to: "/links", label: "Links", icon: Link2 },
   { to: "/personen", label: "Personen", icon: Users },
   { to: "/firmen", label: "Firmen", icon: Building2 },

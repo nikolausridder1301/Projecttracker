@@ -8,6 +8,7 @@ import { LinksPage } from "./pages/Links";
 import { NoteDetailPage, NotesPage } from "./pages/Notes";
 import { PeoplePage, PersonDetailPage } from "./pages/People";
 import { SettingsPage } from "./pages/Settings";
+import { TactoPage } from "./pages/Tacto";
 import { TasksPage } from "./pages/Tasks";
 import { TodayPage } from "./pages/Today";
 import { TrashPage } from "./pages/Trash";
@@ -69,6 +70,7 @@ function DataGate({ backend, email }: { backend: Backend; email: string }) {
               <Route path="wartet" element={<WaitingPage />} />
               <Route path="notizen" element={<NotesPage />} />
               <Route path="notizen/:id" element={<NoteDetailPage />} />
+              <Route path="tacto" element={<TactoPage />} />
               <Route path="links" element={<LinksPage />} />
               <Route path="personen" element={<PeoplePage />} />
               <Route path="personen/:id" element={<PersonDetailPage />} />
