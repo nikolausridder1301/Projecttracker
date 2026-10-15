@@ -48,7 +48,7 @@ function allNavItems(vendorName: string | null): NavItem[] {
     { key: "today", to: "/", label: "Heute", icon: Sun },
     { key: "progress", to: "/fortschritt", label: "Fortschritt", icon: LayoutGrid },
     { key: "tasks", to: "/aufgaben", label: "Aufgaben", icon: CheckSquare },
-    { key: "waiting", to: "/wartet", label: "Wartet auf…", icon: Hourglass },
+    { key: "waiting", to: "/delegiert", label: "Delegiert", icon: Hourglass },
     { key: "meeting", to: "/meeting", label: "Meeting", icon: Handshake },
     { key: "notes", to: "/notizen", label: "Notizen", icon: NotebookPen },
     { key: "vendor", to: "/anbieter", label: vendorName ?? "Anbieter", icon: Sparkles },

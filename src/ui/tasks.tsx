@@ -445,7 +445,7 @@ function TaskEditor({ task, onClose }: { task: Task; onClose: () => void }) {
           <div className="row">
             {person && <Avatar name={person.name} />}
             <span className="grow">
-              Wartet auf <strong>{person?.name ?? "?"}</strong>
+              Delegiert an <strong>{person?.name ?? "?"}</strong>
             </span>
             <a className="icon-btn" href={mailto(task)} title={person?.email ? `Mail an ${person.email}` : "Keine E-Mail hinterlegt"}>
               <Mail size={16} />
