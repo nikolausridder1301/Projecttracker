@@ -187,6 +187,8 @@ create table vendor_items (
 create table app_meta (
   id uuid primary key default gen_random_uuid(),
   last_export_at timestamptz,
+  -- Reihenfolge der Menüpunkte (Drag-and-Drop)
+  nav_order text[] not null default '{}',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   deleted_at timestamptz

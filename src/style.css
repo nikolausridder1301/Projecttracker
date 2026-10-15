@@ -1763,3 +1763,28 @@ section.card h2 + p {
     grid-template-columns: 1fr 1fr;
   }
 }
+
+/* ---------- Menü sortieren ---------- */
+.nav-item.sortable {
+  touch-action: manipulation;
+  position: relative;
+}
+.nav-grip {
+  opacity: 0;
+  color: var(--dark-text);
+  margin-left: 2px;
+  transition: opacity 0.12s;
+}
+.nav-item.sortable:hover .nav-grip {
+  opacity: 0.5;
+}
+.nav-item.dragging {
+  z-index: 5;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  cursor: grabbing;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+.nav-item.dragging .nav-grip {
+  opacity: 0.8;
+}

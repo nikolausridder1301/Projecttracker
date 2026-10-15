@@ -3,6 +3,7 @@ import { demoSeed } from "../data/seed";
 import type { Task, VendorItem } from "../data/types";
 import { addWorkdays, endOfWeek, formatDate, relativeLabel } from "./dates";
 import { copyProjectMasterData, suggestShort } from "./projects";
+import { moveItem, orderNav } from "./nav";
 import { search } from "./search";
 import { affectsCompany, ageLabel, isOpenItem, jourFixeText, newVendorItem, showTicket, statusPatch } from "./vendor";
 import { compareTasks, groupProgress, isValidUrl, todayCount, todayView, validateTask } from "./tasks";
@@ -220,5 +221,33 @@ describe("projects", () => {
     expect(suggestShort("ERP-Einführung")).toBe("EE");
     expect(suggestShort("Tacto")).toBe("TAC");
     expect(suggestShort("Neue Einkaufs Plattform")).toBe("NEP");
+  });
+});
+
+describe("nav", () => {
+  const items = ["today", "tasks", "waiting", "notes", "vendor", "links", "people", "companies"].map((key) => ({ key }));
+  const keys = (l: { key: string }[]) => l.map((i) => i.key).join(",");
+  it("ohne gespeicherte Reihenfolge: Standard", () => {
+    expect(keys(orderNav(items, []))).toBe("today,tasks,waiting,notes,vendor,links,people,companies");
+  });
+  it("gespeicherte Reihenfolge gilt", () => {
+    expect(keys(orderNav(items, ["companies", "today", "tasks", "waiting", "notes", "vendor", "links", "people"]))).toBe(
+      "companies,today,tasks,waiting,notes,vendor,links,people",
+    );
+  });
+  it("Anbieter fehlt in diesem Projekt: wird übersprungen", () => {
+    const noVendor = items.filter((i) => i.key !== "vendor");
+    expect(keys(orderNav(noVendor, ["companies", "vendor", "today", "tasks", "waiting", "notes", "links", "people"]))).toBe(
+      "companies,today,tasks,waiting,notes,links,people",
+    );
+  });
+  it("neuer, nicht gespeicherter Punkt landet hinter seinem Vorgänger", () => {
+    expect(keys(orderNav(items, ["companies", "today", "tasks", "waiting", "notes", "links", "people"]))).toBe(
+      "companies,today,tasks,waiting,notes,vendor,links,people",
+    );
+  });
+  it("verschieben", () => {
+    expect(moveItem(["a", "b", "c", "d"], 3, 0)).toEqual(["d", "a", "b", "c"]);
+    expect(moveItem(["a", "b", "c", "d"], 0, 2)).toEqual(["b", "c", "a", "d"]);
   });
 });
