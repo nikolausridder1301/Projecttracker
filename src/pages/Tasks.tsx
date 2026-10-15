@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import { SlidersHorizontal } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLookups, useStore } from "../data/store";
 import { PRIORITY_LABEL, STATUS_LABEL, type Id, type Priority, type Task, type TaskStatus } from "../data/types";
 import { endOfWeek, todayIso } from "../logic/dates";
@@ -66,15 +67,14 @@ export function TasksPage() {
   useCaptureContext(f.company || undefined, f.topic || undefined);
   const tasks = useMemo(() => applyFilter(db.tasks, f), [db.tasks, f]);
   const set = (patch: Partial<TaskFilter>) => setF({ ...f, ...patch });
-  const isFiltered = JSON.stringify({ ...f, groupBy: "" }) !== JSON.stringify({ ...INITIAL, groupBy: "" });
 
   return (
     <div className="page">
       <div className="page-head">
         <h1>Aufgaben</h1>
-        <span className="muted">{tasks.length} Einträge</span>
+        <span className="muted">{tasks.length}</span>
       </div>
-      <TaskFilterBar f={f} set={set} reset={() => setF({ ...INITIAL, groupBy: f.groupBy })} isFiltered={isFiltered} />
+      <TaskFilterBar f={f} set={set} reset={() => setF({ ...INITIAL, groupBy: f.groupBy })} />
       {tasks.length === 0 ? <Empty>Keine Aufgaben für diese Filter.</Empty> : <GroupedTasks tasks={tasks} groupBy={f.groupBy} />}
     </div>
   );
@@ -84,67 +84,115 @@ export function TaskFilterBar({
   f,
   set,
   reset,
-  isFiltered,
   hideCompany,
 }: {
   f: TaskFilter;
   set: (p: Partial<TaskFilter>) => void;
   reset: () => void;
-  isFiltered: boolean;
+  isFiltered?: boolean;
   hideCompany?: boolean;
 }) {
   const { people } = useLookups();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
+    window.addEventListener("mousedown", onDown);
+    return () => window.removeEventListener("mousedown", onDown);
+  }, [open]);
+
+  // Zahl der "versteckten" Filter, damit sichtbar ist, dass etwas aktiv ist
+  const personFilter = f.assignee !== "" && f.assignee !== "me" && f.assignee !== "delegated";
+  const advanced = [f.topic, personFilter ? "x" : "", f.status, f.priority, f.due, f.showDone ? "x" : ""].filter(Boolean).length;
+
   return (
     <div className="filters">
-      {!hideCompany && <CompanySelect value={f.company} onChange={(v) => set({ company: v })} allowAll="Alle Firmen" />}
-      <TopicSelect value={f.topic} onChange={(v) => set({ topic: v })} emptyLabel="Alle Themen" />
-      <select value={f.assignee} onChange={(e) => set({ assignee: e.target.value })}>
-        <option value="">Alle Verantwortlichen</option>
-        <option value="me">Ich</option>
-        <option value="delegated">Alle Delegierten</option>
-        {people.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.name}
-          </option>
+      <div className="seg-group">
+        {(
+          [
+            ["", "Alle"],
+            ["me", "Meine"],
+            ["delegated", "Delegiert"],
+          ] as const
+        ).map(([v, label]) => (
+          <button key={v} className={`seg${f.assignee === v ? " active" : ""}`} onClick={() => set({ assignee: v })}>
+            {label}
+          </button>
         ))}
-      </select>
-      <select value={f.status} onChange={(e) => set({ status: e.target.value as TaskFilter["status"] })}>
-        <option value="">Alle Status</option>
-        {(Object.keys(STATUS_LABEL) as TaskStatus[]).map((s) => (
-          <option key={s} value={s}>
-            {STATUS_LABEL[s]}
-          </option>
-        ))}
-      </select>
-      <select value={f.priority} onChange={(e) => set({ priority: e.target.value as Priority | "" })}>
-        <option value="">Alle Prioritäten</option>
-        {(Object.keys(PRIORITY_LABEL) as Priority[]).map((p) => (
-          <option key={p} value={p}>
-            {PRIORITY_LABEL[p]}
-          </option>
-        ))}
-      </select>
-      <select value={f.due} onChange={(e) => set({ due: e.target.value as TaskFilter["due"] })}>
-        <option value="">Jede Fälligkeit</option>
-        <option value="overdue">Überfällig</option>
-        <option value="week">Bis Ende der Woche</option>
-        <option value="none">Ohne Datum</option>
-      </select>
-      <select value={f.groupBy} onChange={(e) => set({ groupBy: e.target.value as TaskFilter["groupBy"] })} title="Gruppieren">
-        <option value="">Nicht gruppieren</option>
-        <option value="company">nach Firma</option>
-        <option value="topic">nach Thema</option>
-        <option value="person">nach Verantwortlichem</option>
-        <option value="status">nach Status</option>
-      </select>
-      <label className="inline">
-        <input type="checkbox" checked={f.showDone} onChange={(e) => set({ showDone: e.target.checked })} /> Erledigte zeigen
-      </label>
-      {isFiltered && (
-        <button className="btn ghost small" onClick={reset}>
-          Filter zurücksetzen
+      </div>
+      {!hideCompany && <CompanySelect className="compact" value={f.company} onChange={(v) => set({ company: v })} allowAll="Alle Firmen" />}
+      <div className="popover-anchor" ref={ref}>
+        <button className={`btn${advanced > 0 ? " active-filter" : ""}`} onClick={() => setOpen(!open)} aria-expanded={open}>
+          <SlidersHorizontal size={15} /> Filter{advanced > 0 && <span className="count">{advanced}</span>}
         </button>
-      )}
+        {open && (
+          <div className="popover">
+            <label>
+              Thema
+              <TopicSelect value={f.topic} onChange={(v) => set({ topic: v })} emptyLabel="Alle" />
+            </label>
+            <label>
+              Person
+              <select value={personFilter ? f.assignee : ""} onChange={(e) => set({ assignee: e.target.value })}>
+                <option value="">Alle</option>
+                {people.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Status
+              <select value={f.status} onChange={(e) => set({ status: e.target.value as TaskFilter["status"] })}>
+                <option value="">Alle</option>
+                {(Object.keys(STATUS_LABEL) as TaskStatus[]).map((s) => (
+                  <option key={s} value={s}>
+                    {STATUS_LABEL[s]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Priorität
+              <select value={f.priority} onChange={(e) => set({ priority: e.target.value as Priority | "" })}>
+                <option value="">Alle</option>
+                {(Object.keys(PRIORITY_LABEL) as Priority[]).map((p) => (
+                  <option key={p} value={p}>
+                    {PRIORITY_LABEL[p]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Fällig
+              <select value={f.due} onChange={(e) => set({ due: e.target.value as TaskFilter["due"] })}>
+                <option value="">Egal</option>
+                <option value="overdue">Überfällig</option>
+                <option value="week">Bis Ende der Woche</option>
+                <option value="none">Ohne Datum</option>
+              </select>
+            </label>
+            <label>
+              Gruppieren
+              <select value={f.groupBy} onChange={(e) => set({ groupBy: e.target.value as TaskFilter["groupBy"] })}>
+                <option value="">Nicht gruppieren</option>
+                <option value="company">nach Firma</option>
+                <option value="topic">nach Thema</option>
+                <option value="person">nach Verantwortlichem</option>
+                <option value="status">nach Status</option>
+              </select>
+            </label>
+            <label className="inline">
+              <input type="checkbox" className="check" checked={f.showDone} onChange={(e) => set({ showDone: e.target.checked })} /> Erledigte zeigen
+            </label>
+            <button className="btn ghost" onClick={reset}>
+              Zurücksetzen
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -198,8 +246,8 @@ export function GroupedTasks({ tasks, groupBy, showCompany = true }: { tasks: Ta
     <div className="groups">
       {keys.map((k) => (
         <section key={k} className="card">
-          <h3>
-            {labelOf(k)} <span className="muted">({groups.get(k)!.length})</span>
+          <h3 className="group-title">
+            {labelOf(k)} <span className="muted">{groups.get(k)!.length}</span>
           </h3>
           <TaskList tasks={groups.get(k)!} showCompany={showCompany && groupBy !== "company"} />
         </section>

@@ -1,3 +1,4 @@
+import { Link2, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useLookups, useStore } from "../data/store";
 import type { Id, Link } from "../data/types";
@@ -17,9 +18,7 @@ export function LinkRow({ link, actions }: { link: Link; actions?: React.ReactNo
   const { categoryById, topicById } = useLookups();
   return (
     <div className="link-row">
-      <span className="link-icon" aria-hidden>
-        🔗
-      </span>
+      <Link2 size={18} className="row-icon" aria-hidden />
       <div className="link-main">
         <a href={link.url} target="_blank" rel="noopener noreferrer" className="link-title">
           {link.title}
@@ -74,8 +73,8 @@ export function AttachedLinks({ target }: { target: Target }) {
             key={a.id}
             link={l}
             actions={
-              <button className="btn ghost small" title="Anhang lösen (Link bleibt in der Sammlung)" onClick={() => void purge("attachments", a.id)}>
-                ✕
+              <button className="icon-btn hover-only" title="Anhang lösen (Link bleibt in der Sammlung)" onClick={() => void purge("attachments", a.id)}>
+                <X size={14} />
               </button>
             }
           />

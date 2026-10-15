@@ -74,7 +74,7 @@ function Palette({ onClose }: { onClose: () => void }) {
             );
           })}
         </div>
-        <div className="muted small palette-foot">↑↓ wählen · Enter öffnen · Esc schließen</div>
+        
       </div>
     </div>
   );

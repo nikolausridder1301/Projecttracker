@@ -1,8 +1,9 @@
+import { Mail } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useLookups, useStore } from "../data/store";
 import { TRAFFIC_LABEL, type Company, type TrafficLight } from "../data/types";
-import { formatDate, todayIso } from "../logic/dates";
+import { formatDate, relativeLabel, todayIso } from "../logic/dates";
 import { todayView } from "../logic/tasks";
 import { CompanyLogo, TrafficDot } from "../ui/common";
 import { FollowUpForm, TaskList, TaskRow, useTaskActions } from "../ui/tasks";
@@ -11,7 +12,8 @@ export function TodayPage() {
   const { db } = useStore();
   const today = todayIso();
   const v = useMemo(() => todayView(db.tasks, today), [db.tasks, today]);
-  const allClear = v.overdue.length + v.today.length + v.week.length + v.followUp.length + v.blocked.length === 0;
+  const mine = v.overdue.length + v.today.length + v.week.length;
+  const allClear = mine + v.followUp.length + v.blocked.length === 0;
   const weekday = new Date().toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" });
 
   return (
@@ -24,44 +26,53 @@ export function TodayPage() {
       <TrafficBar />
 
       {allClear ? (
-        <div className="card all-clear">✓ Alles erledigt für heute.</div>
+        <div className="card all-clear">Alles erledigt für heute.</div>
       ) : (
         <div className="today-grid">
-          <section className="card">
-            <h2>Meine Fälligen</h2>
-            {v.overdue.length > 0 && (
-              <>
-                <h4 className="bucket overdue">Überfällig ({v.overdue.length})</h4>
-                <TaskList tasks={v.overdue} />
-              </>
-            )}
-            <h4 className="bucket">Heute ({v.today.length})</h4>
-            <TaskList tasks={v.today} empty="Nichts für heute fällig." />
-            {v.week.length > 0 && (
-              <>
-                <h4 className="bucket">Diese Woche ({v.week.length})</h4>
-                <TaskList tasks={v.week} />
-              </>
-            )}
-          </section>
+          {mine > 0 && (
+            <section className="card">
+              <h2 className="group-title">
+                Meine Fälligen <span className="muted">{mine}</span>
+              </h2>
+              {(
+                [
+                  ["Überfällig", v.overdue, true],
+                  ["Heute", v.today, false],
+                  ["Diese Woche", v.week, false],
+                ] as const
+              ).map(
+                ([label, list, red]) =>
+                  list.length > 0 && (
+                    <div key={label}>
+                      <h4 className={`bucket${red ? " overdue" : ""}`}>{label}</h4>
+                      <TaskList tasks={[...list]} />
+                    </div>
+                  ),
+              )}
+            </section>
+          )}
 
-          <section className="card">
-            <h2>Heute nachhaken</h2>
-            {v.followUp.length === 0 ? (
-              <div className="empty small">Niemand zum Nachhaken.</div>
-            ) : (
+          {v.followUp.length > 0 && (
+            <section className="card">
+              <h2 className="group-title">
+                Heute nachhaken <span className="muted">{v.followUp.length}</span>
+              </h2>
               <div className="task-list">
                 {v.followUp.map((t) => (
                   <FollowUpRow key={t.id} taskId={t.id} />
                 ))}
               </div>
-            )}
-          </section>
+            </section>
+          )}
 
-          <section className="card">
-            <h2>Blockiert</h2>
-            <TaskList tasks={v.blocked} empty="Nichts blockiert." />
-          </section>
+          {v.blocked.length > 0 && (
+            <section className="card">
+              <h2 className="group-title">
+                Blockiert <span className="muted">{v.blocked.length}</span>
+              </h2>
+              <TaskList tasks={v.blocked} />
+            </section>
+          )}
         </div>
       )}
     </div>
@@ -87,23 +98,22 @@ export function FollowUpRow({ taskId }: { taskId: string }) {
         extra={
           <>
             {task.follow_up_date && (
-              <span className={`muted small${task.follow_up_date <= todayIso() ? " overdue" : ""}`} title="Nachhaken am">
-                ⏰ {formatDate(task.follow_up_date)}
+              <span className={`meta${task.follow_up_date <= todayIso() ? " overdue" : ""}`} title={`Nachhaken am ${formatDate(task.follow_up_date)}${count > 0 ? ` · ${count}× nachgefragt` : ""}`}>
+                {relativeLabel(task.follow_up_date, todayIso())}
               </span>
             )}
-            {count > 0 && <span className="muted small" title="Bisher nachgefragt">{count}×</span>}
-            <a className="btn small" href={mailto(task)} title="Mail schreiben">
-              ✉
+            <a className="icon-btn" href={mailto(task)} title="Mail schreiben">
+              <Mail size={15} />
             </a>
-            <button className="btn small" onClick={() => setOpen(!open)}>
+            <button className="btn small" onClick={() => setOpen(!open)} title="Nachgefragt – nächstes Datum setzen">
               Nachgehakt
             </button>
           </>
         }
       />
       {last && (
-        <div className="muted small last-followup" title={`Letzte Notiz vom ${formatDate(last.date)}`}>
-          „{last.note}“ ({formatDate(last.date)})
+        <div className="last-followup" title={`Letzte Notiz vom ${formatDate(last.date)}`}>
+          „{last.note}“ · {formatDate(last.date)}
         </div>
       )}
       {open && <FollowUpForm task={task} onDone={() => setOpen(false)} />}

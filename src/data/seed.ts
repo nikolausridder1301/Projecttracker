@@ -17,6 +17,7 @@ export function demoSeed(): Db {
       ["Maximator Hydrogen", "MXH", "#0891b2", "maximator-hydrogen", false],
       ["FEST", "FEST", "#7c3aed", "fest", false],
       ["Perforator", "PER", "#be123c", "perforator", false],
+      ["Tacto", "TAC", "#ea7a0c", "tacto", false],
     ] as const
   ).map(([name, short, color, logo_key, is_overarching], sort) => ({
     ...base(),
@@ -25,6 +26,7 @@ export function demoSeed(): Db {
     color,
     logo_key,
     is_overarching,
+    is_external: name === "Tacto",
     traffic_light: (sort === 5 ? "red" : sort === 2 ? "yellow" : "green") as "red" | "yellow" | "green",
     traffic_comment: sort === 5 ? "ERP-Datenexport fehlt noch" : "",
     traffic_changed_at: null,

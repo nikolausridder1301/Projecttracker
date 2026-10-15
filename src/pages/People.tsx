@@ -1,3 +1,4 @@
+import { ArrowLeft, Mail } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useLookups, useStore } from "../data/store";
@@ -126,8 +127,8 @@ function PersonEditor({ person }: { person: Person }) {
   return (
     <div className="page narrow">
       <div className="page-head">
-        <Link to="/personen" className="muted">
-          ← Personen
+        <Link to="/personen" className="back-link">
+          <ArrowLeft size={16} /> Personen
         </Link>
         <span className="spacer" />
         <label className="inline">
@@ -159,7 +160,7 @@ function PersonEditor({ person }: { person: Person }) {
         </div>
         {person.email && (
           <a className="btn" href={`mailto:${encodeURIComponent(person.email)}`}>
-            ✉ Mail schreiben
+            <Mail size={15} /> Mail schreiben
           </a>
         )}
       </div>

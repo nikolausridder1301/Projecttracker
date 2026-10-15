@@ -1,3 +1,4 @@
+import { Building2, CheckSquare, Hourglass, Link2, LogOut, Menu, NotebookPen, Plus, Search, Settings, Sun, Trash2, Users, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useStore } from "../data/store";
@@ -10,13 +11,13 @@ import { TaskPanel } from "./tasks";
 import { useUi } from "./uiState";
 
 const NAV = [
-  { to: "/", label: "Heute", icon: "☀" },
-  { to: "/aufgaben", label: "Aufgaben", icon: "✓" },
-  { to: "/wartet", label: "Wartet auf…", icon: "⏳" },
-  { to: "/notizen", label: "Notizen", icon: "✎" },
-  { to: "/links", label: "Links", icon: "🔗" },
-  { to: "/personen", label: "Personen", icon: "👤" },
-  { to: "/firmen", label: "Firmen", icon: "🏢" },
+  { to: "/", label: "Heute", icon: Sun },
+  { to: "/aufgaben", label: "Aufgaben", icon: CheckSquare },
+  { to: "/wartet", label: "Wartet auf…", icon: Hourglass },
+  { to: "/notizen", label: "Notizen", icon: NotebookPen },
+  { to: "/links", label: "Links", icon: Link2 },
+  { to: "/personen", label: "Personen", icon: Users },
+  { to: "/firmen", label: "Firmen", icon: Building2 },
 ];
 
 export function Layout({ email, onSignOut }: { email: string; onSignOut: () => void }) {
@@ -64,9 +65,7 @@ export function Layout({ email, onSignOut }: { email: string; onSignOut: () => v
         <nav>
           {NAV.map((n) => (
             <NavLink key={n.to} to={n.to} end={n.to === "/"} className="nav-item">
-              <span className="nav-icon" aria-hidden>
-                {n.icon}
-              </span>
+              <n.icon size={18} className="nav-icon" aria-hidden />
               {n.label}
               {n.to === "/" && count > 0 && <span className="nav-count">{count}</span>}
             </NavLink>
@@ -74,16 +73,16 @@ export function Layout({ email, onSignOut }: { email: string; onSignOut: () => v
         </nav>
         <div className="sidebar-foot">
           <NavLink to="/papierkorb" className="nav-item small">
-            🗑 Papierkorb
+            <Trash2 size={16} className="nav-icon" aria-hidden /> Papierkorb
           </NavLink>
           <NavLink to="/einstellungen" className="nav-item small">
-            ⚙ Einstellungen
+            <Settings size={16} className="nav-icon" aria-hidden /> Einstellungen
           </NavLink>
           <div className="muted small user-line" title={email}>
             {email}
           </div>
           <button className="nav-item small" onClick={onSignOut}>
-            ⏻ Abmelden
+            <LogOut size={16} className="nav-icon" aria-hidden /> Abmelden
           </button>
         </div>
       </aside>
@@ -91,25 +90,25 @@ export function Layout({ email, onSignOut }: { email: string; onSignOut: () => v
 
       <div className="main">
         <header className="topbar">
-          <button className="btn ghost menu-btn" onClick={() => setMenuOpen(true)} aria-label="Menü">
-            ☰
+          <button className="icon-btn menu-btn" onClick={() => setMenuOpen(true)} aria-label="Menü">
+            <Menu size={20} />
           </button>
           <button className="search-btn" onClick={() => setSearchOpen(true)}>
-            <span>🔍 Suchen…</span>
+            <Search size={16} />
+            <span className="grow">Suchen</span>
             <kbd>Strg K</kbd>
           </button>
           <span className="spacer" />
           <button className="btn primary" onClick={() => openCapture()} title="Neu (Taste N)">
-            + Neu
+            <Plus size={16} /> Neu
           </button>
         </header>
 
-        {!online && <div className="banner error">Offline – Änderungen werden nicht gespeichert. Eingaben in Formularen bleiben als Entwurf erhalten.</div>}
-        {backend.kind === "demo" && <div className="banner info">Demo-Modus: lokale Beispieldaten ohne Supabase (nur Entwicklung).</div>}
+        {!online && <div className="banner error">Offline – Änderungen werden gerade nicht gespeichert.</div>}
+        {backend.kind === "demo" && <div className="banner info">Demo-Modus mit Beispieldaten</div>}
         {exportDue && (
           <div className="banner warn">
-            {lastExport ? "Dein letztes Backup ist älter als 14 Tage." : "Du hast noch kein Backup exportiert."}{" "}
-            <NavLink to="/einstellungen">Jetzt exportieren →</NavLink>
+            {lastExport ? "Letztes Backup älter als 14 Tage." : "Noch kein Backup."} <NavLink to="/einstellungen">Exportieren</NavLink>
           </div>
         )}
 
@@ -159,8 +158,8 @@ function Toasts() {
               Rückgängig
             </button>
           )}
-          <button className="btn ghost small" onClick={() => dismissToast(t.id)} aria-label="Schließen">
-            ✕
+          <button className="icon-btn" onClick={() => dismissToast(t.id)} aria-label="Schließen">
+            <X size={16} />
           </button>
         </div>
       ))}

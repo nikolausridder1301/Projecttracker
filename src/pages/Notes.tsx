@@ -1,3 +1,4 @@
+import { ArrowLeft, CalendarDays, CheckSquare, Gavel, NotebookPen, Plus, Trash2, Users, type LucideIcon } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useLookups, useStore } from "../data/store";
@@ -5,7 +6,7 @@ import { NOTE_KIND_LABEL, type Id, type Note, type NoteKind } from "../data/type
 import { formatDate } from "../logic/dates";
 import { isActive } from "../logic/tasks";
 import { AttachedLinks } from "../ui/links";
-import { CompanyBadge, CompanySelect, Empty, Markdown, TopicSelect, usePersisted } from "../ui/common";
+import { AutoText, ChipDate, ChipSelect, CompanyBadge, CompanySelect, Disclosure, Empty, TopicSelect, usePersisted } from "../ui/common";
 import { TaskList } from "../ui/tasks";
 import { useCaptureContext, useUi } from "../ui/uiState";
 
@@ -16,11 +17,10 @@ interface NoteFilter {
   q: string;
 }
 
-const KIND_ICON: Record<NoteKind, string> = { note: "✎", meeting: "👥", decision: "⚖" };
+export const KIND_ICON: Record<NoteKind, LucideIcon> = { note: NotebookPen, meeting: Users, decision: Gavel };
 
 export function NotesPage() {
   const { db } = useStore();
-  const { topicById } = useLookups();
   const { openCapture } = useUi();
   const [f, setF] = usePersisted<NoteFilter>("notes", { kind: "", company: "", topic: "", q: "" });
   useCaptureContext(f.company || undefined, f.topic || undefined);
@@ -41,10 +41,10 @@ export function NotesPage() {
     <div className="page">
       <div className="page-head">
         <h1>Notizen</h1>
-        <span className="muted">{notes.length} Einträge</span>
+        <span className="muted">{notes.length}</span>
         <span className="spacer" />
         <button className="btn primary" onClick={() => openCapture({ type: "note" })}>
-          + Notiz
+          <Plus size={16} /> Notiz
         </button>
       </div>
       <div className="filters">
@@ -54,34 +54,32 @@ export function NotesPage() {
           </button>
           {(Object.keys(NOTE_KIND_LABEL) as NoteKind[]).map((k) => (
             <button key={k} className={`seg${f.kind === k ? " active" : ""}`} onClick={() => set({ kind: k })}>
-              {KIND_ICON[k]} {NOTE_KIND_LABEL[k]}
+              {k === "meeting" ? "Protokolle" : k === "decision" ? "Entscheidungen" : "Notizen"}
             </button>
           ))}
         </div>
-        <CompanySelect value={f.company} onChange={(v) => set({ company: v })} allowAll="Alle Firmen" />
-        <TopicSelect value={f.topic} onChange={(v) => set({ topic: v })} emptyLabel="Alle Themen" />
-        <input placeholder="Text filtern…" value={f.q} onChange={(e) => set({ q: e.target.value })} />
+        <CompanySelect className="compact" value={f.company} onChange={(v) => set({ company: v })} allowAll="Alle Firmen" />
+        <TopicSelect className="compact" value={f.topic} onChange={(v) => set({ topic: v })} emptyLabel="Alle Themen" />
+        <input className="compact" placeholder="Filtern…" value={f.q} onChange={(e) => set({ q: e.target.value })} />
       </div>
       {notes.length === 0 ? (
-        <Empty>Keine Notizen für diese Filter.</Empty>
+        <Empty>Keine Notizen.</Empty>
       ) : (
-        <div className="card">
-          {notes.map((n) => (
-            <Link key={n.id} to={`/notizen/${n.id}`} className="note-row">
-              <span className="note-icon" title={NOTE_KIND_LABEL[n.kind]}>
-                {KIND_ICON[n.kind]}
-              </span>
-              <span className="note-main">
-                <span className="task-title">{n.title}</span>
-                <span className="task-meta">
-                  <CompanyBadge id={n.company_id} />
-                  {n.topic_id && <span className="muted">{topicById.get(n.topic_id)?.name}</span>}
-                  <span className="muted small">{excerpt(n.body)}</span>
+        <div className="card list-card">
+          {notes.map((n) => {
+            const Icon = KIND_ICON[n.kind];
+            return (
+              <Link key={n.id} to={`/notizen/${n.id}`} className="note-row">
+                <Icon size={18} className="row-icon" aria-label={NOTE_KIND_LABEL[n.kind]} />
+                <span className="note-main">
+                  <span className="task-title">{n.title}</span>
+                  {n.body && <span className="task-sub">{excerpt(n.body)}</span>}
                 </span>
-              </span>
-              <span className="muted small">{formatDate(noteDate(n))}</span>
-            </Link>
-          ))}
+                <CompanyBadge id={n.company_id} />
+                <span className="due">{formatDate(noteDate(n))}</span>
+              </Link>
+            );
+          })}
         </div>
       )}
     </div>
@@ -89,7 +87,7 @@ export function NotesPage() {
 }
 
 const noteDate = (n: Note) => n.meeting_date ?? n.created_at.slice(0, 10);
-const excerpt = (s: string) => s.replace(/[#*_>`[\]()-]/g, "").replace(/\s+/g, " ").slice(0, 90);
+const excerpt = (s: string) => s.replace(/[#*_>`[\]()-]/g, "").replace(/\s+/g, " ").slice(0, 100);
 
 // ---------------------------------------------------------------------------
 
@@ -104,19 +102,19 @@ export function NoteDetailPage() {
 
 function NoteEditor({ note }: { note: Note }) {
   const { db, update, trash } = useStore();
-  const { people } = useLookups();
+  const { people, companies, topics } = useLookups();
   const { openCapture } = useUi();
   const navigate = useNavigate();
   useCaptureContext(note.company_id, note.topic_id ?? undefined);
   const [title, setTitle] = useState(note.title);
   const [body, setBody] = useState(note.body);
-  const [editing, setEditing] = useState(note.body === "");
   const [participantsText, setParticipantsText] = useState(note.participants_text);
   const textRef = useRef<HTMLTextAreaElement>(null);
 
   const save = (patch: Parameters<typeof update<"notes">>[2]) => void update("notes", note.id, patch).catch(() => {});
 
   const derived = db.tasks.filter((t) => isActive(t) && t.source_note_id === note.id);
+  const attachedCount = db.attachments.filter((a) => a.deleted_at === null && a.note_id === note.id).length;
 
   const taskFromSelection = () => {
     const el = textRef.current;
@@ -132,140 +130,124 @@ function NoteEditor({ note }: { note: Note }) {
 
   const toggleParticipant = (pid: Id) =>
     save({
-      participant_ids: note.participant_ids.includes(pid)
-        ? note.participant_ids.filter((x) => x !== pid)
-        : [...note.participant_ids, pid],
+      participant_ids: note.participant_ids.includes(pid) ? note.participant_ids.filter((x) => x !== pid) : [...note.participant_ids, pid],
     });
+
+  const participantCount = note.participant_ids.length + (note.participants_text.trim() ? 1 : 0);
 
   return (
     <div className="page narrow">
       <div className="page-head">
-        <Link to="/notizen" className="muted">
-          ← Notizen
+        <Link to="/notizen" className="back-link">
+          <ArrowLeft size={16} /> Notizen
         </Link>
         <span className="spacer" />
-        <button className="btn ghost" onClick={() => void trash("notes", note.id, note.title).then(() => navigate("/notizen"))}>
-          Löschen
+        <button className="icon-btn" title="In den Papierkorb" onClick={() => void trash("notes", note.id, note.title).then(() => navigate("/notizen"))}>
+          <Trash2 size={16} />
         </button>
       </div>
 
       <div className="card editor">
-        <input
-          className="title-input"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          onBlur={() => (title.trim() ? title !== note.title && save({ title: title.trim() }) : setTitle(note.title))}
-        />
-        <div className="grid4">
-          <div className="field">
-            <label>Art</label>
-            <select value={note.kind} onChange={(e) => save({ kind: e.target.value as NoteKind })}>
-              {(Object.keys(NOTE_KIND_LABEL) as NoteKind[]).map((k) => (
-                <option key={k} value={k}>
-                  {NOTE_KIND_LABEL[k]}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="field">
-            <label>Firma</label>
-            <CompanySelect value={note.company_id} onChange={(v) => save({ company_id: v })} />
-          </div>
-          <div className="field">
-            <label>Thema</label>
-            <TopicSelect value={note.topic_id ?? ""} onChange={(v) => save({ topic_id: v || null })} />
-          </div>
-          <div className="field">
-            <label>{note.kind === "meeting" ? "Meeting-Datum" : "Datum"}</label>
-            <input type="date" value={note.meeting_date ?? ""} onChange={(e) => save({ meeting_date: e.target.value || null })} />
-          </div>
+        <div className="title-field">
+          <AutoText
+            value={title}
+            onChange={(v) => setTitle(v.replace(/\n/g, " "))}
+            onBlur={() => (title.trim() ? title !== note.title && save({ title: title.trim() }) : setTitle(note.title))}
+            minRows={1}
+            placeholder="Titel"
+          />
+        </div>
+        <div className="chips">
+          <ChipSelect
+            title="Art"
+            value={note.kind}
+            options={(Object.keys(NOTE_KIND_LABEL) as NoteKind[]).map((k) => ({ value: k, label: NOTE_KIND_LABEL[k] }))}
+            onChange={(v) => save({ kind: v as NoteKind })}
+          />
+          <ChipSelect
+            title="Firma"
+            value={note.company_id}
+            options={companies.map((c) => ({ value: c.id, label: c.short }))}
+            onChange={(v) => save({ company_id: v })}
+          />
+          <ChipSelect
+            title="Thema"
+            value={note.topic_id ?? ""}
+            placeholder="Thema"
+            options={[
+              { value: "", label: "Kein Thema" },
+              ...topics.filter((t) => !t.archived || t.id === note.topic_id).map((t) => ({ value: t.id, label: t.name })),
+            ]}
+            onChange={(v) => save({ topic_id: v || null })}
+          />
+          <ChipDate
+            icon={<CalendarDays size={14} />}
+            title="Datum"
+            value={note.meeting_date}
+            onChange={(v) => save({ meeting_date: v })}
+            placeholder="Datum"
+            format={formatDate}
+          />
+          <button className="chip" onClick={taskFromSelection} title="Markierten Text als Aufgabe übernehmen" onMouseDown={(e) => e.preventDefault()}>
+            <CheckSquare size={14} />
+            <span className="chip-text">Aufgabe daraus</span>
+          </button>
         </div>
 
+        <AutoText
+          textRef={textRef}
+          value={body}
+          onChange={setBody}
+          onBlur={() => body !== note.body && save({ body })}
+          minRows={10}
+          placeholder={"Schreiben…\n\nTipp: Zeile markieren und „Aufgabe daraus“ klicken."}
+        />
+
         {note.kind === "meeting" && (
-          <div className="field">
-            <label>Teilnehmer</label>
-            <div className="multi-companies">
+          <Disclosure title="Teilnehmer" meta={participantCount > 0 ? participantCount : undefined} defaultOpen={participantCount === 0}>
+            <div className="chip-checks">
               {people
                 .filter((p) => p.active || note.participant_ids.includes(p.id))
                 .map((p) => (
-                  <label key={p.id} className="inline chip-check">
-                    <input type="checkbox" checked={note.participant_ids.includes(p.id)} onChange={() => toggleParticipant(p.id)} />
-                    {p.name}
+                  <label key={p.id} className={`chip${note.participant_ids.includes(p.id) ? " tone-blue" : " chip-empty"}`}>
+                    <input type="checkbox" className="sr-only" checked={note.participant_ids.includes(p.id)} onChange={() => toggleParticipant(p.id)} />
+                    <span className="chip-text">{p.name}</span>
                   </label>
                 ))}
             </div>
             <input
-              placeholder="Weitere Teilnehmer (Freitext)"
+              className="plain-input"
+              placeholder="Weitere Teilnehmer…"
               value={participantsText}
               onChange={(e) => setParticipantsText(e.target.value)}
               onBlur={() => participantsText !== note.participants_text && save({ participants_text: participantsText })}
             />
-          </div>
+          </Disclosure>
         )}
 
-        <div className="section-head">
-          <h3>Inhalt</h3>
-          <span className="spacer" />
-          {editing && (
-            <button className="btn" onMouseDown={(e) => e.preventDefault()} onClick={taskFromSelection} title="Markierten Text als Aufgabe übernehmen">
-              ✓ Aufgabe daraus
+        <Disclosure title="Aufgaben" meta={derived.length > 0 ? derived.length : undefined} defaultOpen={derived.length > 0}>
+          <TaskList tasks={derived} empty="Noch keine. Text markieren und „Aufgabe daraus“ klicken." />
+        </Disclosure>
+
+        <Disclosure
+          title="Links"
+          meta={attachedCount > 0 ? attachedCount : undefined}
+          defaultOpen={attachedCount > 0}
+          action={
+            <button
+              className="icon-btn"
+              title="Neuer Link"
+              onClick={() =>
+                openCapture({ type: "link", companyId: note.company_id, topicId: note.topic_id ?? undefined, attachTo: { noteId: note.id } })
+              }
+            >
+              <Plus size={16} />
             </button>
-          )}
-          <button
-            className="btn ghost"
-            onClick={() => {
-              if (editing && body !== note.body) save({ body });
-              setEditing(!editing);
-            }}
-          >
-            {editing ? "Vorschau" : "Bearbeiten"}
-          </button>
-        </div>
-        {editing ? (
-          <textarea
-            ref={textRef}
-            autoFocus
-            rows={18}
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            onBlur={() => body !== note.body && save({ body })}
-            placeholder={"Markdown möglich:\n## Überschrift\n- Punkt\n- [ ] offene Aktion\n**fett**, [Link](https://…)\n\nTipp: Text markieren → „Aufgabe daraus“"}
-          />
-        ) : body.trim() ? (
-          <div onDoubleClick={() => setEditing(true)}>
-            <Markdown text={body} />
-          </div>
-        ) : (
-          <button className="link-btn muted" onClick={() => setEditing(true)}>
-            + Inhalt schreiben
-          </button>
-        )}
+          }
+        >
+          <AttachedLinks target={{ noteId: note.id }} />
+        </Disclosure>
       </div>
-
-      <section className="card">
-        <div className="section-head">
-          <h3>Aufgaben aus dieser Notiz</h3>
-          <span className="spacer" />
-          <button className="btn ghost" onClick={taskFromSelection}>
-            + Aufgabe
-          </button>
-        </div>
-        <TaskList tasks={derived} empty="Noch keine Aufgaben verknüpft." />
-      </section>
-
-      <section className="card">
-        <div className="section-head">
-          <h3>Links</h3>
-          <span className="spacer" />
-          <button
-            className="btn ghost"
-            onClick={() => openCapture({ type: "link", companyId: note.company_id, topicId: note.topic_id ?? undefined, attachTo: { noteId: note.id } })}
-          >
-            + Neuer Link
-          </button>
-        </div>
-        <AttachedLinks target={{ noteId: note.id }} />
-      </section>
     </div>
   );
 }

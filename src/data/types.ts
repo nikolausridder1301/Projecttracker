@@ -22,6 +22,8 @@ export interface Company extends Base {
   color: string;
   logo_key: string | null;
   is_overarching: boolean;
+  /** Externer Partner (z. B. Software-Anbieter), keine Gesellschaft der Gruppe */
+  is_external: boolean;
   traffic_light: TrafficLight;
   traffic_comment: string;
   traffic_changed_at: IsoDateTime | null;

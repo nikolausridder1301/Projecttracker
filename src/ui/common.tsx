@@ -1,6 +1,5 @@
-import DOMPurify from "dompurify";
-import { marked } from "marked";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { ChevronRight } from "lucide-react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import allmineral from "../assets/logos/allmineral.png";
 import fest from "../assets/logos/fest.jpg";
 import hazemag from "../assets/logos/hazemag.jpg";
@@ -8,17 +7,9 @@ import maximatorHydrogen from "../assets/logos/maximator-hydrogen.jpg";
 import maximator from "../assets/logos/maximator.png";
 import perforator from "../assets/logos/perforator.png";
 import sk from "../assets/logos/sk.jpg";
+import tacto from "../assets/logos/tacto.png";
 import { useLookups } from "../data/store";
-import {
-  PRIORITY_LABEL,
-  STATUS_LABEL,
-  TRAFFIC_LABEL,
-  type Company,
-  type Id,
-  type Priority,
-  type TaskStatus,
-  type TrafficLight,
-} from "../data/types";
+import { STATUS_LABEL, TRAFFIC_LABEL, type Company, type Id, type TaskStatus, type TrafficLight } from "../data/types";
 
 export const LOGOS: Record<string, string> = {
   sk,
@@ -28,6 +19,7 @@ export const LOGOS: Record<string, string> = {
   "maximator-hydrogen": maximatorHydrogen,
   fest,
   perforator,
+  tacto,
 };
 export const SK_LOGO = sk;
 
@@ -56,23 +48,187 @@ export function StatusBadge({ status }: { status: TaskStatus }) {
   return <span className={`badge status-${status}`}>{STATUS_LABEL[status]}</span>;
 }
 
-export function PrioBadge({ priority }: { priority: Priority }) {
-  if (priority === "medium") return null;
-  return <span className={`badge prio-${priority}`}>{PRIORITY_LABEL[priority]}</span>;
-}
-
 export function TrafficDot({ light, title }: { light: TrafficLight; title?: string }) {
   return <span className={`dot dot-${light}`} title={title ?? TRAFFIC_LABEL[light]} />;
 }
 
-export function Markdown({ text }: { text: string }) {
-  const html = useMemo(() => {
-    const raw = marked.parse(text || "", { async: false, breaks: true, gfm: true }) as string;
-    const clean = DOMPurify.sanitize(raw);
-    // Links immer in neuem Tab öffnen
-    return clean.replace(/<a /g, '<a target="_blank" rel="noopener noreferrer" ');
-  }, [text]);
-  return <div className="markdown" dangerouslySetInnerHTML={{ __html: html }} />;
+/** Initialen-Kreis für Personen (statt ausgeschriebenem Namen in Listen). */
+export function Avatar({ name, title }: { name: string; title?: string }) {
+  const initials = name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]!.toUpperCase())
+    .join("");
+  return (
+    <span className="avatar" title={title ?? name}>
+      {initials}
+    </span>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Chips: kompakte Eigenschaften statt beschrifteter Formularfelder.
+// Ein unsichtbares natives <select> liegt über dem Chip – Klick öffnet die
+// normale Auswahlliste, die Breite des Chips bleibt dabei stabil.
+// ---------------------------------------------------------------------------
+
+export interface ChipOption {
+  value: string;
+  label: string;
+}
+
+export function ChipSelect({
+  icon,
+  value,
+  options,
+  onChange,
+  placeholder,
+  title,
+  tone,
+}: {
+  icon?: ReactNode;
+  value: string;
+  options: ChipOption[];
+  onChange: (v: string) => void;
+  /** Text, wenn nichts gewählt ist (Chip wird dann blass angezeigt). */
+  placeholder?: string;
+  title: string;
+  tone?: string;
+}) {
+  const current = options.find((o) => o.value === value);
+  const empty = !current || (placeholder !== undefined && value === "");
+  return (
+    <label className={`chip${empty ? " chip-empty" : ""}${tone ? ` tone-${tone}` : ""}`} title={title}>
+      {icon}
+      <span className="chip-text">{empty ? placeholder : current!.label}</span>
+      <select value={value} onChange={(e) => onChange(e.target.value)} aria-label={title}>
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+export function ChipDate({
+  icon,
+  value,
+  onChange,
+  placeholder,
+  title,
+  format,
+  tone,
+}: {
+  icon?: ReactNode;
+  value: string | null;
+  onChange: (v: string | null) => void;
+  placeholder: string;
+  title: string;
+  format: (v: string) => string;
+  tone?: string;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  return (
+    <span className={`chip${value ? "" : " chip-empty"}${tone ? ` tone-${tone}` : ""}`} title={title}>
+      <button
+        type="button"
+        className="chip-hit"
+        onClick={() => {
+          try {
+            ref.current?.showPicker();
+          } catch {
+            ref.current?.focus();
+          }
+        }}
+      >
+        {icon}
+        <span className="chip-text">{value ? format(value) : placeholder}</span>
+      </button>
+      {value && (
+        <button type="button" className="chip-clear" onClick={() => onChange(null)} aria-label={`${title} entfernen`}>
+          ×
+        </button>
+      )}
+      <input
+        ref={ref}
+        type="date"
+        tabIndex={-1}
+        aria-label={title}
+        value={value ?? ""}
+        onChange={(e) => onChange(e.target.value || null)}
+      />
+    </span>
+  );
+}
+
+/** Aufklappbarer Bereich – standardmäßig zu, Inhalt nur bei Bedarf. */
+export function Disclosure({
+  title,
+  meta,
+  defaultOpen = false,
+  action,
+  children,
+}: {
+  title: string;
+  meta?: ReactNode;
+  defaultOpen?: boolean;
+  action?: ReactNode;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <section className={`disclosure${open ? " open" : ""}`}>
+      <div className="disclosure-head">
+        <button type="button" className="disclosure-toggle" onClick={() => setOpen(!open)} aria-expanded={open}>
+          <ChevronRight size={16} className="chev" />
+          <span>{title}</span>
+          {meta !== undefined && <span className="muted">{meta}</span>}
+        </button>
+        {open && action}
+      </div>
+      {open && <div className="disclosure-body">{children}</div>}
+    </section>
+  );
+}
+
+/** Mehrzeiliges Textfeld, das mit dem Inhalt wächst (kein Bearbeiten/Vorschau-Wechsel). */
+export function AutoText({
+  value,
+  onChange,
+  onBlur,
+  placeholder,
+  minRows = 2,
+  textRef,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onBlur?: () => void;
+  placeholder?: string;
+  minRows?: number;
+  textRef?: React.RefObject<HTMLTextAreaElement>;
+}) {
+  const own = useRef<HTMLTextAreaElement>(null);
+  const ref = textRef ?? own;
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight + 2}px`;
+  }, [value, ref]);
+  return (
+    <textarea
+      ref={ref}
+      className="autotext"
+      rows={minRows}
+      value={value}
+      placeholder={placeholder}
+      onChange={(e) => onChange(e.target.value)}
+      onBlur={onBlur}
+    />
+  );
 }
 
 export function Empty({ children }: { children: ReactNode }) {
@@ -127,33 +283,6 @@ export function TopicSelect({
         .map((t) => (
           <option key={t.id} value={t.id}>
             {t.name}
-          </option>
-        ))}
-    </select>
-  );
-}
-
-/** Verantwortlich: "" = Ich, sonst Person. Inaktive Personen nur, wenn bereits gewählt. */
-export function AssigneeSelect({
-  value,
-  onChange,
-  className,
-}: {
-  value: Id | "";
-  onChange: (v: Id | "") => void;
-  className?: string;
-}) {
-  const { people, companyById } = useLookups();
-  return (
-    <select className={className} value={value} onChange={(e) => onChange(e.target.value)}>
-      <option value="">Ich</option>
-      {people
-        .filter((p) => p.active || p.id === value)
-        .map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.name}
-            {p.company_id ? ` (${companyById.get(p.company_id)?.short ?? ""})` : ""}
-            {p.active ? "" : " – inaktiv"}
           </option>
         ))}
     </select>

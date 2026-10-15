@@ -23,6 +23,8 @@ create table companies (
   color text not null default '#5a6577',
   logo_key text,
   is_overarching boolean not null default false,
+  -- Externer Partner (z. B. Software-Anbieter): nicht in "Alle Gesellschaften"
+  is_external boolean not null default false,
   traffic_light text not null default 'green' check (traffic_light in ('green', 'yellow', 'red')),
   traffic_comment text not null default '',
   traffic_changed_at timestamptz,
