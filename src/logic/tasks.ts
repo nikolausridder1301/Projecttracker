@@ -101,3 +101,27 @@ export function isValidUrl(url: string): boolean {
     return false;
   }
 }
+
+export interface FollowUpReason {
+  label: string;
+  /** rot hervorheben */
+  urgent: boolean;
+}
+
+/**
+ * Warum steht eine delegierte Aufgabe unter „Heute nachhaken“?
+ * Überschrittene Frist hat Vorrang vor dem geplanten Nachhak-Datum.
+ */
+export function followUpReason(t: Pick<Task, "due_date" | "follow_up_date">, today: IsoDate): FollowUpReason | null {
+  if (t.due_date && t.due_date < today) {
+    const days = Math.round((Date.parse(today) - Date.parse(t.due_date)) / 86_400_000);
+    return { label: days === 1 ? "Frist seit gestern überschritten" : `Frist seit ${days} T. überschritten`, urgent: true };
+  }
+  if (t.follow_up_date && t.follow_up_date < today) {
+    const days = Math.round((Date.parse(today) - Date.parse(t.follow_up_date)) / 86_400_000);
+    return { label: days === 1 ? "Nachhaken seit gestern fällig" : `Nachhaken seit ${days} T. fällig`, urgent: true };
+  }
+  if (t.follow_up_date === today) return { label: "Heute nachhaken", urgent: false };
+  if (t.due_date === today) return { label: "Frist endet heute", urgent: false };
+  return null;
+}

@@ -6,7 +6,7 @@ import { copyProjectMasterData, suggestShort } from "./projects";
 import { moveItem, orderNav } from "./nav";
 import { search } from "./search";
 import { affectsCompany, ageLabel, isOpenItem, jourFixeText, newVendorItem, showTicket, statusPatch } from "./vendor";
-import { compareTasks, groupProgress, isValidUrl, todayCount, todayView, validateTask } from "./tasks";
+import { compareTasks, followUpReason, groupProgress, isValidUrl, todayCount, todayView, validateTask } from "./tasks";
 
 const T = (o: Partial<Task>): Task => ({
   id: crypto.randomUUID(),
@@ -249,5 +249,22 @@ describe("nav", () => {
   it("verschieben", () => {
     expect(moveItem(["a", "b", "c", "d"], 3, 0)).toEqual(["d", "a", "b", "c"]);
     expect(moveItem(["a", "b", "c", "d"], 0, 2)).toEqual(["b", "c", "a", "d"]);
+  });
+});
+
+describe("followUpReason", () => {
+  const today = "2026-10-15";
+  it("überschrittene Frist hat Vorrang", () => {
+    expect(followUpReason({ due_date: "2026-10-13", follow_up_date: "2026-10-20" }, today)).toEqual({
+      label: "Frist seit 2 T. überschritten",
+      urgent: true,
+    });
+  });
+  it("geplantes Nachhaken heute bzw. verpasst", () => {
+    expect(followUpReason({ due_date: null, follow_up_date: today }, today)?.label).toBe("Heute nachhaken");
+    expect(followUpReason({ due_date: null, follow_up_date: "2026-10-14" }, today)?.label).toBe("Nachhaken seit gestern fällig");
+  });
+  it("nichts fällig", () => {
+    expect(followUpReason({ due_date: "2026-10-30", follow_up_date: "2026-10-20" }, today)).toBeNull();
   });
 });

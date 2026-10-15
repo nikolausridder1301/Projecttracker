@@ -1,12 +1,12 @@
-import { CheckCircle2, Mail } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useLookups, useStore } from "../data/store";
 import { TRAFFIC_LABEL, type Company, type TrafficLight } from "../data/types";
-import { formatDate, relativeLabel, todayIso } from "../logic/dates";
-import { todayView } from "../logic/tasks";
+import { todayIso } from "../logic/dates";
+import { followUpReason, todayView } from "../logic/tasks";
 import { CompanyLogo, TrafficDot, usePersisted } from "../ui/common";
-import { FollowUpForm, TaskList, TaskRow, useTaskActions } from "../ui/tasks";
+import { FollowUpForm, TaskList, TaskRow, shortDay } from "../ui/tasks";
 
 export function TodayPage() {
   const { db, allDb, projects } = useStore();
@@ -104,41 +104,43 @@ export function TodayPage() {
 /** Delegierte Aufgabe mit direktem "Nachgehakt"/Mail. */
 export function FollowUpRow({ taskId, showProject }: { taskId: string; showProject?: boolean }) {
   const { allDb: db } = useStore();
-  const { mailto } = useTaskActions();
   const [open, setOpen] = useState(false);
   const task = db.tasks.find((t) => t.id === taskId);
   if (!task) return null;
+  const today = todayIso();
   const followups = db.task_followups
     .filter((f) => f.task_id === task.id && f.deleted_at === null)
     .sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
-  const count = followups.length;
-  const last = followups.find((f) => f.note);
+  const last = followups[0];
+  const reason = followUpReason(task, today);
+
+  // Rechts: warum jetzt (Frist/Nachhaken fällig) – sonst wann das nächste Mal
+  const right = reason ? (
+    <span className={`followup-reason${reason.urgent ? " overdue" : ""}`}>{reason.label}</span>
+  ) : (
+    <span className="followup-reason">{task.follow_up_date ? `nachhaken ${shortDay(task.follow_up_date)}` : "kein Termin"}</span>
+  );
+  // Zweite Zeile: Stand der Nachfragen in einem Satz
+  const summary =
+    followups.length === 0
+      ? "noch nicht nachgefragt"
+      : `${followups.length}× nachgefragt · zuletzt ${shortDay(last.date)}${last.note ? `: „${last.note}“` : ""}`;
+
   return (
     <div className="followup-wrap">
       <TaskRow
         task={task}
         showProject={showProject}
+        rightLabel={right}
+        subExtra={summary}
         extra={
-          <>
-            {task.follow_up_date && (
-              <span className={`meta${task.follow_up_date <= todayIso() ? " overdue" : ""}`} title={`Nachhaken am ${formatDate(task.follow_up_date)}${count > 0 ? ` · ${count}× nachgefragt` : ""}`}>
-                {relativeLabel(task.follow_up_date, todayIso())}
-              </span>
-            )}
-            <a className="icon-btn" href={mailto(task)} title="Mail schreiben">
-              <Mail size={15} />
-            </a>
-            <button className="btn small" onClick={() => setOpen(!open)} title="Nachgefragt – nächstes Datum setzen">
-              Nachgehakt
+          !open && (
+            <button className="btn small" onClick={() => setOpen(true)}>
+              Nachfrage notieren
             </button>
-          </>
+          )
         }
       />
-      {last && (
-        <div className="last-followup" title={`Letzte Notiz vom ${formatDate(last.date)}`}>
-          „{last.note}“ · {formatDate(last.date)}
-        </div>
-      )}
       {open && <FollowUpForm task={task} onDone={() => setOpen(false)} />}
     </div>
   );

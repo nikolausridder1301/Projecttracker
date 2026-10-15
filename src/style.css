@@ -1788,3 +1788,95 @@ section.card h2 + p {
 .nav-item.dragging .nav-grip {
   opacity: 0.8;
 }
+
+/* ---------- Nachhaken ---------- */
+.followup-reason {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  white-space: nowrap;
+  min-width: 72px;
+  text-align: right;
+}
+.followup-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.followup-wrap .followup-form {
+  margin: 0 0 10px 36px;
+}
+.followup-note {
+  width: 100%;
+}
+.followup-next {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.followup-preview {
+  font-variant-numeric: tabular-nums;
+}
+.followup-done {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 6px;
+  border-left: 2px solid rgba(37, 99, 201, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.timeline li {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 2px 0 2px 8px;
+  min-height: 28px;
+}
+.timeline-date {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  white-space: nowrap;
+  min-width: 70px;
+  font-variant-numeric: tabular-nums;
+}
+.timeline-text {
+  flex: 1;
+}
+.delegation-box .row .muted.small {
+  white-space: nowrap;
+}
+@media (max-width: 767px) {
+  .followup-wrap .followup-form {
+    margin-left: 0;
+  }
+}
+/* Formular sauber untereinander, auch im schmalen Panel */
+.followup-form {
+  align-items: stretch;
+  min-width: 0;
+}
+.followup-form > input.followup-note {
+  flex: none;
+  min-width: 0;
+  width: 100%;
+}
+.followup-form .followup-done {
+  align-self: flex-start;
+}
+.followup-next .seg-group {
+  flex-wrap: wrap;
+  overflow: visible;
+}
+.followup-form > .row {
+  flex-wrap: wrap;
+  gap: 6px;
+}

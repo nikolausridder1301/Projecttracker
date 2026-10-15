@@ -20,10 +20,16 @@ export function useTaskActions() {
   const setDone = (t: Task, done: boolean) =>
     update("tasks", t.id, done ? { status: "done", done_at: new Date().toISOString() } : { status: "open", done_at: null });
 
-  const followUp = async (t: Task, note: string, next: string | null) => {
+  /** Nachfrage protokollieren; nächstes Datum setzen oder Aufgabe abschließen. */
+  const followUp = async (t: Task, note: string, next: string | null, done = false) => {
     await insert("task_followups", [{ task_id: t.id, date: todayIso(), note }]);
-    await update("tasks", t.id, { follow_up_date: next });
-    toast(`Nachgehakt: ${t.title}`);
+    if (done) {
+      await update("tasks", t.id, { follow_up_date: null, status: "done", done_at: new Date().toISOString() });
+      toast(`Erledigt: ${t.title}`);
+    } else {
+      await update("tasks", t.id, { follow_up_date: next });
+      toast(next ? `Notiert – nächstes Nachhaken ${formatDate(next)}` : "Notiert – kein weiteres Nachhaken geplant");
+    }
   };
 
   const mailto = (t: Task) => {
@@ -52,12 +58,18 @@ export function TaskRow({
   showCompany = true,
   showProject = false,
   extra,
+  rightLabel,
+  subExtra,
 }: {
   task: Task;
   showCompany?: boolean;
   /** Projekt-Kürzel zeigen („Heute – Alle Projekte“) */
   showProject?: boolean;
   extra?: React.ReactNode;
+  /** ersetzt die Fälligkeit rechts (z. B. Grund fürs Nachhaken) */
+  rightLabel?: React.ReactNode;
+  /** zusätzliche Angabe in der zweiten Zeile */
+  subExtra?: React.ReactNode;
 }) {
   const { allDb: db, project: currentProject, setProject } = useStore();
   const { personById, companyById, projectById } = useLookups();
@@ -81,6 +93,7 @@ export function TaskRow({
         {group.done}/{group.total} Firmen
       </span>,
     );
+  if (subExtra) sub.push(<span key="x">{subExtra}</span>);
 
   return (
     <div className={`task-row${done ? " is-done" : ""}`}>
@@ -110,9 +123,11 @@ export function TaskRow({
         {showProject && taskProject && <ProjectBadge color={taskProject.color} short={taskProject.short} />}
         {showCompany && <CompanyBadge id={task.company_id} />}
         {person && <Avatar name={person.name} title={`Delegiert an ${person.name}`} />}
-        <span className={`due${overdue ? " overdue" : ""}`} title={task.due_date ? `Fällig ${formatDate(task.due_date)}` : undefined}>
-          {task.due_date ? relativeLabel(task.due_date, today) : ""}
-        </span>
+        {rightLabel ?? (
+          <span className={`due${overdue ? " overdue" : ""}`} title={task.due_date ? `Fällig ${formatDate(task.due_date)}` : undefined}>
+            {task.due_date ? relativeLabel(task.due_date, today) : ""}
+          </span>
+        )}
       </span>
     </div>
   );
@@ -122,35 +137,134 @@ export function TaskRow({
 // Nachhaken
 // ---------------------------------------------------------------------------
 
+const NEXT_OPTIONS = [
+  { key: "3", label: "in 3 Tagen", days: 3 },
+  { key: "5", label: "in 1 Woche", days: 5 },
+  { key: "10", label: "in 2 Wochen", days: 10 },
+] as const;
+
+/** Wochentag + Datum, z. B. „Di, 20.10.“ */
+export function shortDay(iso: string): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  const wd = new Date(y, m - 1, d).toLocaleDateString("de-DE", { weekday: "short" }).replace(".", "");
+  return `${wd}, ${String(d).padStart(2, "0")}.${String(m).padStart(2, "0")}.`;
+}
+
+/**
+ * „Nachfrage notieren“: Was wurde gefragt/vereinbart? Wann wieder nachhaken –
+ * oder ist die Sache damit erledigt? Jede Nachfrage wird als eigener Eintrag
+ * im Verlauf gespeichert, nichts wird überschrieben.
+ */
 export function FollowUpForm({ task, onDone }: { task: Task; onDone: () => void }) {
-  const { followUp } = useTaskActions();
+  const { followUp, mailto } = useTaskActions();
+  const today = todayIso();
   const [note, setNote] = useState("");
-  const [next, setNext] = useState<string | null>(addWorkdays(todayIso(), 3));
+  const [choice, setChoice] = useState<string>("3");
+  const [custom, setCustom] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const next =
+    choice === "none" ? null : choice === "custom" ? custom : addWorkdays(today, NEXT_OPTIONS.find((o) => o.key === choice)!.days);
+
   return (
     <form
       className="followup-form"
       onSubmit={async (e) => {
         e.preventDefault();
-        await followUp(task, note.trim(), next);
-        onDone();
+        setBusy(true);
+        try {
+          await followUp(task, note.trim(), next, done);
+          onDone();
+        } catch {
+          /* Fehler wurde gemeldet */
+        } finally {
+          setBusy(false);
+        }
       }}
     >
-      <input autoFocus placeholder="Was wurde gesagt? (optional)" value={note} onChange={(e) => setNote(e.target.value)} />
-      <ChipDate
-        icon={<CalendarClock size={14} />}
-        value={next}
-        onChange={setNext}
-        placeholder="Nächstes Mal"
-        title="Nächstes Nachhaken"
-        format={(v) => `wieder ${formatDate(v)}`}
+      <input
+        autoFocus
+        className="followup-note"
+        placeholder="Was hast du gefragt oder erfahren? (optional)"
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
       />
-      <button className="btn primary" type="submit">
-        Speichern
-      </button>
-      <button className="icon-btn" type="button" onClick={onDone} aria-label="Abbrechen">
-        <X size={16} />
-      </button>
+      <label className="inline followup-done">
+        <input type="checkbox" className="check" checked={done} onChange={(e) => setDone(e.target.checked)} />
+        Damit erledigt – Aufgabe abschließen
+      </label>
+      {!done && (
+        <div className="followup-next">
+          <span className="muted small">Nächstes Nachhaken</span>
+          <div className="seg-group">
+            {NEXT_OPTIONS.map((o) => (
+              <button type="button" key={o.key} className={`seg${choice === o.key ? " active" : ""}`} onClick={() => setChoice(o.key)}>
+                {o.label}
+              </button>
+            ))}
+            <button type="button" className={`seg${choice === "none" ? " active" : ""}`} onClick={() => setChoice("none")}>
+              keins
+            </button>
+          </div>
+          <ChipDate
+            icon={<CalendarClock size={14} />}
+            value={choice === "custom" ? custom : null}
+            onChange={(v) => {
+              setCustom(v);
+              setChoice(v ? "custom" : "3");
+            }}
+            placeholder="Datum wählen"
+            title="Eigenes Datum"
+            format={shortDay}
+          />
+          <span className="muted small followup-preview">{next ? `→ ${shortDay(next)}` : "→ kein Termin"}</span>
+        </div>
+      )}
+      <div className="row">
+        <a className="btn ghost" href={mailto(task)}>
+          <Mail size={15} /> Mail schreiben
+        </a>
+        <span className="spacer" />
+        <button type="button" className="btn ghost" onClick={onDone}>
+          Abbrechen
+        </button>
+        <button className="btn primary" type="submit" disabled={busy}>
+          {done ? "Erledigt speichern" : "Notieren"}
+        </button>
+      </div>
     </form>
+  );
+}
+
+/** Alle Nachfragen als Zeitleiste, neueste oben; einzelne Einträge löschbar. */
+export function FollowUpHistory({ taskId, limit = 3 }: { taskId: string; limit?: number }) {
+  const { allDb, purge } = useStore();
+  const [all, setAll] = useState(false);
+  const entries = allDb.task_followups
+    .filter((f) => f.task_id === taskId && f.deleted_at === null)
+    .sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+  if (entries.length === 0) return null;
+  const shown = all ? entries : entries.slice(0, limit);
+  return (
+    <ol className="timeline" aria-label="Verlauf der Nachfragen">
+      {shown.map((f) => (
+        <li key={f.id}>
+          <span className="timeline-date">{shortDay(f.date)}</span>
+          <span className="timeline-text">{f.note || <span className="muted">nachgefragt</span>}</span>
+          <button className="icon-btn hover-only" title="Eintrag löschen" onClick={() => void purge("task_followups", f.id)}>
+            <X size={14} />
+          </button>
+        </li>
+      ))}
+      {entries.length > limit && (
+        <li>
+          <button className="link-btn small" onClick={() => setAll(!all)}>
+            {all ? "Weniger anzeigen" : `Alle ${entries.length} anzeigen`}
+          </button>
+        </li>
+      )}
+    </ol>
   );
 }
 
@@ -195,9 +309,6 @@ function TaskEditor({ task, onClose }: { task: Task; onClose: () => void }) {
 
   const save = (patch: Parameters<typeof update<"tasks">>[2]) => void update("tasks", task.id, patch).catch(() => {});
 
-  const followups = db.task_followups
-    .filter((f) => f.task_id === task.id && f.deleted_at === null)
-    .sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
   const attachedCount = db.attachments.filter((a) => a.deleted_at === null && a.task_id === task.id).length;
   const group = task.group_id ? groupProgress(db.tasks, task.group_id) : null;
   const sourceNote = task.source_note_id ? noteById.get(task.source_note_id) : undefined;
@@ -343,30 +454,32 @@ function TaskEditor({ task, onClose }: { task: Task; onClose: () => void }) {
             {person && <Avatar name={person.name} />}
             <span className="grow">
               Wartet auf <strong>{person?.name ?? "?"}</strong>
-              {followups.length > 0 && <span className="muted"> · {followups.length}× nachgefragt</span>}
             </span>
+            <a className="icon-btn" href={mailto(task)} title={person?.email ? `Mail an ${person.email}` : "Keine E-Mail hinterlegt"}>
+              <Mail size={16} />
+            </a>
+          </div>
+          {/* Während das Formular offen ist, legt es den nächsten Termin fest – keine doppelte Angabe */}
+          {!followUpOpen && (
+          <div className="row">
+            <span className="muted small">Nächstes Nachhaken</span>
             <ChipDate
               icon={<CalendarClock size={14} />}
-              title="Nachhaken am"
+              title="Nächstes Nachhaken"
               value={task.follow_up_date}
               onChange={(v) => save({ follow_up_date: v })}
-              placeholder="Nachhaken"
-              format={(v) => relativeLabel(v, today)}
+              placeholder="kein Termin"
+              format={shortDay}
               tone={task.follow_up_date && task.follow_up_date <= today ? "red" : undefined}
             />
+            <span className="spacer" />
+            <button className="btn primary" onClick={() => setFollowUpOpen(true)}>
+              Nachfrage notieren
+            </button>
           </div>
-          {followUpOpen ? (
-            <FollowUpForm task={task} onDone={() => setFollowUpOpen(false)} />
-          ) : (
-            <div className="row">
-              <button className="btn" onClick={() => setFollowUpOpen(true)}>
-                Nachgehakt
-              </button>
-              <a className="btn ghost" href={mailto(task)} title={person?.email ? `Mail an ${person.email}` : "Keine E-Mail hinterlegt"}>
-                <Mail size={15} /> Mail
-              </a>
-            </div>
           )}
+          {followUpOpen && <FollowUpForm task={task} onDone={() => setFollowUpOpen(false)} />}
+          <FollowUpHistory taskId={task.id} />
         </div>
       )}
 
@@ -429,18 +542,6 @@ function TaskEditor({ task, onClose }: { task: Task; onClose: () => void }) {
       >
         <AttachedLinks target={{ taskId: task.id }} />
       </Disclosure>
-
-      {followups.length > 0 && (
-        <Disclosure title="Verlauf" meta={followups.length}>
-          <ul className="history">
-            {followups.map((f) => (
-              <li key={f.id}>
-                <span className="muted">{formatDate(f.date)}</span> {f.note || <span className="muted">nachgefragt</span>}
-              </li>
-            ))}
-          </ul>
-        </Disclosure>
-      )}
 
       <p className="meta-line">
         Angelegt {formatDate(task.created_at.slice(0, 10))}
