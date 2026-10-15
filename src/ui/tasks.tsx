@@ -1,4 +1,4 @@
-import { CalendarClock, Flag, Mail, Plus, Trash2, X } from "lucide-react";
+import { CalendarClock, Flag, Mail, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLookups, useStore } from "../data/store";
 import { PRIORITY_LABEL, STATUS_LABEL, type Priority, type Task, type TaskStatus } from "../data/types";
@@ -299,11 +299,10 @@ function TaskEditor({ task, onClose }: { task: Task; onClose: () => void }) {
   const { db, update, trash, toast } = useStore();
   const { companies, people, companyById, noteById, personById } = useLookups();
   const { mailto, setDone } = useTaskActions();
-  const { openCapture } = useUi();
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description);
-  const [descOpen, setDescOpen] = useState(false);
-  const showDescription = descOpen || description.trim() !== "";
+  // Nur zeigen, wenn beim Öffnen schon eine Beschreibung da war
+  const [hasDescription] = useState(task.description.trim() !== "");
   const [blockedReason, setBlockedReason] = useState(task.blocked_reason);
   const [pendingBlocked, setPendingBlocked] = useState(false);
   const [newItem, setNewItem] = useState("");
@@ -475,23 +474,15 @@ function TaskEditor({ task, onClose }: { task: Task; onClose: () => void }) {
         </div>
       )}
 
-      {/* Beschreibung nur zeigen, wenn es eine gibt oder sie gerade geschrieben wird */}
-      {showDescription ? (
+      {/* Schlank halten: Beschreibung nur, wenn schon eine existiert (keine neuen mehr anlegen) */}
+      {hasDescription && (
         <AutoText
           value={description}
           onChange={setDescription}
-          onBlur={() => {
-            if (description !== task.description) save({ description });
-            if (!description.trim()) setDescOpen(false);
-          }}
-          placeholder="Was genau ist zu tun? (fließt auch in die Nachfrage-Mail ein)"
+          onBlur={() => description !== task.description && save({ description })}
+          placeholder="Beschreibung"
           minRows={2}
-          autoFocus={descOpen && !task.description}
         />
-      ) : (
-        <button className="link-btn add-desc" onClick={() => setDescOpen(true)}>
-          + Beschreibung hinzufügen
-        </button>
       )}
 
       <Disclosure title="Checkliste" meta={cl.total > 0 ? `${cl.done}/${cl.total}` : undefined} defaultOpen={cl.total > 0}>
@@ -527,24 +518,12 @@ function TaskEditor({ task, onClose }: { task: Task; onClose: () => void }) {
         </form>
       </Disclosure>
 
-      <Disclosure
-        title="Links"
-        meta={attachedCount > 0 ? attachedCount : undefined}
-        defaultOpen={attachedCount > 0}
-        action={
-          <button
-            className="icon-btn"
-            title="Neuer Link"
-            onClick={() =>
-              openCapture({ type: "link", companyId: task.company_id, attachTo: { taskId: task.id } })
-            }
-          >
-            <Plus size={16} />
-          </button>
-        }
-      >
-        <AttachedLinks target={{ taskId: task.id }} />
-      </Disclosure>
+      {/* Links nur noch anzeigen, wenn früher welche angehängt wurden */}
+      {attachedCount > 0 && (
+        <Disclosure title="Links" meta={attachedCount} defaultOpen>
+          <AttachedLinks target={{ taskId: task.id }} />
+        </Disclosure>
+      )}
 
       <p className="meta-line">
         Angelegt {formatDate(task.created_at.slice(0, 10))}
