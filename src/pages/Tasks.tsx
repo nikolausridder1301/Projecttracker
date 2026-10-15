@@ -2,10 +2,10 @@ import { SlidersHorizontal } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLookups, useStore } from "../data/store";
 import { PRIORITY_LABEL, STATUS_LABEL, type Id, type Priority, type Task, type TaskStatus } from "../data/types";
-import { endOfWeek, todayIso } from "../logic/dates";
-import { compareTasks, isActive } from "../logic/tasks";
+import { endOfWeek, formatDate, todayIso } from "../logic/dates";
+import { compareTasks, isActive, splitDone } from "../logic/tasks";
 import { CompanySelect, Empty, TopicSelect, usePersisted } from "../ui/common";
-import { TaskList } from "../ui/tasks";
+import { TaskList, TaskRow } from "../ui/tasks";
 import { useCaptureContext } from "../ui/uiState";
 
 export interface TaskFilter {
@@ -75,7 +75,7 @@ export function TasksPage() {
         <span className="muted">{tasks.length}</span>
       </div>
       <TaskFilterBar f={f} set={set} reset={() => setF({ ...INITIAL, groupBy: f.groupBy })} />
-      {tasks.length === 0 ? <Empty>Keine Aufgaben für diese Filter.</Empty> : <GroupedTasks tasks={tasks} groupBy={f.groupBy} />}
+      {tasks.length === 0 ? <Empty>Keine Aufgaben für diese Filter.</Empty> : <TaskSections tasks={tasks} groupBy={f.groupBy} />}
     </div>
   );
 }
@@ -194,6 +194,41 @@ export function TaskFilterBar({
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * Offene Aufgaben (gruppiert), darunter abgesetzt die Erledigten als eigene
+ * Liste nach Erledigt-Datum – so mischen sich beide nie.
+ */
+export function TaskSections({ tasks, groupBy, showCompany = true }: { tasks: Task[]; groupBy: TaskFilter["groupBy"]; showCompany?: boolean }) {
+  const { open, done } = splitDone(tasks);
+  return (
+    <>
+      {open.length > 0 ? (
+        <GroupedTasks tasks={open} groupBy={groupBy} showCompany={showCompany} />
+      ) : (
+        done.length > 0 && <div className="empty-inline">Keine offenen Aufgaben.</div>
+      )}
+      {done.length > 0 && (
+        <>
+          <div className="section-divider">
+            <span>Erledigt</span>
+            <span className="muted">{done.length}</span>
+          </div>
+          <div className="card list-card done-list">
+            {done.map((t) => (
+              <TaskRow
+                key={t.id}
+                task={t}
+                showCompany={showCompany}
+                rightLabel={<span className="due">{t.done_at ? formatDate(t.done_at.slice(0, 10)) : ""}</span>}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </>
   );
 }
 

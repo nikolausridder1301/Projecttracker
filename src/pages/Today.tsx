@@ -1,10 +1,11 @@
 import { CheckCircle2 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import { useLookups, useStore } from "../data/store";
-import { TRAFFIC_LABEL, type Company, type TrafficLight } from "../data/types";
+import { TRAFFIC_LABEL, type Company } from "../data/types";
 import { todayIso } from "../logic/dates";
 import { followUpReason, todayView } from "../logic/tasks";
+import { sinceLabel } from "../logic/traffic";
+import { TrafficDialog } from "../ui/traffic";
 import { CompanyLogo, TrafficDot, usePersisted } from "../ui/common";
 import { FollowUpForm, TaskList, TaskRow, shortDay } from "../ui/tasks";
 
@@ -148,59 +149,34 @@ export function FollowUpRow({ taskId, showProject }: { taskId: string; showProje
 
 export function TrafficBar() {
   const { companies } = useLookups();
+  const [editing, setEditing] = useState<Company | null>(null);
   return (
-    <div className="traffic-bar">
-      {companies.map((c) => (
-        <TrafficTile key={c.id} company={c} />
-      ))}
-    </div>
-  );
-}
-
-function TrafficTile({ company }: { company: Company }) {
-  return (
-    <div className="traffic-tile" title={company.traffic_comment || TRAFFIC_LABEL[company.traffic_light]}>
-      <Link to={`/firmen/${company.id}`} className="traffic-link">
-        <CompanyLogo company={company} size={36} />
-        <span className="traffic-name">{company.short}</span>
-      </Link>
-      <TrafficPicker company={company} />
-    </div>
-  );
-}
-
-export function TrafficPicker({ company, withComment }: { company: Company; withComment?: boolean }) {
-  const { update } = useStore();
-  const [comment, setComment] = useState(company.traffic_comment);
-  const set = (light: TrafficLight) =>
-    void update("companies", company.id, { traffic_light: light, traffic_changed_at: new Date().toISOString() }).catch(() => {});
-  return (
-    <div className="traffic-picker">
-      <div className="row tight">
-        {(["green", "yellow", "red"] as TrafficLight[]).map((l) => (
-          <button
-            key={l}
-            className={`dot-btn${company.traffic_light === l ? " active" : ""}`}
-            onClick={() => set(l)}
-            aria-label={`Ampel ${TRAFFIC_LABEL[l]}`}
-            aria-pressed={company.traffic_light === l}
-          >
-            <TrafficDot light={l} />
-          </button>
+    <>
+      <div className="traffic-bar">
+        {companies.map((c) => (
+          <TrafficTile key={c.id} company={c} onOpen={() => setEditing(c)} />
         ))}
       </div>
-      {withComment && (
-        <input
-          className="traffic-comment"
-          placeholder="Kommentar zur Ampel"
-          value={comment}
-          onChange={(e) => setComment(e.target.value)}
-          onBlur={() =>
-            comment !== company.traffic_comment &&
-            void update("companies", company.id, { traffic_comment: comment, traffic_changed_at: new Date().toISOString() }).catch(() => {})
-          }
-        />
-      )}
-    </div>
+      {editing && <TrafficDialog company={companies.find((c) => c.id === editing.id) ?? editing} onClose={() => setEditing(null)} />}
+    </>
+  );
+}
+
+/** Kachel: Logo, Kürzel, ein Ampelpunkt + „seit …“. Klick öffnet den Ampel-Dialog. */
+function TrafficTile({ company, onOpen }: { company: Company; onOpen: () => void }) {
+  const since = sinceLabel(company.traffic_changed_at, todayIso());
+  return (
+    <button
+      className={`traffic-tile light-${company.traffic_light}`}
+      onClick={onOpen}
+      title={`${company.name}: ${TRAFFIC_LABEL[company.traffic_light]}${company.traffic_comment ? ` – ${company.traffic_comment}` : ""}`}
+    >
+      <CompanyLogo company={company} size={36} />
+      <span className="traffic-name">{company.short}</span>
+      <span className="traffic-state">
+        <TrafficDot light={company.traffic_light} />
+        {since && <span>{since}</span>}
+      </span>
+    </button>
   );
 }

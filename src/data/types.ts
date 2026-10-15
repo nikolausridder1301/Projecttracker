@@ -144,6 +144,15 @@ export interface VendorItem extends Base, InProject {
   status_changed_at: IsoDateTime | null;
 }
 
+/** Eine Änderung der Firmen-Ampel mit Begründung. */
+export interface TrafficHistory extends Base, InProject {
+  company_id: Id;
+  /** null = erster Eintrag (vorheriger Stand unbekannt) */
+  from_light: TrafficLight | null;
+  to_light: TrafficLight;
+  comment: string;
+}
+
 export interface AppMeta extends Base {
   last_export_at: IsoDateTime | null;
   /** Reihenfolge der Menüpunkte (Schlüssel aus ui/nav.ts); leer = Standard */
@@ -163,6 +172,7 @@ export interface Tables {
   attachments: Attachment;
   app_meta: AppMeta;
   vendor_items: VendorItem;
+  traffic_history: TrafficHistory;
 }
 
 export type TableName = keyof Tables;
@@ -180,6 +190,7 @@ export const TABLE_NAMES: TableName[] = [
   "attachments",
   "app_meta",
   "vendor_items",
+  "traffic_history",
 ];
 
 export type Db = { [K in TableName]: Tables[K][] };
@@ -194,6 +205,7 @@ export const PROJECT_TABLES = [
   "tasks",
   "links",
   "vendor_items",
+  "traffic_history",
 ] as const satisfies readonly TableName[];
 
 /** Felder, die beim Anlegen vom Backend gesetzt werden. project_id ergänzt der Store. */
