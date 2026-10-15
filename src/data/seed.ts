@@ -139,5 +139,6 @@ export function demoSeed(): Db {
     attachments: [],
     app_meta: [{ ...meta(), last_export_at: null, nav_order: [] }],
     vendor_items: [],
+    traffic_history: [],
   };
 }

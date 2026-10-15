@@ -125,3 +125,12 @@ export function followUpReason(t: Pick<Task, "due_date" | "follow_up_date">, tod
   if (t.due_date === today) return { label: "Frist endet heute", urgent: false };
   return null;
 }
+
+/** Offene und erledigte Aufgaben trennen; Erledigte nach Erledigt-Datum, neueste zuerst. */
+export function splitDone(tasks: Task[]): { open: Task[]; done: Task[] } {
+  const doneKey = (t: Task) => t.done_at ?? t.updated_at;
+  return {
+    open: tasks.filter((t) => t.status !== "done"),
+    done: tasks.filter((t) => t.status === "done").sort((a, b) => (doneKey(a) < doneKey(b) ? 1 : -1)),
+  };
+}

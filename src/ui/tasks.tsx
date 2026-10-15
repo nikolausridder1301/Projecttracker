@@ -302,6 +302,8 @@ function TaskEditor({ task, onClose }: { task: Task; onClose: () => void }) {
   const { openCapture } = useUi();
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description);
+  const [descOpen, setDescOpen] = useState(false);
+  const showDescription = descOpen || description.trim() !== "";
   const [blockedReason, setBlockedReason] = useState(task.blocked_reason);
   const [pendingBlocked, setPendingBlocked] = useState(false);
   const [newItem, setNewItem] = useState("");
@@ -483,13 +485,24 @@ function TaskEditor({ task, onClose }: { task: Task; onClose: () => void }) {
         </div>
       )}
 
-      <AutoText
-        value={description}
-        onChange={setDescription}
-        onBlur={() => description !== task.description && save({ description })}
-        placeholder="Notizen…"
-        minRows={2}
-      />
+      {/* Beschreibung nur zeigen, wenn es eine gibt oder sie gerade geschrieben wird */}
+      {showDescription ? (
+        <AutoText
+          value={description}
+          onChange={setDescription}
+          onBlur={() => {
+            if (description !== task.description) save({ description });
+            if (!description.trim()) setDescOpen(false);
+          }}
+          placeholder="Was genau ist zu tun? (fließt auch in die Nachfrage-Mail ein)"
+          minRows={2}
+          autoFocus={descOpen && !task.description}
+        />
+      ) : (
+        <button className="link-btn add-desc" onClick={() => setDescOpen(true)}>
+          + Beschreibung hinzufügen
+        </button>
+      )}
 
       <Disclosure title="Checkliste" meta={cl.total > 0 ? `${cl.done}/${cl.total}` : undefined} defaultOpen={cl.total > 0}>
         <ul className="checklist">

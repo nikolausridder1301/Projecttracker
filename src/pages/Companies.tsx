@@ -3,16 +3,16 @@ import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useLookups, useStore } from "../data/store";
 import { TRAFFIC_LABEL, type Company } from "../data/types";
-import { formatDateTime, todayIso } from "../logic/dates";
+import { todayIso } from "../logic/dates";
 import { isActive, isOpen } from "../logic/tasks";
 import { affectsCompany, ageLabel, categoryDef, isOpenItem, statusDef } from "../logic/vendor";
 import { CompanyLogo, Empty, TrafficDot } from "../ui/common";
 import { LinkRow } from "../ui/links";
 import { useCaptureContext, useUi } from "../ui/uiState";
+import { TrafficDialog, TrafficHistoryList, TrafficStatus } from "../ui/traffic";
 import { useVendor } from "../ui/vendor";
 import { CATEGORY_ICON } from "./Tacto";
-import { TrafficPicker } from "./Today";
-import { GroupedTasks, TaskFilterBar, applyFilter, type TaskFilter } from "./Tasks";
+import { TaskFilterBar, TaskSections, applyFilter, type TaskFilter } from "./Tasks";
 
 export function CompaniesPage() {
   const { db } = useStore();
@@ -72,13 +72,14 @@ export function CompanyDetailPage() {
   return <CompanyView key={c.id} company={c} />;
 }
 
-type Tab = "tasks" | "notes" | "links" | "tacto";
+type Tab = "tasks" | "notes" | "links" | "tacto" | "ampel";
 
 function CompanyView({ company }: { company: Company }) {
   const { db } = useStore();
   const { people, topicById } = useLookups();
   const { openCapture } = useUi();
   const [tab, setTab] = useState<Tab>("tasks");
+  const [trafficOpen, setTrafficOpen] = useState(false);
   const [f, setF] = useState<TaskFilter>({
     company: company.id,
     topic: "",
@@ -112,8 +113,13 @@ function CompanyView({ company }: { company: Company }) {
         <CompanyLogo company={company} size={64} />
         <div className="grow">
           <h1>{company.name}</h1>
-          <TrafficPicker company={company} withComment />
-          {company.traffic_changed_at && <div className="muted small">Ampel zuletzt geändert {formatDateTime(company.traffic_changed_at)}</div>}
+          <div className="row">
+            <TrafficStatus company={company} />
+            <button className="btn small" onClick={() => setTrafficOpen(true)}>
+              Ampel ändern
+            </button>
+          </div>
+          {company.traffic_comment && <p className="traffic-comment-text">{company.traffic_comment}</p>}
         </div>
         <div className="contacts">
           <div className="muted small">Ansprechpartner</div>
@@ -133,6 +139,7 @@ function CompanyView({ company }: { company: Company }) {
             ["notes", `Notizen (${notes.length})`],
             ["links", `Links (${links.length})`],
             ...(vendor ? ([["tacto", `${vendor.name} (${vendorItems.length})`]] as [Tab, string][]) : []),
+            ["ampel", "Ampel-Verlauf"],
           ] as [Tab, string][]
         ).map(([k, label]) => (
           <button key={k} className={`tab${tab === k ? " active" : ""}`} onClick={() => setTab(k)}>
@@ -140,7 +147,7 @@ function CompanyView({ company }: { company: Company }) {
           </button>
         ))}
         <span className="spacer" />
-        {tab !== "tacto" && (
+        {tab !== "tacto" && tab !== "ampel" && (
           <button
             className="btn primary"
             onClick={() => openCapture({ type: tab === "tasks" ? "task" : tab === "notes" ? "note" : "link", companyId: company.id })}
@@ -153,7 +160,7 @@ function CompanyView({ company }: { company: Company }) {
       {tab === "tasks" && (
         <>
           <TaskFilterBar f={f} set={(p) => setF({ ...f, ...p })} reset={() => setF({ ...f, topic: "", assignee: "", status: "", priority: "", due: "", showDone: false })} hideCompany />
-          {tasks.length === 0 ? <Empty>Keine Aufgaben.</Empty> : <GroupedTasks tasks={tasks} groupBy={f.groupBy} showCompany={false} />}
+          {tasks.length === 0 ? <Empty>Keine Aufgaben.</Empty> : <TaskSections tasks={tasks} groupBy={f.groupBy} showCompany={false} />}
         </>
       )}
       {tab === "notes" &&
@@ -203,6 +210,12 @@ function CompanyView({ company }: { company: Company }) {
             })}
           </div>
         ))}
+      {tab === "ampel" && (
+        <div className="card">
+          <TrafficHistoryList companyId={company.id} />
+        </div>
+      )}
+      {trafficOpen && <TrafficDialog company={company} onClose={() => setTrafficOpen(false)} />}
     </div>
   );
 }

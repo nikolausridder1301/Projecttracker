@@ -1,4 +1,5 @@
-import { ChevronRight } from "lucide-react";
+import { Check, ChevronDown, ChevronRight } from "lucide-react";
+import { createPortal } from "react-dom";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import allmineral from "../assets/logos/allmineral.png";
 import fest from "../assets/logos/fest.jpg";
@@ -78,6 +79,11 @@ export interface ChipOption {
   label: string;
 }
 
+/**
+ * Chip mit eigener Auswahlliste (statt Browser-Menü): passt zum Design,
+ * per Tastatur bedienbar (Pfeile, Enter, Esc), ab 9 Einträgen mit Suche.
+ * Die Liste wird an <body> gehängt, damit sie in Panels nicht abgeschnitten wird.
+ */
 export function ChipSelect({
   icon,
   value,
@@ -99,17 +105,192 @@ export function ChipSelect({
   const current = options.find((o) => o.value === value);
   const empty = !current || (placeholder !== undefined && value === "");
   return (
-    <label className={`chip${empty ? " chip-empty" : ""}${tone ? ` tone-${tone}` : ""}`} title={title}>
-      {icon}
-      <span className="chip-text">{empty ? placeholder : current!.label}</span>
-      <select value={value} onChange={(e) => onChange(e.target.value)} aria-label={title}>
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-    </label>
+    <Dropdown value={value} options={options} onChange={onChange} title={title}>
+      {(props) => (
+        <button type="button" {...props} className={`chip${empty ? " chip-empty" : ""}${tone ? ` tone-${tone}` : ""}`} title={title}>
+          {icon}
+          <span className="chip-text">{empty ? placeholder : current!.label}</span>
+          <ChevronDown size={14} className="chip-caret" aria-hidden />
+        </button>
+      )}
+    </Dropdown>
+  );
+}
+
+const norm = (t: string) => t.toLocaleLowerCase("de").normalize("NFKD").replace(/[\u0300-\u036f]/g, "");
+
+type TriggerProps = {
+  ref: React.RefObject<HTMLButtonElement>;
+  onClick: () => void;
+  onKeyDown: (e: React.KeyboardEvent) => void;
+  "aria-haspopup": "listbox";
+  "aria-expanded": boolean;
+  "aria-label": string;
+};
+
+/** Auswahlliste im App-Design; der Auslöser wird per Render-Funktion gestaltet. */
+export function Dropdown({
+  value,
+  options,
+  onChange,
+  title,
+  children,
+}: {
+  value: string;
+  options: ChipOption[];
+  onChange: (v: string) => void;
+  title: string;
+  children: (trigger: TriggerProps) => ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const [active, setActive] = useState(0);
+  const [pos, setPos] = useState<{ top: number; left: number; minWidth: number; maxHeight: number; above: boolean } | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const searchable = options.length > 8;
+  const filtered = q ? options.filter((o) => norm(o.label).includes(norm(q))) : options;
+
+  const close = (refocus = true) => {
+    setOpen(false);
+    setQ("");
+    if (refocus) btnRef.current?.focus();
+  };
+
+  const openMenu = () => {
+    const r = btnRef.current!.getBoundingClientRect();
+    const below = window.innerHeight - r.bottom - 12;
+    const above = r.top - 12;
+    const placeAbove = below < 220 && above > below;
+    setPos({
+      top: placeAbove ? r.top - 4 : r.bottom + 4,
+      left: Math.min(r.left, window.innerWidth - 240),
+      minWidth: Math.max(r.width, 180),
+      maxHeight: Math.min(320, placeAbove ? above : below),
+      above: placeAbove,
+    });
+    setActive(Math.max(0, options.findIndex((o) => o.value === value)));
+    setOpen(true);
+  };
+
+  // Schließen bei Klick daneben, Scrollen außerhalb der Liste oder Größenänderung
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (!menuRef.current?.contains(t) && !btnRef.current?.contains(t)) close(false);
+    };
+    const onScroll = (e: Event) => {
+      if (!menuRef.current?.contains(e.target as Node)) close(false);
+    };
+    const onResize = () => close(false);
+    window.addEventListener("mousedown", onDown);
+    window.addEventListener("scroll", onScroll, true);
+    window.addEventListener("resize", onResize);
+    (searchable ? searchRef.current : menuRef.current)?.focus();
+    return () => {
+      window.removeEventListener("mousedown", onDown);
+      window.removeEventListener("scroll", onScroll, true);
+      window.removeEventListener("resize", onResize);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  // Aktiven Eintrag sichtbar halten
+  useEffect(() => {
+    if (!open) return;
+    menuRef.current?.querySelector<HTMLElement>(`[data-index="${active}"]`)?.scrollIntoView({ block: "nearest" });
+  }, [active, open]);
+
+  const choose = (v: string) => {
+    if (v !== value) onChange(v);
+    close();
+  };
+
+  const onMenuKey = (e: React.KeyboardEvent) => {
+    // Nicht an Panel/Seite weiterreichen (z. B. Esc schließt sonst das Panel)
+    e.stopPropagation();
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActive((i) => Math.min(i + 1, filtered.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActive((i) => Math.max(i - 1, 0));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (filtered[active]) choose(filtered[active].value);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      close();
+    } else if (e.key === "Tab") {
+      close(false);
+    }
+  };
+
+  const trigger: TriggerProps = {
+    ref: btnRef,
+    onClick: () => (open ? close() : openMenu()),
+    onKeyDown: (e) => {
+      if (!open && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
+        e.preventDefault();
+        openMenu();
+      }
+    },
+    "aria-haspopup": "listbox",
+    "aria-expanded": open,
+    "aria-label": title,
+  };
+
+  return (
+    <>
+      {children(trigger)}
+      {open &&
+        pos &&
+        createPortal(
+          <div
+            ref={menuRef}
+            className={`dropdown-menu${pos.above ? " above" : ""}`}
+            style={{ top: pos.top, left: pos.left, minWidth: pos.minWidth, maxHeight: pos.maxHeight }}
+            role="listbox"
+            aria-label={title}
+            tabIndex={-1}
+            onKeyDown={onMenuKey}
+          >
+            {searchable && (
+              <input
+                ref={searchRef}
+                className="dropdown-search"
+                placeholder="Suchen…"
+                value={q}
+                onChange={(e) => {
+                  setQ(e.target.value);
+                  setActive(0);
+                }}
+              />
+            )}
+            <div className="dropdown-items">
+              {filtered.map((o, i) => (
+                <div
+                  key={o.value}
+                  data-index={i}
+                  role="option"
+                  aria-selected={o.value === value}
+                  className={`dropdown-item${i === active ? " active" : ""}${o.value === value ? " selected" : ""}`}
+                  onMouseEnter={() => setActive(i)}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => choose(o.value)}
+                >
+                  <span className="grow">{o.label}</span>
+                  {o.value === value && <Check size={15} aria-hidden />}
+                </div>
+              ))}
+              {filtered.length === 0 && <div className="dropdown-empty">Keine Treffer</div>}
+            </div>
+          </div>,
+          document.body,
+        )}
+    </>
   );
 }
 
@@ -260,6 +441,7 @@ export function AutoText({
   placeholder,
   minRows = 2,
   textRef,
+  autoFocus,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -267,6 +449,7 @@ export function AutoText({
   placeholder?: string;
   minRows?: number;
   textRef?: React.RefObject<HTMLTextAreaElement>;
+  autoFocus?: boolean;
 }) {
   const own = useRef<HTMLTextAreaElement>(null);
   const ref = textRef ?? own;
@@ -285,6 +468,7 @@ export function AutoText({
       placeholder={placeholder}
       onChange={(e) => onChange(e.target.value)}
       onBlur={onBlur}
+      autoFocus={autoFocus}
     />
   );
 }

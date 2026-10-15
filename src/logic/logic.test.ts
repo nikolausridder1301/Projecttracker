@@ -5,8 +5,9 @@ import { addWorkdays, endOfWeek, formatDate, relativeLabel } from "./dates";
 import { copyProjectMasterData, suggestShort } from "./projects";
 import { moveItem, orderNav } from "./nav";
 import { search } from "./search";
+import { sinceLabel, validateTrafficChange } from "./traffic";
 import { affectsCompany, ageLabel, isOpenItem, jourFixeText, newVendorItem, showTicket, statusPatch } from "./vendor";
-import { compareTasks, followUpReason, groupProgress, isValidUrl, todayCount, todayView, validateTask } from "./tasks";
+import { compareTasks, followUpReason, groupProgress, isValidUrl, splitDone, todayCount, todayView, validateTask } from "./tasks";
 
 const T = (o: Partial<Task>): Task => ({
   id: crypto.randomUUID(),
@@ -266,5 +267,35 @@ describe("followUpReason", () => {
   });
   it("nichts fällig", () => {
     expect(followUpReason({ due_date: "2026-10-30", follow_up_date: "2026-10-20" }, today)).toBeNull();
+  });
+});
+
+describe("traffic", () => {
+  it("Gelb/Rot nur mit Begründung", () => {
+    expect(validateTrafficChange({ light: "green", comment: "" }, { light: "red", comment: " " })).toMatch(/begründen/);
+    expect(validateTrafficChange({ light: "green", comment: "" }, { light: "red", comment: "Export hängt" })).toBeNull();
+    expect(validateTrafficChange({ light: "red", comment: "x" }, { light: "green", comment: "" })).toBeNull();
+  });
+  it("ohne Änderung nichts speichern, Kommentar allein reicht", () => {
+    expect(validateTrafficChange({ light: "yellow", comment: "a" }, { light: "yellow", comment: "a " })).toBe("Keine Änderung.");
+    expect(validateTrafficChange({ light: "yellow", comment: "a" }, { light: "yellow", comment: "b" })).toBeNull();
+  });
+  it("seit-Angabe", () => {
+    expect(sinceLabel("2026-10-15T08:00:00Z", "2026-10-15")).toBe("seit heute");
+    expect(sinceLabel("2026-10-14T08:00:00Z", "2026-10-15")).toBe("seit gestern");
+    expect(sinceLabel("2026-10-12T08:00:00Z", "2026-10-15")).toBe("seit 3 T.");
+    expect(sinceLabel(null, "2026-10-15")).toBe("");
+  });
+});
+
+describe("splitDone", () => {
+  it("offene zuerst, Erledigte nach Datum absteigend", () => {
+    const r = splitDone([
+      T({ title: "a", status: "done", done_at: "2026-10-10T10:00:00Z" }),
+      T({ title: "b" }),
+      T({ title: "c", status: "done", done_at: "2026-10-14T10:00:00Z" }),
+    ]);
+    expect(r.open.map((t) => t.title)).toEqual(["b"]);
+    expect(r.done.map((t) => t.title)).toEqual(["c", "a"]);
   });
 });

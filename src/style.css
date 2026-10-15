@@ -1880,3 +1880,178 @@ section.card h2 + p {
   flex-wrap: wrap;
   gap: 6px;
 }
+
+/* ---------- Eigene Auswahlliste (statt Browser-Menü) ---------- */
+.chip-caret {
+  color: var(--text-faint);
+  margin-right: -2px;
+}
+.dropdown-menu {
+  position: fixed;
+  z-index: 70;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 12px 32px rgba(20, 30, 50, 0.18);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  outline: none;
+}
+.dropdown-menu.above {
+  transform: translateY(-100%);
+}
+.dropdown-search {
+  margin: 2px 2px 4px;
+  height: 32px !important;
+}
+.dropdown-items {
+  overflow-y: auto;
+  min-height: 0;
+}
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 34px;
+  padding: 0 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: var(--fs-base);
+  white-space: nowrap;
+}
+.dropdown-item.active {
+  background: var(--surface-2);
+}
+.dropdown-item.selected {
+  color: var(--accent);
+
+}
+.dropdown-empty {
+  padding: 8px 10px;
+  color: var(--text-faint);
+  font-size: var(--fs-sm);
+}
+.add-desc {
+  align-self: flex-start;
+  font-size: var(--fs-sm);
+}
+
+/* ---------- Ampel: Kacheln nur anzeigen, Ändern im Dialog ---------- */
+button.traffic-tile {
+  border: 1px solid transparent;
+  cursor: pointer;
+  font: inherit;
+  color: var(--text);
+  gap: 4px;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+button.traffic-tile:hover {
+  border-color: var(--border-strong);
+}
+.traffic-tile.light-yellow {
+  border-color: rgba(217, 119, 6, 0.45);
+}
+.traffic-tile.light-red {
+  border-color: rgba(198, 40, 40, 0.5);
+}
+.traffic-name {
+  font-size: var(--fs-sm);
+  font-weight: 500;
+}
+.traffic-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  min-height: 16px;
+}
+.traffic-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-sm);
+}
+.traffic-comment-text {
+  margin-top: 6px;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  max-width: 520px;
+}
+.traffic-dialog {
+  width: min(460px, 100%);
+}
+.traffic-dialog h2 {
+  margin: 0;
+}
+.traffic-options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.traffic-option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 40px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  cursor: pointer;
+  color: var(--text-muted);
+}
+.traffic-option:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+.traffic-option.selected.tone-green {
+  background: var(--green-bg);
+  border-color: var(--green);
+  color: var(--green);
+}
+.traffic-option.selected.tone-yellow {
+  background: var(--yellow-bg);
+  border-color: var(--yellow);
+  color: #8a4b05;
+}
+.traffic-option.selected.tone-red {
+  background: var(--red-bg);
+  border-color: var(--red);
+  color: var(--red) !important;
+}
+.traffic-dialog-history {
+  border-top: 1px solid var(--surface-3);
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.traffic-change {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 38px;
+}
+.section-divider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 24px 0 10px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-faint);
+}
+.section-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border-strong);
+}
+.done-list {
+  opacity: 0.85;
+}
