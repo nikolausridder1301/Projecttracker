@@ -233,6 +233,10 @@ export function Disclosure({
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
+  // Bekommt der Bereich erstmals Inhalt (z. B. neue Aufgabe aus dem Protokoll), klappt er auf
+  useEffect(() => {
+    if (defaultOpen) setOpen(true);
+  }, [defaultOpen]);
   return (
     <section className={`disclosure${open ? " open" : ""}`}>
       <div className="disclosure-head">
