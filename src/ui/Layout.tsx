@@ -1,4 +1,4 @@
-import { Building2, CheckSquare, Download, Hourglass, Link2, LogOut, Menu, NotebookPen, Plus, Search, Settings, Sparkles, Sun, Trash2, Users, X } from "lucide-react";
+import { Download, LogOut, Menu, Plus, Search, Settings, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useStore } from "../data/store";
@@ -6,25 +6,12 @@ import { todayIso } from "../logic/dates";
 import { todayCount, todayView } from "../logic/tasks";
 import { useBackup } from "./backup";
 import { ProjectSwitcher } from "./ProjectSwitcher";
+import { SortableNav } from "./SortableNav";
 import { useVendor } from "./vendor";
 import { QuickCapture } from "./QuickCapture";
 import { SearchPalette } from "./SearchPalette";
 import { TaskPanel } from "./tasks";
 import { useUi } from "./uiState";
-
-/** Menü; der Anbieter-Bereich erscheint nur, wenn das Projekt einen hat. */
-function navItems(vendorName: string | null) {
-  return [
-    { to: "/", label: "Heute", icon: Sun },
-    { to: "/aufgaben", label: "Aufgaben", icon: CheckSquare },
-    { to: "/wartet", label: "Wartet auf…", icon: Hourglass },
-    { to: "/notizen", label: "Notizen", icon: NotebookPen },
-    ...(vendorName ? [{ to: "/anbieter", label: vendorName, icon: Sparkles }] : []),
-    { to: "/links", label: "Links", icon: Link2 },
-    { to: "/personen", label: "Personen", icon: Users },
-    { to: "/firmen", label: "Firmen", icon: Building2 },
-  ];
-}
 
 export function Layout({ email, onSignOut }: { email: string; onSignOut: () => void }) {
   const { db, backend } = useStore();
@@ -65,15 +52,7 @@ export function Layout({ email, onSignOut }: { email: string; onSignOut: () => v
     <div className={`app${menuOpen ? " menu-open" : ""}`}>
       <aside className="sidebar">
         <ProjectSwitcher />
-        <nav>
-          {navItems(vendor?.name ?? null).map((n) => (
-            <NavLink key={n.to} to={n.to} end={n.to === "/"} className="nav-item">
-              <n.icon size={18} className="nav-icon" aria-hidden />
-              {n.label}
-              {n.to === "/" && count > 0 && <span className="nav-count">{count}</span>}
-            </NavLink>
-          ))}
-        </nav>
+        <SortableNav vendorName={vendor?.name ?? null} todayCount={count} />
         <div className="sidebar-foot">
           <NavLink to="/papierkorb" className="nav-item small">
             <Trash2 size={16} className="nav-icon" aria-hidden /> Papierkorb

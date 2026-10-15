@@ -39,6 +39,8 @@ export function SettingsPage() {
         )}
       </section>
 
+      <NavSettings />
+
       <CompaniesSettings />
       <TopicsSettings />
       <CategoriesSettings />
@@ -105,6 +107,25 @@ function ProjectSettings() {
         }}
       >
         {project.archived ? "Projekt reaktivieren" : "Projekt archivieren"}
+      </button>
+    </section>
+  );
+}
+
+function NavSettings() {
+  const { db, update } = useStore();
+  const meta = db.app_meta[0];
+  const custom = (meta?.nav_order.length ?? 0) > 0;
+  return (
+    <section className="card">
+      <h2>Menü</h2>
+      <p className="muted">Die Reihenfolge der Menüpunkte links änderst du per Ziehen. Sie gilt für alle Projekte und Geräte.</p>
+      <button
+        className="btn ghost"
+        disabled={!custom}
+        onClick={() => meta && void update("app_meta", meta.id, { nav_order: [] }).catch(() => {})}
+      >
+        Standard-Reihenfolge wiederherstellen
       </button>
     </section>
   );

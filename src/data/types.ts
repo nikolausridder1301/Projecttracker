@@ -146,6 +146,8 @@ export interface VendorItem extends Base, InProject {
 
 export interface AppMeta extends Base {
   last_export_at: IsoDateTime | null;
+  /** Reihenfolge der Menüpunkte (Schlüssel aus ui/nav.ts); leer = Standard */
+  nav_order: string[];
 }
 
 export interface Tables {

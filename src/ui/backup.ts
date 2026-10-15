@@ -24,7 +24,7 @@ export function useBackup() {
     const now = new Date().toISOString();
     const meta = db.app_meta[0];
     if (meta) await update("app_meta", meta.id, { last_export_at: now }).catch(() => {});
-    else await insert("app_meta", [{ last_export_at: now }]).catch(() => {});
+    else await insert("app_meta", [{ last_export_at: now, nav_order: [] }]).catch(() => {});
     toast("Backup heruntergeladen – am besten ins OneDrive legen");
   };
 
