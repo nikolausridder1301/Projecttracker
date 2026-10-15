@@ -1,0 +1,122 @@
+import { describe, expect, it } from "vitest";
+import { demoSeed } from "../data/seed";
+import type { Task } from "../data/types";
+import { addWorkdays, endOfWeek, formatDate, relativeLabel } from "./dates";
+import { search } from "./search";
+import { compareTasks, groupProgress, isValidUrl, todayCount, todayView, validateTask } from "./tasks";
+
+const T = (o: Partial<Task>): Task => ({
+  id: crypto.randomUUID(),
+  created_at: "",
+  updated_at: "",
+  deleted_at: null,
+  title: "x",
+  description: "",
+  company_id: "c1",
+  topic_id: null,
+  assignee_person_id: null,
+  status: "open",
+  blocked_reason: "",
+  priority: "medium",
+  due_date: null,
+  follow_up_date: null,
+  done_at: null,
+  checklist: [],
+  group_id: null,
+  source_note_id: null,
+  ...o,
+});
+
+describe("dates", () => {
+  it("Donnerstag + 3 Werktage = Dienstag", () => {
+    expect(addWorkdays("2026-10-15", 3)).toBe("2026-10-20");
+  });
+  it("Freitag + 1 Werktag = Montag", () => {
+    expect(addWorkdays("2026-10-16", 1)).toBe("2026-10-19");
+  });
+  it("Wochenende endet sonntags", () => {
+    expect(endOfWeek("2026-10-15")).toBe("2026-10-18");
+    expect(endOfWeek("2026-10-18")).toBe("2026-10-18");
+    expect(endOfWeek("2026-10-19")).toBe("2026-10-25");
+  });
+  it("formatiert deutsch", () => {
+    expect(formatDate("2026-01-05")).toBe("05.01.2026");
+    expect(relativeLabel("2026-10-14", "2026-10-15")).toBe("Gestern");
+  });
+});
+
+describe("todayView", () => {
+  const today = "2026-10-15";
+  const tasks = [
+    T({ title: "überfällig", due_date: "2026-10-10" }),
+    T({ title: "heute", due_date: today }),
+    T({ title: "woche", due_date: "2026-10-18" }),
+    T({ title: "nächste woche", due_date: "2026-10-19" }),
+    T({ title: "erledigt", due_date: today, status: "done" }),
+    T({ title: "gelöscht", due_date: today, deleted_at: "x" }),
+    T({ title: "delegiert heute", assignee_person_id: "p1", follow_up_date: today, due_date: today }),
+    T({ title: "delegiert später", assignee_person_id: "p1", follow_up_date: "2026-10-20" }),
+    T({ title: "delegiert überfällig", assignee_person_id: "p1", due_date: "2026-10-01" }),
+    T({ title: "blockiert", status: "blocked", blocked_reason: "x", due_date: today }),
+  ];
+  const v = todayView(tasks, today);
+  const titles = (l: Task[]) => l.map((t) => t.title);
+
+  it("trennt eigene Fälligkeiten", () => {
+    expect(titles(v.overdue)).toEqual(["überfällig"]);
+    expect(titles(v.today)).toEqual(["heute"]);
+    expect(titles(v.week)).toEqual(["woche"]);
+  });
+  it("delegierte erscheinen unter Nachhaken, nicht unter Meine", () => {
+    expect(titles(v.followUp)).toEqual(["delegiert überfällig", "delegiert heute"]);
+  });
+  it("blockierte gesondert", () => {
+    expect(titles(v.blocked)).toEqual(["blockiert"]);
+  });
+  it("Zähler für den Tab-Titel", () => {
+    expect(todayCount(v)).toBe(4);
+  });
+});
+
+describe("tasks", () => {
+  it("Gruppenfortschritt nennt offene Firmen", () => {
+    const g = "g1";
+    const tasks = [
+      T({ group_id: g, company_id: "a", status: "done" }),
+      T({ group_id: g, company_id: "b", status: "done" }),
+      T({ group_id: g, company_id: "c" }),
+      T({ group_id: g, company_id: "d", deleted_at: "x" }),
+    ];
+    expect(groupProgress(tasks, g)).toEqual({ done: 2, total: 3, openCompanyIds: ["c"] });
+  });
+  it("Blockiert ohne Grund ist ungültig", () => {
+    expect(validateTask({ title: "a", status: "blocked", blocked_reason: " " })).toMatch(/Grund/);
+    expect(validateTask({ title: "a", status: "blocked", blocked_reason: "ERP" })).toBeNull();
+    expect(validateTask({ title: " ", status: "open", blocked_reason: "" })).toMatch(/Titel/);
+  });
+  it("sortiert nach Fälligkeit, dann Priorität", () => {
+    const l = [T({ title: "c" }), T({ title: "b", due_date: "2026-01-02", priority: "low" }), T({ title: "a", due_date: "2026-01-02", priority: "high" })];
+    expect(l.sort(compareTasks).map((t) => t.title)).toEqual(["a", "b", "c"]);
+  });
+  it("URL-Prüfung", () => {
+    expect(isValidUrl("https://firma.sharepoint.com/x")).toBe(true);
+    expect(isValidUrl("firma.sharepoint.com")).toBe(false);
+    expect(isValidUrl("javascript:alert(1)")).toBe(false);
+  });
+});
+
+describe("search", () => {
+  it("findet Aufgaben per Titelteil, auch Umlaute-unabhängig", () => {
+    const db = demoSeed();
+    expect(search(db, "schulung abschliessen")[0]?.title).toBe("Academy-Schulung abschließen");
+    expect(search(db, "academy")[0]?.title).toBe("Academy-Schulung abschließen");
+    expect(search(db, "academy gibtsnicht")).toEqual([]);
+  });
+  it("ist schnell genug bei 2.000 Einträgen", () => {
+    const db = demoSeed();
+    for (let i = 0; i < 2000; i++) db.tasks.push(T({ title: `Aufgabe ${i} Lieferant`, description: "lorem ipsum ".repeat(20) }));
+    const start = performance.now();
+    search(db, "lieferant 1999");
+    expect(performance.now() - start).toBeLessThan(200);
+  });
+});
