@@ -1,9 +1,10 @@
-import { Building2, CheckSquare, Hourglass, Link2, LogOut, Menu, NotebookPen, Plus, Search, Settings, Sun, Trash2, Users, X } from "lucide-react";
+import { Building2, CheckSquare, Download, Hourglass, Link2, LogOut, Menu, NotebookPen, Plus, Search, Settings, Sun, Trash2, Users, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useStore } from "../data/store";
-import { daysBetween, todayIso } from "../logic/dates";
+import { todayIso } from "../logic/dates";
 import { todayCount, todayView } from "../logic/tasks";
+import { useBackup } from "./backup";
 import { SK_LOGO } from "./common";
 import { QuickCapture } from "./QuickCapture";
 import { SearchPalette } from "./SearchPalette";
@@ -52,8 +53,7 @@ export function Layout({ email, onSignOut }: { email: string; onSignOut: () => v
     return () => window.removeEventListener("keydown", onKey);
   }, [capture, searchOpen, openCapture, setSearchOpen, openTaskId]);
 
-  const lastExport = db.app_meta[0]?.last_export_at ?? null;
-  const exportDue = !lastExport || daysBetween(lastExport.slice(0, 10), todayIso()) > 14;
+  const backup = useBackup();
 
   return (
     <div className={`app${menuOpen ? " menu-open" : ""}`}>
@@ -99,6 +99,10 @@ export function Layout({ email, onSignOut }: { email: string; onSignOut: () => v
             <kbd>Strg K</kbd>
           </button>
           <span className="spacer" />
+          <button className="icon-btn backup-btn" onClick={() => void backup.run()} title={backup.label} aria-label={backup.label}>
+            <Download size={18} />
+            {backup.due && <span className="badge-dot" />}
+          </button>
           <button className="btn primary" onClick={() => openCapture()} title="Neu (Taste N)">
             <Plus size={16} /> Neu
           </button>
@@ -106,11 +110,6 @@ export function Layout({ email, onSignOut }: { email: string; onSignOut: () => v
 
         {!online && <div className="banner error">Offline – Änderungen werden gerade nicht gespeichert.</div>}
         {backend.kind === "demo" && <div className="banner info">Demo-Modus mit Beispieldaten</div>}
-        {exportDue && (
-          <div className="banner warn">
-            {lastExport ? "Letztes Backup älter als 14 Tage." : "Noch kein Backup."} <NavLink to="/einstellungen">Exportieren</NavLink>
-          </div>
-        )}
 
         <main className="content">
           <Outlet />

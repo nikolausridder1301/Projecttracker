@@ -544,12 +544,27 @@ kbd {
   font-size: var(--fs-sm);
 }
 .all-clear {
-  font-size: var(--fs-lg);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  padding: 4px 2px;
+}
+.all-clear svg {
   color: var(--green);
-  background: var(--green-bg);
-  text-align: center;
-  padding: 36px;
-  box-shadow: none;
+}
+.backup-btn {
+  position: relative;
+}
+.badge-dot {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--yellow);
+  box-shadow: 0 0 0 2px var(--bg);
 }
 
 /* ---------- Heute ---------- */

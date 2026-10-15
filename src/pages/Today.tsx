@@ -1,4 +1,4 @@
-import { Mail } from "lucide-react";
+import { CheckCircle2, Mail } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useLookups, useStore } from "../data/store";
@@ -26,7 +26,9 @@ export function TodayPage() {
       <TrafficBar />
 
       {allClear ? (
-        <div className="card all-clear">Alles erledigt für heute.</div>
+        <div className="all-clear">
+          <CheckCircle2 size={18} /> Alles erledigt für heute – nichts fällig, niemand zum Nachhaken, nichts blockiert.
+        </div>
       ) : (
         <div className="today-grid">
           {mine > 0 && (
