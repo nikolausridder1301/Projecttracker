@@ -4,6 +4,7 @@ import type { Task, VendorItem } from "../data/types";
 import { addWorkdays, endOfWeek, formatDate, relativeLabel } from "./dates";
 import { copyProjectMasterData, suggestShort } from "./projects";
 import { moveItem, orderNav } from "./nav";
+import { agendaText, buildBriefing } from "./briefing";
 import { search } from "./search";
 import { sinceLabel, validateTrafficChange } from "./traffic";
 import { affectsCompany, ageLabel, isOpenItem, jourFixeText, newVendorItem, showTicket, statusPatch } from "./vendor";
@@ -297,5 +298,54 @@ describe("splitDone", () => {
     ]);
     expect(r.open.map((t) => t.title)).toEqual(["b"]);
     expect(r.done.map((t) => t.title)).toEqual(["c", "a"]);
+  });
+});
+
+describe("briefing", () => {
+  const today = "2026-10-15";
+  const setup = () => {
+    const db = demoSeed();
+    const haz = db.companies.find((c) => c.short === "HAZ")!;
+    const fest = db.companies.find((c) => c.short === "FEST")!;
+    const anna = db.people.find((p) => p.name === "Anna Beispiel")!; // HAZ
+    const max = db.people.find((p) => p.name === "Max Muster")!; // FEST
+    db.tasks = [
+      T({ title: "Anna offen", company_id: haz.id, assignee_person_id: anna.id }),
+      T({ title: "Anna blockiert", company_id: haz.id, assignee_person_id: anna.id, status: "blocked", blocked_reason: "x" }),
+      T({ title: "Meins HAZ", company_id: haz.id }),
+      T({ title: "Max bei HAZ", company_id: haz.id, assignee_person_id: max.id }),
+      T({ title: "Meins FEST", company_id: fest.id }),
+      T({ title: "Erledigt neu", company_id: haz.id, status: "done", done_at: "2026-10-14T10:00:00Z" }),
+      T({ title: "Erledigt alt", company_id: haz.id, status: "done", done_at: "2026-09-01T10:00:00Z" }),
+    ];
+    return { db, haz, anna };
+  };
+
+  it("Person: delegiert an sie, meine + weitere Punkte ihrer Firma", () => {
+    const { db, anna } = setup();
+    const b = buildBriefing(db, { kind: "person", id: anna.id }, today);
+    expect(b.company?.short).toBe("HAZ");
+    expect(b.delegatedToPerson.map((t) => t.title)).toEqual(["Anna blockiert", "Anna offen"]);
+    expect(b.myTasks.map((t) => t.title)).toEqual(["Meins HAZ"]);
+    expect(b.otherTasks.map((t) => t.title)).toEqual(["Max bei HAZ"]);
+  });
+  it("ohne früheres Treffen: erledigt der letzten 14 Tage", () => {
+    const { db, anna } = setup();
+    const b = buildBriefing(db, { kind: "person", id: anna.id }, today);
+    expect(b.doneSinceDate).toBe("2026-10-01");
+    expect(b.doneSince.map((t) => t.title)).toEqual(["Erledigt neu"]);
+  });
+  it("Firma: alle Delegierten unter „weitere“", () => {
+    const { db, haz } = setup();
+    const b = buildBriefing(db, { kind: "company", id: haz.id }, today);
+    expect(b.delegatedToPerson).toEqual([]);
+    expect(b.otherTasks.map((t) => t.title).sort()).toEqual(["Anna blockiert", "Anna offen", "Max bei HAZ"]);
+  });
+  it("Agenda als Checkliste", () => {
+    const { db, anna } = setup();
+    const text = agendaText(buildBriefing(db, { kind: "person", id: anna.id }, today), () => "Max Muster");
+    expect(text).toContain("## Offen bei Anna Beispiel\n- [ ] Anna blockiert (blockiert: x)");
+    expect(text).toContain("- [ ] Max bei HAZ (Max Muster)");
+    expect(text).toContain("## Seit dem letzten Treffen erledigt\n- Erledigt neu");
   });
 });

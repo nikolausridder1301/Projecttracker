@@ -1,4 +1,4 @@
-import { ArrowLeft, Mail } from "lucide-react";
+import { ArrowLeft, Handshake, Mail } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useLookups, useStore } from "../data/store";
@@ -131,6 +131,9 @@ function PersonEditor({ person }: { person: Person }) {
           <ArrowLeft size={16} /> Personen
         </Link>
         <span className="spacer" />
+        <Link to={`/meeting?p=${person.id}`} className="btn">
+          <Handshake size={16} /> Meeting vorbereiten
+        </Link>
         <label className="inline">
           <input type="checkbox" checked={person.active} onChange={(e) => save({ active: e.target.checked })} /> aktiv
         </label>
