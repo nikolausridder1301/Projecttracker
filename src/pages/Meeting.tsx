@@ -1,0 +1,272 @@
+import { ChevronDown, ClipboardCopy, NotebookPen } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useLookups, useStore } from "../data/store";
+import { NOTE_KIND_LABEL, type Id } from "../data/types";
+import { agendaText, buildBriefing, type MeetingTarget } from "../logic/briefing";
+import { formatDate, todayIso } from "../logic/dates";
+import { ageLabel, statusDef } from "../logic/vendor";
+import { Avatar, CompanyLogo, Dropdown, Empty, usePersisted } from "../ui/common";
+import { TaskList, TaskRow } from "../ui/tasks";
+import { TrafficStatus } from "../ui/traffic";
+import { useCaptureContext } from "../ui/uiState";
+import { useVendor } from "../ui/vendor";
+import { KIND_ICON } from "./Notes";
+import { CATEGORY_ICON } from "./Tacto";
+import { FollowUpRow } from "./Today";
+
+// Meeting-Vorbereitung: Person oder Firma wählen → alles Relevante auf einen Blick,
+// filterbar nach Thema, mit Agenda und Protokoll-Start.
+
+const parseTarget = (v: string): MeetingTarget | null =>
+  v.startsWith("p:") ? { kind: "person", id: v.slice(2) } : v.startsWith("c:") ? { kind: "company", id: v.slice(2) } : null;
+
+export function MeetingPage() {
+  const { db, insert, toast } = useStore();
+  const { people, companies, companyById, personById } = useLookups();
+  const vendor = useVendor();
+  const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
+  const [saved, setSaved] = usePersisted<{ target: string }>("meeting", { target: "" });
+  const [topic, setTopic] = useState<Id | null>(null);
+  const today = todayIso();
+
+  // Aufruf von Personen-/Firmenseite (?p=… / ?c=…) übernimmt die Auswahl
+  useEffect(() => {
+    const p = params.get("p");
+    const c = params.get("c");
+    if (p || c) {
+      setSaved({ target: p ? `p:${p}` : `c:${c}` });
+      setParams({}, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params]);
+
+  // Nur gültige Auswahl im aktuellen Projekt
+  const target = useMemo(() => {
+    const t = parseTarget(saved.target);
+    if (!t) return null;
+    const exists = t.kind === "person" ? people.some((p) => p.id === t.id) : companies.some((c) => c.id === t.id);
+    return exists ? t : null;
+  }, [saved.target, people, companies]);
+
+  useEffect(() => setTopic(null), [saved.target]);
+
+  const briefing = useMemo(() => (target ? buildBriefing(db, target, today, topic) : null), [db, target, today, topic]);
+  useCaptureContext(briefing?.company?.id, topic ?? undefined);
+
+  const options = [
+    ...people
+      .filter((p) => p.active)
+      .map((p) => ({ value: `p:${p.id}`, label: `${p.name}${p.company_id ? ` · ${companyById.get(p.company_id)?.short ?? ""}` : ""}` })),
+    ...companies.map((c) => ({ value: `c:${c.id}`, label: `${c.name} (ganze Firma)` })),
+  ];
+  const currentLabel = briefing
+    ? briefing.person
+      ? `${briefing.person.name}${briefing.company ? ` · ${briefing.company.name}` : ""}`
+      : `${briefing.company?.name ?? ""} (ganze Firma)`
+    : "Mit wem triffst du dich?";
+
+  const personName = (id: Id | null) => (id ? (personById.get(id)?.name ?? "") : "");
+
+  const copyAgenda = async () => {
+    if (!briefing) return;
+    try {
+      await navigator.clipboard.writeText(agendaText(briefing, personName));
+      toast("Agenda kopiert");
+    } catch {
+      toast("Kopieren nicht möglich – Browser hat den Zugriff verweigert", "error");
+    }
+  };
+
+  const startProtocol = async () => {
+    if (!briefing) return;
+    const companyId = briefing.company?.id ?? companies.find((c) => c.is_overarching)?.id ?? companies[0]?.id;
+    if (!companyId) return;
+    const who = briefing.person?.name ?? briefing.company?.name ?? "";
+    try {
+      const [n] = await insert("notes", [
+        {
+          title: `Meeting ${who} – ${formatDate(today)}`,
+          body: agendaText(briefing, personName),
+          kind: "meeting",
+          company_id: companyId,
+          topic_id: topic,
+          meeting_date: today,
+          participant_ids: briefing.person ? [briefing.person.id] : [],
+          participants_text: "",
+        },
+      ]);
+      navigate(`/notizen/${n.id}`);
+    } catch {
+      /* Fehler wurde gemeldet */
+    }
+  };
+
+  const b = briefing;
+  const totalOpen = b ? b.delegatedToPerson.length + b.myTasks.length + b.otherTasks.length + b.vendorItems.length : 0;
+
+  return (
+    <div className="page">
+      <div className="page-head">
+        <h1>Meeting</h1>
+        <span className="spacer" />
+        {b && (
+          <>
+            <button className="btn" onClick={() => void copyAgenda()} title="Offene Punkte als Agenda kopieren">
+              <ClipboardCopy size={16} /> <span className="btn-label">Agenda kopieren</span>
+            </button>
+            <button className="btn primary" onClick={() => void startProtocol()} title="Meeting-Protokoll mit Agenda anlegen">
+              <NotebookPen size={16} /> Protokoll starten
+            </button>
+          </>
+        )}
+      </div>
+
+      <Dropdown value={saved.target} options={options} onChange={(v) => setSaved({ target: v })} title="Mit wem triffst du dich?">
+        {(props) => (
+          <button type="button" {...props} className={`meeting-picker${b ? "" : " empty"}`}>
+            {b?.person ? <Avatar name={b.person.name} /> : b?.company ? <CompanyLogo company={b.company} size={24} /> : null}
+            <span className="grow">{currentLabel}</span>
+            <ChevronDown size={18} className="chip-caret" />
+          </button>
+        )}
+      </Dropdown>
+
+      {!b ? (
+        <Empty>Wähle eine Person oder Firma – dann siehst du alle offenen Punkte, Notizen und Themen für das Gespräch.</Empty>
+      ) : (
+        <>
+          <div className="card meeting-head">
+            {b.company && <CompanyLogo company={b.company} size={48} />}
+            <div className="grow">
+              <h2>{b.person?.name ?? b.company?.name}</h2>
+              <div className="muted small">
+                {[b.person?.role, b.person ? b.company?.name : null, b.person?.email].filter(Boolean).join(" · ")}
+              </div>
+              {b.company && (
+                <div className="meeting-traffic">
+                  <TrafficStatus company={b.company} />
+                  {b.company.traffic_comment && <span className="muted small">{b.company.traffic_comment}</span>}
+                </div>
+              )}
+            </div>
+            <div className="meeting-last">
+              <div className="muted small">Letztes Treffen</div>
+              {b.lastMeeting ? (
+                <Link to={`/notizen/${b.lastMeeting.id}`}>{formatDate(b.lastMeeting.meeting_date ?? b.lastMeeting.created_at.slice(0, 10))}</Link>
+              ) : (
+                <span className="muted">–</span>
+              )}
+            </div>
+          </div>
+
+          {b.topics.length > 0 && (
+            <div className="chips meeting-topics" role="group" aria-label="Nach Thema filtern">
+              <button className={`chip${topic === null ? " tone-blue" : ""}`} onClick={() => setTopic(null)}>
+                <span className="chip-text">Alle Themen</span>
+              </button>
+              {b.topics.map((t) => (
+                <button key={t.id} className={`chip${topic === t.id ? " tone-blue" : ""}`} onClick={() => setTopic(topic === t.id ? null : t.id)}>
+                  <span className="chip-text">{t.name}</span>
+                  <span className="muted">{t.count}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {totalOpen === 0 && b.doneSince.length === 0 && b.notes.length === 0 ? (
+            <Empty>Nichts offen{topic ? " zu diesem Thema" : ""}.</Empty>
+          ) : (
+            <div className="meeting-grid">
+              <div className="meeting-col">
+                {b.person && b.delegatedToPerson.length > 0 && (
+                  <Section title={`Offen bei ${b.person.name.split(" ")[0]}`} count={b.delegatedToPerson.length}>
+                    <div className="task-list">
+                      {b.delegatedToPerson.map((t) => (
+                        <FollowUpRow key={t.id} taskId={t.id} />
+                      ))}
+                    </div>
+                  </Section>
+                )}
+                {b.myTasks.length > 0 && (
+                  <Section title="Meine offenen Punkte" count={b.myTasks.length}>
+                    <TaskList tasks={b.myTasks} showCompany={false} />
+                  </Section>
+                )}
+                {b.otherTasks.length > 0 && (
+                  <Section title={b.person ? "Weitere Offene der Firma" : "Delegiert"} count={b.otherTasks.length}>
+                    <TaskList tasks={b.otherTasks} showCompany={false} />
+                  </Section>
+                )}
+                {b.delegatedToPerson.length + b.myTasks.length + b.otherTasks.length === 0 && (
+                  <div className="card empty-inline">Keine offenen Aufgaben{topic ? " zu diesem Thema" : ""}.</div>
+                )}
+              </div>
+              <div className="meeting-col">
+                {vendor && b.vendorItems.length > 0 && (
+                  <Section title={vendor.name} count={b.vendorItems.length}>
+                    {b.vendorItems.map((v) => {
+                      const Icon = CATEGORY_ICON[v.category];
+                      const sd = statusDef(v);
+                      return (
+                        <Link key={v.id} to={`/anbieter?id=${v.id}`} className="vendor-row">
+                          <Icon size={18} className="row-icon" />
+                          <span className="note-main">
+                            <span className="task-title">{v.title}</span>
+                            <span className="task-sub">{ageLabel(v, today, vendor.name)}</span>
+                          </span>
+                          {sd && <span className={`status-pill${sd.tone ? ` tone-${sd.tone}` : ""}`}>{sd.label}</span>}
+                        </Link>
+                      );
+                    })}
+                  </Section>
+                )}
+                {b.doneSince.length > 0 && (
+                  <Section title={b.lastMeeting ? "Seit dem letzten Treffen erledigt" : "In den letzten 14 Tagen erledigt"} count={b.doneSince.length}>
+                    {b.doneSince.map((t) => (
+                      <TaskRow
+                        key={t.id}
+                        task={t}
+                        showCompany={false}
+                        rightLabel={<span className="due">{t.done_at ? formatDate(t.done_at.slice(0, 10)) : ""}</span>}
+                      />
+                    ))}
+                  </Section>
+                )}
+                {b.notes.length > 0 && (
+                  <Section title="Letzte Notizen" count={b.notes.length}>
+                    {b.notes.map((n) => {
+                      const Icon = KIND_ICON[n.kind];
+                      return (
+                        <Link key={n.id} to={`/notizen/${n.id}`} className="note-row">
+                          <Icon size={18} className={`row-icon${n.kind === "decision" ? " tone-blue" : ""}`} aria-label={NOTE_KIND_LABEL[n.kind]} />
+                          <span className="note-main">
+                            <span className="task-title">{n.title}</span>
+                            {n.body && <span className="task-sub">{n.body.replace(/[#*_>`[\]-]/g, "").replace(/\s+/g, " ").slice(0, 90)}</span>}
+                          </span>
+                          <span className="due">{formatDate(n.meeting_date ?? n.created_at.slice(0, 10))}</span>
+                        </Link>
+                      );
+                    })}
+                  </Section>
+                )}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function Section({ title, count, children }: { title: string; count: number; children: React.ReactNode }) {
+  return (
+    <section className="card">
+      <h2 className="group-title">
+        {title} <span className="muted">{count}</span>
+      </h2>
+      {children}
+    </section>
+  );
+}

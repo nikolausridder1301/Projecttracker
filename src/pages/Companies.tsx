@@ -1,4 +1,4 @@
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Handshake } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useLookups, useStore } from "../data/store";
@@ -107,6 +107,10 @@ function CompanyView({ company }: { company: Company }) {
       <div className="page-head">
         <Link to="/firmen" className="back-link">
           <ArrowLeft size={16} /> Firmen
+        </Link>
+        <span className="spacer" />
+        <Link to={`/meeting?c=${company.id}`} className="btn">
+          <Handshake size={16} /> Meeting vorbereiten
         </Link>
       </div>
       <div className="card company-head">
