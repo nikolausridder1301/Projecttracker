@@ -6,7 +6,7 @@ import { NOTE_KIND_LABEL, type Id, type Note, type NoteKind } from "../data/type
 import { formatDate } from "../logic/dates";
 import { isActive } from "../logic/tasks";
 import { AttachedLinks } from "../ui/links";
-import { AutoText, ChipDate, ChipSelect, CompanyBadge, CompanySelect, Disclosure, Empty, TopicSelect, usePersisted } from "../ui/common";
+import { AutoText, ChipDate, ChipSelect, CompanyBadge, CompanySelect, Disclosure, Empty, usePersisted } from "../ui/common";
 import { TaskList } from "../ui/tasks";
 import { useCaptureContext, useUi } from "../ui/uiState";
 
@@ -23,7 +23,7 @@ export function NotesPage() {
   const { db } = useStore();
   const { openCapture } = useUi();
   const [f, setF] = usePersisted<NoteFilter>("notes", { kind: "", company: "", topic: "", q: "" });
-  useCaptureContext(f.company || undefined, f.topic || undefined);
+  useCaptureContext(f.company || undefined);
   const set = (p: Partial<NoteFilter>) => setF({ ...f, ...p });
 
   const notes = useMemo(() => {
@@ -32,7 +32,6 @@ export function NotesPage() {
       .filter(isActive)
       .filter((n) => !f.kind || n.kind === f.kind)
       .filter((n) => !f.company || n.company_id === f.company)
-      .filter((n) => !f.topic || n.topic_id === f.topic)
       .filter((n) => !q || n.title.toLowerCase().includes(q) || n.body.toLowerCase().includes(q))
       .sort((a, b) => noteDate(b).localeCompare(noteDate(a)));
   }, [db.notes, f]);
@@ -59,7 +58,6 @@ export function NotesPage() {
           ))}
         </div>
         <CompanySelect className="compact" value={f.company} onChange={(v) => set({ company: v })} allowAll="Alle Firmen" />
-        <TopicSelect className="compact" value={f.topic} onChange={(v) => set({ topic: v })} emptyLabel="Alle Themen" />
         <input className="compact" placeholder="Filtern…" value={f.q} onChange={(e) => set({ q: e.target.value })} />
       </div>
       {notes.length === 0 ? (
@@ -102,10 +100,10 @@ export function NoteDetailPage() {
 
 function NoteEditor({ note }: { note: Note }) {
   const { db, update, trash } = useStore();
-  const { people, companies, topics } = useLookups();
+  const { people, companies } = useLookups();
   const { openCapture } = useUi();
   const navigate = useNavigate();
-  useCaptureContext(note.company_id, note.topic_id ?? undefined);
+  useCaptureContext(note.company_id);
   const [title, setTitle] = useState(note.title);
   const [body, setBody] = useState(note.body);
   const [participantsText, setParticipantsText] = useState(note.participants_text);
@@ -123,7 +121,6 @@ function NoteEditor({ note }: { note: Note }) {
       type: "task",
       title: sel.replace(/^[-*]\s*(\[ \]\s*)?/, "").split("\n")[0],
       companyId: note.company_id,
-      topicId: note.topic_id ?? undefined,
       sourceNoteId: note.id,
     });
   };
@@ -169,16 +166,6 @@ function NoteEditor({ note }: { note: Note }) {
             value={note.company_id}
             options={companies.map((c) => ({ value: c.id, label: c.short }))}
             onChange={(v) => save({ company_id: v })}
-          />
-          <ChipSelect
-            title="Thema"
-            value={note.topic_id ?? ""}
-            placeholder="Thema"
-            options={[
-              { value: "", label: "Kein Thema" },
-              ...topics.filter((t) => !t.archived || t.id === note.topic_id).map((t) => ({ value: t.id, label: t.name })),
-            ]}
-            onChange={(v) => save({ topic_id: v || null })}
           />
           <ChipDate
             icon={<CalendarDays size={14} />}
@@ -238,7 +225,7 @@ function NoteEditor({ note }: { note: Note }) {
               className="icon-btn"
               title="Neuer Link"
               onClick={() =>
-                openCapture({ type: "link", companyId: note.company_id, topicId: note.topic_id ?? undefined, attachTo: { noteId: note.id } })
+                openCapture({ type: "link", companyId: note.company_id, attachTo: { noteId: note.id } })
               }
             >
               <Plus size={16} />

@@ -16,6 +16,7 @@ import {
   GripVertical,
   Handshake,
   Hourglass,
+  LayoutGrid,
   Link2,
   NotebookPen,
   Sparkles,
@@ -45,6 +46,7 @@ interface NavItem {
 function allNavItems(vendorName: string | null): NavItem[] {
   return [
     { key: "today", to: "/", label: "Heute", icon: Sun },
+    { key: "progress", to: "/fortschritt", label: "Fortschritt", icon: LayoutGrid },
     { key: "tasks", to: "/aufgaben", label: "Aufgaben", icon: CheckSquare },
     { key: "waiting", to: "/wartet", label: "Wartet auf…", icon: Hourglass },
     { key: "meeting", to: "/meeting", label: "Meeting", icon: Handshake },

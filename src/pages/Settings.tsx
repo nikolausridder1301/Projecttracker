@@ -97,7 +97,7 @@ function ProjectSettings() {
         </label>
       </div>
       <p className="muted small settings-hint">
-        Firmen, Personen, Themen und Kategorien unten gelten nur für dieses Projekt.
+        Firmen, Personen, Meilensteine und Kategorien unten gelten nur für dieses Projekt.
       </p>
       <button
         className="btn ghost"
@@ -232,7 +232,8 @@ function TopicsSettings() {
   };
   return (
     <section className="card">
-      <h2>Themen</h2>
+      <h2>Meilensteine</h2>
+      <p className="muted small settings-hint">Zeilen der Fortschritts-Matrix – je Firma bekommt jeder Meilenstein einen Status.</p>
       {all.map((t, i) => (
         <div key={t.id} className={`row settings-row${t.archived ? " inactive" : ""}`}>
           <RenameInput value={t.name} onSave={(name) => void update("topics", t.id, { name })} />
@@ -256,7 +257,7 @@ function TopicsSettings() {
           setName("");
         }}
       >
-        <input placeholder="Neues Thema" value={name} onChange={(e) => setName(e.target.value)} />
+        <input placeholder="Neuer Meilenstein" value={name} onChange={(e) => setName(e.target.value)} />
         <button className="btn" type="submit">
           Hinzufügen
         </button>

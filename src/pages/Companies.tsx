@@ -9,6 +9,7 @@ import { affectsCompany, ageLabel, categoryDef, isOpenItem, statusDef } from "..
 import { CompanyLogo, Empty, TrafficDot } from "../ui/common";
 import { LinkRow } from "../ui/links";
 import { useCaptureContext, useUi } from "../ui/uiState";
+import { CompanyMilestones } from "../ui/milestones";
 import { TrafficDialog, TrafficHistoryList, TrafficStatus } from "../ui/traffic";
 import { useVendor } from "../ui/vendor";
 import { CATEGORY_ICON } from "./Tacto";
@@ -72,11 +73,11 @@ export function CompanyDetailPage() {
   return <CompanyView key={c.id} company={c} />;
 }
 
-type Tab = "tasks" | "notes" | "links" | "tacto" | "ampel";
+type Tab = "ms" | "tasks" | "notes" | "links" | "tacto" | "ampel";
 
 function CompanyView({ company }: { company: Company }) {
   const { db } = useStore();
-  const { people, topicById } = useLookups();
+  const { people } = useLookups();
   const { openCapture } = useUi();
   const [tab, setTab] = useState<Tab>("tasks");
   const [trafficOpen, setTrafficOpen] = useState(false);
@@ -88,9 +89,9 @@ function CompanyView({ company }: { company: Company }) {
     priority: "",
     due: "",
     showDone: false,
-    groupBy: "topic",
+    groupBy: "",
   });
-  useCaptureContext(company.id, f.topic || undefined);
+  useCaptureContext(company.id);
 
   const tasks = useMemo(() => applyFilter(db.tasks, f), [db.tasks, f]);
   const notes = db.notes.filter((n) => isActive(n) && n.company_id === company.id).sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
@@ -139,6 +140,7 @@ function CompanyView({ company }: { company: Company }) {
       <div className="tabs">
         {(
           [
+            ["ms", "Meilensteine"],
             ["tasks", `Aufgaben (${db.tasks.filter((t) => isActive(t) && isOpen(t) && t.company_id === company.id).length})`],
             ["notes", `Notizen (${notes.length})`],
             ["links", `Links (${links.length})`],
@@ -151,7 +153,7 @@ function CompanyView({ company }: { company: Company }) {
           </button>
         ))}
         <span className="spacer" />
-        {tab !== "tacto" && tab !== "ampel" && (
+        {tab !== "tacto" && tab !== "ampel" && tab !== "ms" && (
           <button
             className="btn primary"
             onClick={() => openCapture({ type: tab === "tasks" ? "task" : tab === "notes" ? "note" : "link", companyId: company.id })}
@@ -176,7 +178,6 @@ function CompanyView({ company }: { company: Company }) {
               <Link key={n.id} to={`/notizen/${n.id}`} className="note-row">
                 <span className="note-main">
                   <span className="task-title">{n.title}</span>
-                  {n.topic_id && <span className="muted small">{topicById.get(n.topic_id)?.name}</span>}
                 </span>
               </Link>
             ))}
@@ -214,6 +215,11 @@ function CompanyView({ company }: { company: Company }) {
             })}
           </div>
         ))}
+      {tab === "ms" && (
+        <div className="card">
+          <CompanyMilestones company={company} />
+        </div>
+      )}
       {tab === "ampel" && (
         <div className="card">
           <TrafficHistoryList companyId={company.id} />

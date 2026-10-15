@@ -191,7 +191,7 @@ function NewProjectDialog({ onClose }: { onClose: () => void }) {
           <select value={source} onChange={(e) => setSource(e.target.value)}>
             {projects.map((p) => (
               <option key={p.id} value={p.id}>
-                Firmen, Personen, Themen und Kategorien aus „{p.name}“ übernehmen
+                Firmen, Personen, Meilensteine und Kategorien aus „{p.name}“ übernehmen
               </option>
             ))}
             <option value="">Leer starten</option>

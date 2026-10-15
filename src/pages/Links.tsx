@@ -3,7 +3,7 @@ import { useLookups, useStore } from "../data/store";
 import type { Id, Link } from "../data/types";
 import { isActive, isValidUrl } from "../logic/tasks";
 import { LinkRow } from "../ui/links";
-import { CompanySelect, Empty, TopicSelect, usePersisted } from "../ui/common";
+import { CompanySelect, Empty, usePersisted } from "../ui/common";
 import { useCaptureContext, useUi } from "../ui/uiState";
 
 interface LinkFilter {
@@ -18,7 +18,7 @@ export function LinksPage() {
   const { categories } = useLookups();
   const { openCapture } = useUi();
   const [f, setF] = usePersisted<LinkFilter>("links", { company: "", topic: "", category: "", q: "" });
-  useCaptureContext(f.company || undefined, f.topic || undefined);
+  useCaptureContext(f.company || undefined);
   const set = (p: Partial<LinkFilter>) => setF({ ...f, ...p });
   const [editing, setEditing] = useState<Id | null>(null);
 
@@ -27,7 +27,6 @@ export function LinksPage() {
     return db.links
       .filter(isActive)
       .filter((l) => !f.company || l.company_id === f.company)
-      .filter((l) => !f.topic || l.topic_id === f.topic)
       .filter((l) => !f.category || l.category_id === f.category)
       .filter((l) => !q || `${l.title} ${l.url} ${l.description}`.toLowerCase().includes(q))
       .sort((a, b) => a.title.localeCompare(b.title, "de"));
@@ -45,7 +44,6 @@ export function LinksPage() {
       </div>
       <div className="filters">
         <CompanySelect value={f.company} onChange={(v) => set({ company: v })} allowAll="Alle Firmen" />
-        <TopicSelect value={f.topic} onChange={(v) => set({ topic: v })} emptyLabel="Alle Themen" />
         <select value={f.category} onChange={(e) => set({ category: e.target.value })}>
           <option value="">Alle Kategorien</option>
           {categories.map((c) => (
@@ -104,7 +102,6 @@ function LinkEditor({ link, onDone }: { link: Link; onDone: () => void }) {
         <input value={v.title} onChange={(e) => setV({ ...v, title: e.target.value })} placeholder="Titel" />
         <input value={v.url} onChange={(e) => setV({ ...v, url: e.target.value })} placeholder="https://…" />
         <CompanySelect value={v.company_id} onChange={(c) => setV({ ...v, company_id: c })} />
-        <TopicSelect value={v.topic_id ?? ""} onChange={(t) => setV({ ...v, topic_id: t || null })} />
         <select value={v.category_id ?? ""} onChange={(e) => setV({ ...v, category_id: e.target.value || null })}>
           <option value="">– keine Kategorie –</option>
           {categories.map((c) => (

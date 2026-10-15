@@ -6,6 +6,7 @@ import type { Db } from "./data/types";
 import { CompaniesPage, CompanyDetailPage } from "./pages/Companies";
 import { LinksPage } from "./pages/Links";
 import { MeetingPage } from "./pages/Meeting";
+import { ProgressPage } from "./pages/Progress";
 import { NoteDetailPage, NotesPage } from "./pages/Notes";
 import { PeoplePage, PersonDetailPage } from "./pages/People";
 import { SettingsPage } from "./pages/Settings";
@@ -70,6 +71,7 @@ function DataGate({ backend, email }: { backend: Backend; email: string }) {
               <Route path="aufgaben" element={<TasksPage />} />
               <Route path="wartet" element={<WaitingPage />} />
               <Route path="meeting" element={<MeetingPage />} />
+              <Route path="fortschritt" element={<ProgressPage />} />
               <Route path="notizen" element={<NotesPage />} />
               <Route path="notizen/:id" element={<NoteDetailPage />} />
               <Route path="anbieter" element={<TactoPage />} />

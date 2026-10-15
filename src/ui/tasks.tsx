@@ -297,7 +297,7 @@ export function TaskPanel() {
 
 function TaskEditor({ task, onClose }: { task: Task; onClose: () => void }) {
   const { db, update, trash, toast } = useStore();
-  const { companies, topics, people, companyById, noteById, personById } = useLookups();
+  const { companies, people, companyById, noteById, personById } = useLookups();
   const { mailto, setDone } = useTaskActions();
   const { openCapture } = useUi();
   const [title, setTitle] = useState(task.title);
@@ -399,16 +399,6 @@ function TaskEditor({ task, onClose }: { task: Task; onClose: () => void }) {
           placeholder="Fällig"
           format={(v) => `fällig ${relativeLabel(v, today)}`}
           tone={task.due_date && task.due_date < today && task.status !== "done" ? "red" : undefined}
-        />
-        <ChipSelect
-          title="Thema"
-          value={task.topic_id ?? ""}
-          placeholder="Thema"
-          options={[
-            { value: "", label: "Kein Thema" },
-            ...topics.filter((t) => !t.archived || t.id === task.topic_id).map((t) => ({ value: t.id, label: t.name })),
-          ]}
-          onChange={(v) => save({ topic_id: v || null })}
         />
         <ChipSelect
           title="Priorität"
@@ -546,7 +536,7 @@ function TaskEditor({ task, onClose }: { task: Task; onClose: () => void }) {
             className="icon-btn"
             title="Neuer Link"
             onClick={() =>
-              openCapture({ type: "link", companyId: task.company_id, topicId: task.topic_id ?? undefined, attachTo: { taskId: task.id } })
+              openCapture({ type: "link", companyId: task.company_id, attachTo: { taskId: task.id } })
             }
           >
             <Plus size={16} />

@@ -113,6 +113,29 @@ export function demoSeed(): Db {
     }),
   ];
 
+  // Beispiel-Fortschritt: einige Meilensteine bei einigen Firmen
+  const demoMilestones = () => {
+    const [, hazC, almC, maxC, , festC] = companies;
+    const st = (topic: number, company: { id: string }, status: Db["milestone_status"][number]["status"], extra: object = {}) => ({
+      ...base(),
+      topic_id: topics[topic].id,
+      company_id: company.id,
+      status,
+      target_date: null,
+      comment: "",
+      ...extra,
+    });
+    return [
+      st(1, hazC, "done"),
+      st(1, almC, "done"),
+      st(1, festC, "delayed", { comment: "Nur Test-Datei empfangen, Ticket beim ERP-Anbieter", target_date: addDays(today, -5) }),
+      st(2, hazC, "at_risk", { comment: "Schreibfunktion in Arbeit", target_date: addDays(today, 14) }),
+      st(3, almC, "on_track"),
+      st(3, maxC, "on_track", { target_date: addDays(today, 30) }),
+      st(11, hazC, "on_track"),
+    ];
+  };
+
   const projects = [
     {
       ...meta(),
@@ -140,5 +163,6 @@ export function demoSeed(): Db {
     app_meta: [{ ...meta(), last_export_at: null, nav_order: [] }],
     vendor_items: [],
     traffic_history: [],
+    milestone_status: demoMilestones(),
   };
 }

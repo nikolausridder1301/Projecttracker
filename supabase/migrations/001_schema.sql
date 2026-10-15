@@ -197,6 +197,22 @@ create table traffic_history (
   deleted_at timestamptz
 );
 
+-- Fortschritt je Meilenstein (Thema) und Firma
+create table milestone_status (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references projects (id),
+  topic_id uuid not null references topics (id) on delete cascade,
+  company_id uuid not null references companies (id) on delete cascade,
+  status text not null default 'not_started'
+    check (status in ('not_started', 'on_track', 'at_risk', 'delayed', 'done', 'n_a')),
+  target_date date,
+  comment text not null default '',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  deleted_at timestamptz,
+  unique (topic_id, company_id)
+);
+
 create table app_meta (
   id uuid primary key default gen_random_uuid(),
   last_export_at timestamptz,
@@ -227,6 +243,8 @@ create index on task_followups (task_id);
 create index on vendor_items (category);
 create index on traffic_history (company_id);
 create index on traffic_history (project_id);
+create index on milestone_status (project_id);
+create index on milestone_status (company_id);
 
 -- ---------------------------------------------------------------------------
 -- Zugriff: nur freigeschaltete Nutzer (Einzelnutzer-Betrieb, SPEC.md 3).
@@ -262,7 +280,7 @@ declare
 begin
   foreach t in array array[
     'projects', 'companies', 'topics', 'link_categories', 'people', 'notes', 'tasks',
-    'task_followups', 'links', 'attachments', 'app_meta', 'vendor_items', 'traffic_history'
+    'task_followups', 'links', 'attachments', 'app_meta', 'vendor_items', 'traffic_history', 'milestone_status'
   ] loop
     execute format('create trigger %I before update on %I for each row execute function set_updated_at()', t || '_updated_at', t);
     execute format('alter table %I enable row level security', t);

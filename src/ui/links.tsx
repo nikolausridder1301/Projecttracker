@@ -15,7 +15,7 @@ function hostOf(url: string): string {
 }
 
 export function LinkRow({ link, actions }: { link: Link; actions?: React.ReactNode }) {
-  const { categoryById, topicById } = useLookups();
+  const { categoryById } = useLookups();
   return (
     <div className="link-row">
       <Link2 size={18} className="row-icon" aria-hidden />
@@ -26,7 +26,6 @@ export function LinkRow({ link, actions }: { link: Link; actions?: React.ReactNo
         <span className="task-meta">
           <CompanyBadge id={link.company_id} />
           {link.category_id && <span className="badge">{categoryById.get(link.category_id)?.name}</span>}
-          {link.topic_id && <span className="muted">{topicById.get(link.topic_id)?.name}</span>}
           <span className="muted small">{hostOf(link.url)}</span>
         </span>
         {link.description && <span className="muted small">{link.description}</span>}
