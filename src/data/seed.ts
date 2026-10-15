@@ -121,5 +121,6 @@ export function demoSeed(): Db {
     links: [],
     attachments: [],
     app_meta: [{ ...base(), last_export_at: null }],
+    vendor_items: [],
   };
 }

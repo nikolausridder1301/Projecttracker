@@ -137,6 +137,30 @@ create table attachments (
   constraint exactly_one_target check ((task_id is null) <> (note_id is null))
 );
 
+-- Tacto-Punkte: Feature Requests, Fragen, Bugs, Best Practices, Fails & Claims
+create table vendor_items (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  body text not null default '',
+  category text not null check (category in ('feature', 'question', 'bug', 'best_practice', 'claim')),
+  status text not null default '',
+  -- leer = betrifft alle Gesellschaften
+  company_ids uuid[] not null default '{}',
+  topic_id uuid references topics (id),
+  priority text not null default 'medium' check (priority in ('high', 'medium', 'low')),
+  contact_person_id uuid references people (id),
+  ticket text not null default '',
+  answer text not null default '',
+  promised text not null default '',
+  actual text not null default '',
+  evidence_url text not null default '',
+  reported_at date,
+  status_changed_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  deleted_at timestamptz
+);
+
 create table app_meta (
   id uuid primary key default gen_random_uuid(),
   last_export_at timestamptz,
@@ -151,6 +175,7 @@ create index on tasks (group_id);
 create index on notes (company_id);
 create index on links (company_id);
 create index on task_followups (task_id);
+create index on vendor_items (category);
 
 -- ---------------------------------------------------------------------------
 -- Zugriff: nur freigeschaltete Nutzer (Einzelnutzer-Betrieb, SPEC.md 3).
@@ -186,7 +211,7 @@ declare
 begin
   foreach t in array array[
     'companies', 'topics', 'link_categories', 'people', 'notes', 'tasks',
-    'task_followups', 'links', 'attachments', 'app_meta'
+    'task_followups', 'links', 'attachments', 'app_meta', 'vendor_items'
   ] loop
     execute format('create trigger %I before update on %I for each row execute function set_updated_at()', t || '_updated_at', t);
     execute format('alter table %I enable row level security', t);

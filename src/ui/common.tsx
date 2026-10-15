@@ -164,6 +164,60 @@ export function ChipDate({
   );
 }
 
+/** Mehrfachauswahl als Chip mit kleinem Aufklapp-Menü (z. B. betroffene Firmen). */
+export function ChipMulti({
+  icon,
+  label,
+  empty,
+  title,
+  options,
+  selected,
+  onChange,
+  allLabel,
+}: {
+  icon?: ReactNode;
+  label: string;
+  empty?: boolean;
+  title: string;
+  options: ChipOption[];
+  selected: string[];
+  onChange: (v: string[]) => void;
+  /** Text für „nichts gewählt“ (z. B. „Alle Firmen“) */
+  allLabel?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
+    window.addEventListener("mousedown", onDown);
+    return () => window.removeEventListener("mousedown", onDown);
+  }, [open]);
+  const toggle = (v: string) => onChange(selected.includes(v) ? selected.filter((x) => x !== v) : [...selected, v]);
+  return (
+    <span className="popover-anchor" ref={ref}>
+      <button type="button" className={`chip${empty ? " chip-empty" : ""}`} title={title} onClick={() => setOpen(!open)} aria-expanded={open}>
+        {icon}
+        <span className="chip-text">{label}</span>
+      </button>
+      {open && (
+        <div className="popover popover-list">
+          {allLabel && (
+            <label className="inline">
+              <input type="checkbox" className="check" checked={selected.length === 0} onChange={() => onChange([])} /> {allLabel}
+            </label>
+          )}
+          {options.map((o) => (
+            <label key={o.value} className="inline">
+              <input type="checkbox" className="check" checked={selected.includes(o.value)} onChange={() => toggle(o.value)} /> {o.label}
+            </label>
+          ))}
+        </div>
+      )}
+    </span>
+  );
+}
+
 /** Aufklappbarer Bereich – standardmäßig zu, Inhalt nur bei Bedarf. */
 export function Disclosure({
   title,

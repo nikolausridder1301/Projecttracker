@@ -5,9 +5,11 @@ import { useLookups, useStore } from "../data/store";
 import { TRAFFIC_LABEL, type Company } from "../data/types";
 import { formatDateTime, todayIso } from "../logic/dates";
 import { isActive, isOpen } from "../logic/tasks";
+import { affectsCompany, ageLabel, categoryDef, isOpenItem, statusDef } from "../logic/vendor";
 import { CompanyLogo, Empty, TrafficDot } from "../ui/common";
 import { LinkRow } from "../ui/links";
 import { useCaptureContext, useUi } from "../ui/uiState";
+import { CATEGORY_ICON } from "./Tacto";
 import { TrafficPicker } from "./Today";
 import { GroupedTasks, TaskFilterBar, applyFilter, type TaskFilter } from "./Tasks";
 
@@ -69,7 +71,7 @@ export function CompanyDetailPage() {
   return <CompanyView key={c.id} company={c} />;
 }
 
-type Tab = "tasks" | "notes" | "links";
+type Tab = "tasks" | "notes" | "links" | "tacto";
 
 function CompanyView({ company }: { company: Company }) {
   const { db } = useStore();
@@ -90,6 +92,10 @@ function CompanyView({ company }: { company: Company }) {
 
   const tasks = useMemo(() => applyFilter(db.tasks, f), [db.tasks, f]);
   const notes = db.notes.filter((n) => isActive(n) && n.company_id === company.id).sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+  // Offene Tacto-Punkte, die diese Gesellschaft betreffen (auf der Tacto-Seite selbst: alle offenen)
+  const vendorItems = db.vendor_items
+    .filter((i) => isActive(i) && isOpenItem(i) && (company.is_external || affectsCompany(i, company.id)))
+    .sort((a, b) => (a.reported_at ?? a.created_at) < (b.reported_at ?? b.created_at) ? -1 : 1);
   const links = db.links.filter((l) => isActive(l) && l.company_id === company.id).sort((a, b) => a.title.localeCompare(b.title, "de"));
   const contacts = people.filter((p) => p.company_id === company.id && p.active);
 
@@ -124,6 +130,7 @@ function CompanyView({ company }: { company: Company }) {
             ["tasks", `Aufgaben (${db.tasks.filter((t) => isActive(t) && isOpen(t) && t.company_id === company.id).length})`],
             ["notes", `Notizen (${notes.length})`],
             ["links", `Links (${links.length})`],
+            ["tacto", `Tacto (${vendorItems.length})`],
           ] as [Tab, string][]
         ).map(([k, label]) => (
           <button key={k} className={`tab${tab === k ? " active" : ""}`} onClick={() => setTab(k)}>
@@ -131,12 +138,14 @@ function CompanyView({ company }: { company: Company }) {
           </button>
         ))}
         <span className="spacer" />
-        <button
-          className="btn primary"
-          onClick={() => openCapture({ type: tab === "tasks" ? "task" : tab === "notes" ? "note" : "link", companyId: company.id })}
-        >
-          + {tab === "tasks" ? "Aufgabe" : tab === "notes" ? "Notiz" : "Link"}
-        </button>
+        {tab !== "tacto" && (
+          <button
+            className="btn primary"
+            onClick={() => openCapture({ type: tab === "tasks" ? "task" : tab === "notes" ? "note" : "link", companyId: company.id })}
+          >
+            + {tab === "tasks" ? "Aufgabe" : tab === "notes" ? "Notiz" : "Link"}
+          </button>
+        )}
       </div>
 
       {tab === "tasks" && (
@@ -168,6 +177,28 @@ function CompanyView({ company }: { company: Company }) {
             {links.map((l) => (
               <LinkRow key={l.id} link={l} />
             ))}
+          </div>
+        ))}
+      {tab === "tacto" &&
+        (vendorItems.length === 0 ? (
+          <Empty>Keine offenen Tacto-Punkte.</Empty>
+        ) : (
+          <div className="card list-card">
+            {vendorItems.map((i) => {
+              const Icon = CATEGORY_ICON[i.category];
+              const sd = statusDef(i);
+              return (
+                <Link key={i.id} to={`/tacto?id=${i.id}`} className="vendor-row">
+                  <Icon size={18} className="row-icon" />
+                  <span className="note-main">
+                    <span className="task-title">{i.title}</span>
+                    <span className="task-sub">{categoryDef(i.category).label}</span>
+                  </span>
+                  {sd && <span className={`status-pill${sd.tone ? ` tone-${sd.tone}` : ""}`}>{sd.label}</span>}
+                  <span className="age">{ageLabel(i, todayIso())}</span>
+                </Link>
+              );
+            })}
           </div>
         ))}
     </div>

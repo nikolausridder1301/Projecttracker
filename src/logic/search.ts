@@ -1,7 +1,8 @@
 import type { Db, Id } from "../data/types";
 import { isActive } from "./tasks";
+import { categoryDef } from "./vendor";
 
-export type HitType = "task" | "note" | "link" | "person";
+export type HitType = "task" | "note" | "vendor" | "link" | "person";
 
 export interface Hit {
   type: HitType;
@@ -55,6 +56,15 @@ export function search(db: Db, query: string, limitPerType = 8): Hit[] {
       title: n.title,
       sub: company(n.company_id),
       score: score(n.title, `${n.body} ${n.participants_text}`),
+    })),
+  );
+  push(
+    db.vendor_items.filter(isActive).map((v) => ({
+      type: "vendor",
+      id: v.id,
+      title: v.title,
+      sub: categoryDef(v.category).label,
+      score: score(v.title, `${v.body} ${v.answer} ${v.promised} ${v.actual} ${v.ticket}`),
     })),
   );
   push(
