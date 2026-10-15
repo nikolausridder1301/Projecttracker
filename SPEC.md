@@ -1,261 +1,259 @@
 # Projecttracker – Spezifikation
 
-**Stand:** 15.10.2026
+**Stand:** 15.10.2026 (überarbeitet nach Umsetzung und Feedback-Runden)
 **Repository:** github.com/nikolausridder1301/Projecttracker
-**Status:** Entwurf nach Anforderungsklärung mit Nikolaus – zur Freigabe
+**Live:** https://nikolausridder1301.github.io/Projecttracker/
+**Status:** Umgesetzt und live; diese Fassung beschreibt den aktuellen Stand inklusive aller seither getroffenen Entscheidungen (siehe Abschnitt 11).
 
 ---
 
 ## 1. Ziel
 
-Ein persönliches Projektleiter-Cockpit für den Tacto-Rollout über die Gesellschaften der SK Group. Nikolaus soll sich trotz vieler paralleler Themen in Sekunden zurechtfinden:
+Ein persönliches Projektleiter-Cockpit für Rollouts in der SK Group – zuerst Tacto, künftig weitere Projekte mit derselben Struktur. Nikolaus soll sich trotz vieler paralleler Themen in Sekunden zurechtfinden:
 
 - **Eigene Aufgaben** planen und abarbeiten.
-- **Delegierte Aufgaben** an Personen der Gesellschaften nachhalten (wer, bis wann, wann zuletzt nachgehakt).
-- **Notizen, Meeting-Protokolle und Entscheidungen** festhalten und wiederfinden.
-- **Links** zu Dokumenten (SharePoint/Teams/Web) zentral sammeln.
-- **Gesamtlage** je Gesellschaft auf einen Blick sehen (Ampel).
+- **Delegierte Aufgaben** nachhalten: wer, bis wann, wann zuletzt nachgefragt, was gesagt wurde.
+- **Fortschritt je Gesellschaft** über Meilensteine sehen und die Firmen-Ampel bewusst setzen.
+- **Meetings vorbereiten:** alles Relevante zu einer Person oder Firma auf einen Blick.
+- **Notizen, Protokolle, Entscheidungen** festhalten; **Links** zu Dokumenten sammeln.
+- **Anbieter-Themen** (bei Tacto: Feature Requests, Fragen, Bugs, Best Practices, Fails & Claims) mit Status verfolgen.
 
-Die Leitfrage für jede Design-Entscheidung: *Was muss ich heute tun, wem muss ich hinterherlaufen, wo brennt es?*
+Leitfrage für jede Design-Entscheidung: *Was muss ich heute tun, wem muss ich hinterherlaufen, wo brennt es?* Leitprinzip seit den Feedback-Runden: **so einfach wie möglich** – nur zeigen, was gebraucht wird; Nebensächliches eingeklappt oder weggelassen.
 
 ## 2. Nutzer
 
 - **Einziger Nutzer:** Nikolaus (Projektleiter). Kein Mehrbenutzerbetrieb, keine Rollen.
-- Delegierte Personen arbeiten **nicht** im Tool; Nikolaus pflegt ihren Stand selbst. Das ist bewusst so gewollt, nicht eine fehlende Ausbaustufe.
+- Delegierte Personen arbeiten **nicht** im Tool; Nikolaus pflegt ihren Stand selbst. Das ist bewusst so gewollt.
 
-## 3. Einschränkungen und Rahmenbedingungen
+## 3. Rahmenbedingungen
 
 | Thema | Entscheidung |
 |---|---|
-| Hosting Frontend | GitHub Pages, Repo wird **öffentlich** geschaltet (kostenlos). Im Code stehen keine Geheimnisse und keine Projektdaten. |
-| Datenhaltung | Supabase (Postgres), Projekt in der **EU-Region (Frankfurt)**, kostenloser Plan. |
-| Zugriffsschutz | Supabase Auth (E-Mail + Passwort), **Registrierung deaktiviert**, genau ein Account. **Row Level Security** auf allen Tabellen: ohne Login keine Daten. Kein Client-seitiger „Passwort-Hash“-Schutz wie bei tacto – der würde bei Datenbankzugriff nichts schützen. |
-| Dokumente | **Keine Dateiuploads.** Dokumente bleiben im SharePoint, im Tool liegen nur Links. |
-| Firmen & Logos | Die 6 Gesellschaften + SK Group (Holding = „Übergreifend“) werden mit Logos aus dem öffentlichen Repo `tacto` übernommen; Logos liegen im Code. |
-| Technik | React + TypeScript + Vite, Build und Deploy per GitHub Actions. Supabase JS Client direkt aus dem Browser (anon key ist öffentlich by design). |
-| Geräte | Desktop-first (Laptop, Edge/Chrome). Handy: Grundfunktionen (siehe 6.8). |
-| Verbindung | Online-only. Kein Offline-Bearbeiten. |
+| Hosting | GitHub Pages, Repo **öffentlich** (kostenlos). Im Code stehen keine Geheimnisse und keine Projektdaten. |
+| Datenhaltung | Supabase (Postgres), Projekt `projecttracker` in der **EU-Region Frankfurt**, kostenloser Plan. |
+| Zugriffsschutz | Supabase Auth (E-Mail + Passwort), **Registrierung deaktiviert**. Row Level Security auf allen Tabellen, zusätzlich **Freigabeliste** `allowed_users`: nur freigeschaltete Konten sehen Daten – auch wenn die Registrierung versehentlich an wäre. Ein Passwortschutz nur im Frontend wurde verworfen (schützt die Datenbank nicht). |
+| Login | Bleibt bestehen (Wunsch, ihn während der Testphase zu entfernen, wurde verworfen). Sitzung bleibt pro Browser erhalten. |
+| Dokumente | **Keine Dateiuploads.** Dokumente bleiben im SharePoint, im Tool nur Links. Ausnahme: Firmenlogos liegen im Code. |
+| Technik | React + TypeScript + Vite; Icons von Lucide; Drag-and-Drop mit dnd-kit; Supabase JS direkt im Browser (publishable key ist öffentlich by design). |
+| Geräte | Desktop-first; Handy für die wichtigsten Abläufe (siehe 6.15). |
+| Verbindung | Online-only. Kein Offline-Bearbeiten; Entwürfe bleiben lokal erhalten. |
+| Aktualisierung | Keine Live-Synchronisierung zwischen Geräten – Änderungen auf einem anderen Gerät erscheinen nach Neuladen. |
 | Sprache | Oberfläche komplett Deutsch, Datumsformat `TT.MM.JJJJ`, Woche beginnt Montag. |
 | Kosten | 0 € laufend (GitHub Free, Supabase Free). |
-| Lokale Entwicklung | Projektpfad enthält `&` („Schmidt, Kranz & Co. GmbH“) → `.npmrc` mit `script-shell` auf Git Bash, wie in tacto. |
+| Lokale Entwicklung | Projektpfad enthält `&` → lokale `.npmrc` mit `script-shell` auf Git Bash. Ohne `.env` startet die App im Demo-Modus mit Beispieldaten. |
 
-### Bewusst nicht in Version 1
+### Bewusst nicht vorgesehen
 
-Mehrbenutzer/Delegierte mit Zugang · Dateiuploads · E-Mail-/Push-Erinnerungen · Kalender-Export · Offline-Modus · echte Unteraufgaben · Import-Funktion in der App · Dark Mode · Meilensteine/Phasen/Go-live-Termine je Firma · Verknüpfung zu tacto-Daten.
+Mehrbenutzer/Zugang für Delegierte · Dateiuploads · E-Mail-/Push-Erinnerungen · Kalender-Export · Offline-Modus · echte Unteraufgaben (stattdessen Checkliste) · Import-Funktion · Dark Mode · Markdown-Darstellung · **Themen-Zuordnung an Aufgaben, Notizen, Links und Anbieter-Punkten** (Themen sind nur noch Meilensteine) · **neue Beschreibungen und Link-Anhänge an Aufgaben** · Verknüpfung zu tacto-/ERP-Daten.
 
-## 4. Stammdaten (Startbelegung)
+## 4. Struktur und Stammdaten
 
-### 4.1 Firmen
+### 4.1 Projekte
 
-| Kürzel | Name | Logo (aus tacto) |
+- Oben links **Projekt-Umschalter**: aktuelles Projekt (Kürzel-Badge in Projektfarbe + Name), Liste aller Projekte, „Neues Projekt…“, „Projekteinstellungen“.
+- **Alles gehört zu einem Projekt** – auch Firmen und Personen. Ein neues Projekt kann Firmen, Personen, Meilensteine und Link-Kategorien eines bestehenden Projekts **als Kopie** übernehmen (Ampeln starten neutral); Aufgaben, Notizen, Links und Anbieter-Punkte werden nicht kopiert. Danach ist jedes Projekt unabhängig anpassbar.
+- Projekte lassen sich archivieren; das letzte aktive Projekt nicht.
+- Erstes Projekt: **„Tacto“** (Kürzel TAC) mit allen bisherigen Daten.
+
+### 4.2 Firmen (Projekt „Tacto“)
+
+| Kürzel | Name | Rolle |
 |---|---|---|
-| SK | SK Group (Holding) – gilt als **„Übergreifend“** | `sk.jpg` |
-| HAZ | HAZEMAG | `hazemag.jpg` |
-| ALM | Allmineral | `allmineral.png` |
-| MAX | Maximator | `maximator.png` |
-| MXH | Maximator Hydrogen | `maximator-hydrogen.jpg` |
-| FEST | FEST | `fest.jpg` |
-| PER | Perforator | `perforator.png` |
+| SK | SK Group (Übergreifend) | Holding, „übergreifend“ |
+| HAZ | HAZEMAG | Gesellschaft |
+| ALM | Allmineral | Gesellschaft |
+| MAX | Maximator | Gesellschaft |
+| MXH | Maximator Hydrogen | Gesellschaft |
+| FEST | FEST | Gesellschaft |
+| PER | Perforator | Gesellschaft |
+| TAC | Tacto | **externer Partner** (Software-Anbieter) |
 
-Je Firma zusätzlich: Farbe (für Badges), Ampel (Grün/Gelb/Rot) + Ampelkommentar + „Ampel geändert am“. Kürzel und Farben sind in den Einstellungen änderbar; neue Firmen anlegbar (ohne Logo → Kürzel-Badge).
+Logos aus dem Repo `tacto`, Tacto-Logo von Nikolaus. Externe Partner zählen nicht zu „Alle Gesellschaften“ und erscheinen nicht in der Fortschritts-Matrix. Je Firma: Farbe, Kürzel, Ampel mit Begründung und Verlauf.
 
-### 4.2 Themen
+### 4.3 Meilensteine (früher „Themen“)
 
-Aus tacto: Datentransfer: lesen · Datentransfer: schreiben · Warengruppen · Analytics · Einsparungen (Hinweise) · RFQs · Agenten · Lieferantenabfragen · Lieferantenbewertungen · Auftragsbestätigung.
-Zusätzlich: Projektmanagement/Allgemein · Schulung/Academy · Stammdaten.
-In den Einstellungen anleg-, umbenenn-, sortier- und archivierbar.
+Die 13 Startthemen (10 tacto-Module plus Projektmanagement/Allgemein, Schulung/Academy, Stammdaten) sind jetzt **Meilensteine**: die Zeilen der Fortschritts-Matrix. In den Einstellungen umbenenn-, sortier-, ergänz- und archivierbar.
 
-### 4.3 Link-Kategorien
+### 4.4 Personen
+
+Je Projekt, mit Firma, Rolle, E-Mail, Telefon. Angelegt: 10 Kontakte der Gesellschaften sowie Julius Reinboth (Customer Value Manager) und Arman Gall (Solution Engineer) bei Tacto. Personen mit offenen Aufgaben lassen sich nicht löschen, nur inaktiv setzen.
+
+### 4.5 Link-Kategorien
 
 Konzept · Vertrag/Angebot · Schulung · Technik · Protokoll · Sonstiges (änderbar).
 
-### 4.4 Was Nikolaus vor dem Start bereitstellen muss
-
-1. **Supabase-Account** anlegen und ein Projekt in Region *Frankfurt (eu-central-1)* erstellen – Schritt-für-Schritt-Anleitung liefert die Umsetzung (`ANLEITUNG.md`).
-2. Im Supabase-Dashboard den **eigenen Login-User** anlegen (E-Mail + Passwort). Das Passwort gibt Nikolaus selbst ein, nie im Chat.
-3. **Repo auf öffentlich** stellen und GitHub Pages (Quelle: GitHub Actions) aktivieren.
-4. Projekt-URL und anon key als GitHub-Repository-Variablen hinterlegen (Anleitung).
-5. Optional zum Start: **Personenliste** (Name, Firma, Rolle, E-Mail) – kann aber auch direkt in der App gepflegt werden.
-
 ## 5. Datenmodell
 
-Alle Tabellen: `id uuid`, `created_at`, `updated_at`, `deleted_at` (Papierkorb, `null` = aktiv). RLS-Policy: nur `authenticated` darf lesen/schreiben.
+Alle Tabellen: `id`, `created_at`, `updated_at`, `deleted_at` (Papierkorb). Projektbezogene Tabellen tragen `project_id`. RLS: nur freigeschaltete Konten (`private.is_allowed()`).
 
-**companies** – `name`, `short`, `color`, `logo_key`, `is_overarching bool`, `traffic_light (green|yellow|red)`, `traffic_comment`, `traffic_changed_at`, `sort`.
+| Tabelle | Inhalt |
+|---|---|
+| `projects` | Name, Kürzel, Farbe, `vendor_company_id` (Anbieter-Bereich an/aus), Sortierung, archiviert |
+| `companies` | Name, Kürzel, Farbe, Logo-Schlüssel, übergreifend, **extern**, Ampel + Begründung + Zeitpunkt |
+| `traffic_history` | Ampel-Verlauf: Firma, von, nach, Begründung |
+| `topics` | **Meilensteine** (Name, Sortierung, archiviert) |
+| `milestone_status` | Stand je Meilenstein und Firma: Status, Zieldatum, Kommentar (eindeutig je Paar) |
+| `people` | Personen je Projekt |
+| `tasks` | Titel, Firma, Verantwortlich (`null` = ich), Status, Grund bei „Blockiert“, Priorität, fällig, nächstes Nachhaken, Checkliste, Gruppe (Mehrfirmen), Herkunfts-Protokoll; Beschreibung nur noch für Altbestand |
+| `task_followups` | Nachfragen: Datum, Notiz |
+| `notes` | Notiz / Meeting-Protokoll / Entscheidung, Firma, Datum, Teilnehmer, Text |
+| `links`, `link_categories`, `attachments` | Link-Sammlung; Anhänge an Notizen (an Aufgaben nur Altbestand) |
+| `vendor_items` | Anbieter-Punkte: Kategorie, Status, betroffene Firmen (leer = alle), Priorität, Ansprechpartner, Ticket, Antwort, Versprochen/Tatsächlich/Beleg, Meldedatum |
+| `app_meta` | letzter Export, **Menü-Reihenfolge** (`nav_order`) |
+| `allowed_users` | Freigabeliste (keine API-Rechte) |
 
-**topics** – `name`, `sort`, `archived bool`.
-
-**people** – `name`, `company_id`, `role`, `email`, `phone?`, `active bool`. Personen mit offenen Aufgaben können nicht gelöscht, nur auf inaktiv gesetzt werden.
-
-**tasks**
-- `title` (Pflicht), `description` (Markdown)
-- `company_id` (Pflicht, Default aus Kontext, sonst SK/Übergreifend), `topic_id?`
-- `assignee_person_id?` – `null` = **„Ich“**, sonst Delegation
-- `status`: `open | in_progress | blocked | done`; `blocked_reason` (Pflicht bei `blocked`)
-- `priority`: `high | medium | low` (Default `medium`)
-- `due_date?`, `follow_up_date?` (nur bei Delegation sinnvoll), `done_at?`
-- `checklist jsonb` – Liste `{text, done}`
-- `group_id?` – verbindet Kopien aus „Für mehrere Firmen anlegen“
-- `source_note_id?` – Protokoll, aus dem die Aufgabe entstand
-
-**task_followups** – `task_id`, `date`, `note?`. Ein Eintrag pro „Nachgehakt“.
-
-**notes** – `title`, `body` (Markdown), `kind`: `note | meeting | decision`, `company_id`, `topic_id?`, `meeting_date?`, `participants` (Personen-IDs + Freitext).
-
-**links** – `title`, `url`, `company_id`, `topic_id?`, `category`, `description?`.
-
-**attachments** – `link_id` + genau eines von `task_id` / `note_id`. (Links lassen sich an Aufgaben und Notizen hängen.)
-
-**app_meta** – `last_export_at`.
-
-**RPC `ping()`** – gibt `1` zurück, für `anon` erlaubt, liest keine Daten (Keep-alive, siehe 7.3).
+Die Spalten `topic_id` an Aufgaben, Notizen, Links und Anbieter-Punkten bestehen noch, werden aber nicht mehr angezeigt oder gesetzt. Migrationen: `001`/`002` für Neuinstallationen, `005`–`010` für die schrittweise Erweiterung.
 
 ## 6. Funktionen und Oberfläche
 
-### 6.1 Layout
+### 6.1 Design-Grundsätze
 
-Look wie tacto (helle Flächen, Akzent `#2563c9`, Ampelfarben als Soft-Badges, Inter, Karten mit 16 px Radius). Linke Seitenleiste:
+- Eine Schrift (Inter), feste Größenskala (12/13/14/16/20/24 px), Icons statt Emojis.
+- **Nichts springt:** Aktiv/Hover ändern nur Farben, nie Schriftstärke oder Größe.
+- **Chips statt beschrifteter Felder:** Eigenschaften als kleine Pillen; leere Werte blass. Klick öffnet eine **eigene Auswahlliste im App-Design** (Haken an der Auswahl, Tastatur, Suche ab 9 Einträgen) statt des Browser-Menüs.
+- Nebensächliches eingeklappt (Checkliste, Verlauf); leere Bereiche ausgeblendet.
 
-**Heute** · **Aufgaben** · **Delegiert** · **Notizen** · **Links** · **Personen** · **Firmen** · *(unten)* Papierkorb · Einstellungen · Export · Abmelden.
+### 6.2 Navigation
 
-Oben: SK-Logo, globale Suche, „+ Neu“-Button. Firmen erscheinen überall als Badge (Logo klein bzw. Kürzel in Firmenfarbe).
+Seitenleiste (Reihenfolge per **Drag-and-Drop** änderbar, gilt für alle Projekte und Geräte; zurücksetzbar in den Einstellungen):
+**Heute · Fortschritt · Aufgaben · Delegiert · Meeting · Notizen · {Anbieter, z. B. Tacto} · Links · Personen · Firmen** – unten Papierkorb, Einstellungen, Abmelden.
+Kopfzeile: globale Suche (Strg+K), Backup-Icon, „+ Neu“ (Taste N).
 
-### 6.2 Startseite „Heute“
+### 6.3 Heute
 
-1. **Ampelleiste:** 7 Firmen nebeneinander (Logo, Ampel, Kommentar als Tooltip). Klick → Firmenseite. Ampel direkt per Klick änderbar.
-2. **Meine Fälligen:** Aufgaben mit Verantwortlich = Ich und `status ≠ done`, gruppiert *Überfällig* / *Heute* / *Diese Woche*.
-3. **Heute nachhaken:** delegierte, nicht erledigte Aufgaben mit `follow_up_date ≤ heute` (oder Fälligkeit überschritten), sortiert nach Dringlichkeit.
-4. **Blockiert:** alle blockierten Aufgaben mit Grund.
+1. **Ampelleiste** der Firmen – **nur Anzeige**: Logo, Kürzel, ein Punkt, „seit …“, farbiger Rand bei Gelb/Rot. Klick öffnet den Ampel-Dialog (6.10).
+2. **Meine Fälligen** (überfällig / heute / diese Woche), **Heute nachhaken**, **Blockiert** – leere Bereiche entfallen; sind alle leer, erscheint eine schlichte Zeile „Alles erledigt für heute“.
+3. Bei mehreren Projekten: Umschalter **„Dieses Projekt | Alle Projekte“**; in der Gesamtansicht trägt jede Aufgabe ihr Projekt-Kürzel, ein Klick wechselt ins Projekt.
+4. Tab-Titel und Menü-Zähler zeigen die Anzahl offener Heute-Punkte.
 
-Sind 2–4 leer: Hinweis „Alles erledigt für heute.“ Browser-Tab-Titel zeigt Anzahl der Punkte in 2+3, z. B. `(5) Projecttracker`.
+### 6.4 Fortschritt (Meilensteine)
 
-### 6.3 Aufgaben
+- **Matrix:** Meilensteine (Zeilen) × Gesellschaften (Spalten, ohne externe Partner).
+- **Zelle:** Status *Nicht gestartet · Läuft · Kritisch · Verzögert · Abgeschlossen · Nicht relevant*, optional Zieldatum und Kommentar; Klick öffnet einen Dialog.
+- Überschrittenes Zieldatum → Zelle rot umrandet, Hinweis mit Anzahl oben.
+- Spaltenkopf: Fortschritt je Firma (abgeschlossen von relevant).
+- Auf der Firmenseite dieselben Meilensteine als Liste.
 
-- Listenansicht (Tabelle) mit Filtern: Firma, Thema, Verantwortlich (Ich / Person / alle Delegierten), Status, Priorität, Fälligkeit; Gruppierung wahlweise nach Firma, Thema, Person, Status. Filter bleiben pro Ansicht gemerkt (localStorage).
-- Erledigte standardmäßig ausgeblendet (Schalter „Erledigte zeigen“), aber durchsuchbar.
-- Abhaken direkt in der Liste. Statuswechsel auf *Blockiert* öffnet Pflichtfeld „Grund“.
-- Detailansicht als Seitenpanel: alle Felder, Checkliste mit Fortschritt (3/7), Nachhak-Verlauf, angehängte Links, Herkunfts-Protokoll.
-- **„Für mehrere Firmen anlegen“:** Mehrfachauswahl Firmen → je Firma eine eigene Aufgabe mit gemeinsamer `group_id`. In Liste und Detail sichtbar als Gruppe mit Fortschritt („5/7 erledigt“, fehlende Firmen benannt).
+### 6.5 Aufgaben
 
-### 6.4 Delegiert (früher „Wartet auf…“)
+- Liste mit Schnellfilter **Alle | Meine | Delegiert**, Firma und „Filter“-Knopf (Person, Status, Priorität, Fälligkeit, Gruppierung nach Firma/Person/Status, Erledigte zeigen).
+- **Erledigte getrennt:** offene oben (gruppiert), darunter Trennlinie „Erledigt“ und die erledigten Aufgaben nach Erledigt-Datum, neueste zuerst.
+- **Detail-Panel:** Titel, Chips **Status · Firma · Verantwortlich · Fällig · Priorität**; „Blockiert“ nur mit Grund; Delegations-Box (6.6); Checkliste (eingeklappt, bis Punkte existieren).
+- **Keine neuen Beschreibungen und Link-Anhänge** mehr – vorhandene werden weiter angezeigt.
+- **„Für mehrere Firmen anlegen“** erzeugt je Firma eine Aufgabe als Gruppe („2/6 Firmen“); „Alle Gesellschaften“ ohne Holding und externe Partner.
+- Löschen mit „Rückgängig“ und Papierkorb.
 
-Alle delegierten offenen Aufgaben, gruppiert nach Person (mit Firma). Je Aufgabe: Fälligkeit, nächstes Nachhak-Datum, Anzahl bisheriger Nachfragen, letzte Notiz.
+### 6.6 Delegiert und Nachhaken
 
-- **„Nachgehakt“:** speichert Datum + optionale Notiz im Verlauf und schlägt neues Nachhak-Datum **+3 Werktage** vor (Mo–Fr, Feiertage nicht berücksichtigt), änderbar.
-- **Mail-Button:** öffnet `mailto:` an die Person mit Betreff `Nachfrage: <Titel>` und kurzem Text (Titel, Fälligkeit, Beschreibung).
+- Menüpunkt **„Delegiert“** (früher „Wartet auf…“): offene Delegationen nach Person.
+- **„Nachfrage notieren“**: Notiz („Was hast du gefragt oder erfahren?“), nächstes Nachhaken per Schnellwahl (in 3 Tagen · 1 Woche · 2 Wochen · keins · Datum) mit Vorschau, Option **„Damit erledigt – Aufgabe abschließen“**, Mail-Button (vorausgefülltes `mailto:`).
+- **Jede Nachfrage bleibt** als eigener Eintrag; **Verlauf als Zeitleiste** im Panel, einzeln löschbar.
+- Zeilen zeigen **rechts den Grund** („Frist seit 2 T. überschritten“, „Heute nachhaken“) bzw. den nächsten Termin und **darunter den Stand** („3× nachgefragt · zuletzt …“).
+- Ein Nachhak-Termin erzeugt **keine eigene Aufgabe** – die delegierte Aufgabe erscheint am Stichtag unter „Heute nachhaken“.
 
-### 6.5 Schnellerfassung
+### 6.7 Meeting-Vorbereitung
 
-Tastenkürzel **N** (außerhalb von Eingabefeldern) oder „+ Neu“ öffnet ein schwebendes Feld. Typ wählbar (Aufgabe Default / Notiz / Link). Titel tippen + Enter = gespeichert. Firma und Thema werden aus der aktuellen Ansicht übernommen (z. B. Firmenseite HAZEMAG); weitere Felder (Verantwortlich, Fällig, Priorität) optional ausklappbar. Kein weiteres Pflichtfeld.
+- Person oder ganze Firma wählen (Suche; letzte Auswahl bleibt), auch per „Meeting vorbereiten“ auf Personen-/Firmenseiten.
+- **Briefing:** **Offen bei der Person** (mit „Nachfrage notieren“), **meine offenen Punkte**, **weitere Offene der Firma**, rechts **Anbieter-Punkte** der Firma und **letzte Notizen** – Blockiertes zuerst. Leere Bereiche entfallen; ohne rechte Inhalte nutzt die Liste die volle Breite. Kein Kopfbereich und kein „Erledigt“-Rückblick (kein Mehrwert).
+- **Nichts offen:** schlichte Karte „Mit … ist gerade nichts offen“ mit Button **„Aufgabe anlegen“** (Firma vorbelegt).
+- **„Protokoll starten“** legt ein Meeting-Protokoll mit Teilnehmer, Firma, Datum und Agenda-Checkliste an; **„Agenda kopieren“** in die Zwischenablage.
 
-### 6.6 Notizen
+### 6.8 Notizen
 
-- Arten: **Notiz**, **Meeting-Protokoll** (Datum, Teilnehmer), **Entscheidung**. Filter nach Art, Firma, Thema; Volltextsuche.
-- Markdown-Editor mit Vorschau (Überschriften, Listen, Fett, Links, Checkboxen).
-- Im Protokoll: Text markieren oder Button „Aufgabe daraus“ → Schnellerfassung vorbelegt mit Firma/Thema und `source_note_id`. Die Notiz zeigt ihre daraus entstandenen Aufgaben inkl. Status.
+Arten **Notiz · Meeting-Protokoll · Entscheidung**; Chips für Art, Firma, Datum; Teilnehmer bei Protokollen; Text als mitwachsendes Feld (keine Markdown-Darstellung). **„Aufgabe daraus“** übernimmt markierten Text als Aufgabe, verknüpft in beide Richtungen; Bereiche klappen auf, sobald sie Inhalt bekommen. Links lassen sich an Notizen hängen.
 
-### 6.7 Links, Personen, Firmen
+### 6.9 Anbieter-Bereich (bei Tacto: „Tacto“)
 
-- **Links:** Sammlung mit Filtern (Firma, Thema, Kategorie), Öffnen in neuem Tab, Anhängen an Aufgaben/Notizen. URL-Validierung (nur `http(s)`).
-- **Personen:** Liste mit Firma, Rolle, E-Mail; Detail zeigt alle an sie delegierten Aufgaben und Teilnahmen an Protokollen.
-- **Firmenseite:** Logo, Ampel + Kommentar, Ansprechpartner, dann Tabs *Aufgaben* / *Notizen* / *Links* – jeweils vorgefiltert. Neue Einträge von hier übernehmen die Firma automatisch.
+- Optional je Projekt (Projekteinstellungen: Anbieter-Firma oder „Aus“); Menüpunkt trägt den Anbieternamen.
+- Reiter **Features · Fragen · Bugs · Best Practices · Claims** mit Zahl der offenen Punkte; Firmenfilter; Erledigte über „X erledigte anzeigen“.
+- **Erfassen per Zeile** oben in der Liste (Titel + Enter, kein Platzhalter-Eintrag).
+- Status je Kategorie; beim ersten Weg zum Anbieter wird das Meldedatum gesetzt („seit 23 T. bei Tacto“).
+- Detail: Chips Status · Firmen (Mehrfachauswahl, leer = alle) · Priorität; Ansprechpartner und Kategorie hinter „Mehr…“; Ticketfeld erst ab Meldung; Fragen mit Antwort (setzt „Beantwortet“, „Als Best Practice übernehmen“); Claims mit Versprochen/Tatsächlich/Beleg.
+- **„Für Jour fixe kopieren“**: offene Punkte nach Kategorie als Text.
 
-### 6.8 Mobil (< 768 px)
+### 6.10 Firmen, Ampel, Personen, Links
 
-Seitenleiste wird Menü. Voll nutzbar: Heute-Ansicht, Abhaken, Schnellerfassung, Nachgehakt. Übrige Ansichten lesbar, Bearbeitung darf eingeschränkt komfortabel sein.
+- **Ampel ändern nur im Dialog:** Grün/Gelb/Rot, **Begründung Pflicht bei Gelb und Rot**, jede Änderung im **Ampel-Verlauf**. Der Dialog zeigt einen **Vorschlag aus den Meilensteinen** (verzögert/überfällig → Rot, kritisch → Gelb) mit „Übernehmen“ – die Entscheidung bleibt manuell.
+- **Firmenseite:** Logo, Ampel, Ansprechpartner, „Meeting vorbereiten“; Reiter Meilensteine · Aufgaben · Notizen · Links · Anbieter · Ampel-Verlauf.
+- **Personen:** Liste und Detail (delegierte Aufgaben, Teilnahmen), „Meeting vorbereiten“.
+- **Links:** zentrale Sammlung mit Firma und Kategorie, URL-Prüfung (nur `http(s)`).
 
-### 6.9 Globale Suche
+### 6.11 Schnellerfassung
 
-**Strg+K** öffnet Suche über Aufgaben, Notizen, Links, Personen (Titel + Inhalt), Ergebnisse gruppiert nach Typ, inkl. erledigter Aufgaben, Navigation per Tastatur.
+Taste **N** oder „+ Neu“: Typ (Aufgabe/Notiz/Link), Titel, Enter. Chips für Firma (aus dem Kontext vorbelegt), Mehrere Firmen, Verantwortlich, Fällig, Priorität bzw. Art/Kategorie. Entwürfe bleiben erhalten.
 
-### 6.10 Löschen
+### 6.12 Suche
 
-Löschen setzt `deleted_at` → Eintrag im **Papierkorb**, von dort wiederherstellbar oder endgültig löschbar (mit Bestätigung). Direkt nach dem Löschen 5 Sekunden „Rückgängig“-Hinweis. Gelöschte Einträge erscheinen nirgends sonst (auch nicht in Suche/Zählern).
+**Strg+K** über Aufgaben, Notizen, Anbieter-Punkte, Links und Personen des aktuellen Projekts.
 
-### 6.11 Export / Backup
+### 6.13 Papierkorb
 
-Button **„Export als JSON“** lädt alle Tabellen (inkl. Papierkorb) als eine Datei `projecttracker-backup-JJJJ-MM-TT.json` herunter und setzt `last_export_at`. Ist der letzte Export älter als 14 Tage, zeigt die App einen dezenten Hinweis-Banner. (Ein Wiederherstellen aus der Datei ist nicht Teil von V1; im Notfall per Skript.)
+Gelöschtes landet im Papierkorb (je Projekt), wiederherstellbar oder endgültig löschbar; 5 Sekunden „Rückgängig“.
+
+### 6.14 Backup und Einstellungen
+
+- **Backup** per Download-Icon in der Kopfzeile (alle Projekte, JSON); oranger Punkt, wenn das letzte Backup älter als 14 Tage ist. Keine Banner-Leiste.
+- **Einstellungen:** Projekt (Name, Kürzel, Farbe, Anbieter-Bereich, Archivieren) · Menü (Standard-Reihenfolge) · Firmen (inkl. „Partner“) · Meilensteine · Link-Kategorien · Backup.
+
+### 6.15 Mobil
+
+Seitenleiste als Menü; Heute, Abhaken, Schnellerfassung, Nachfrage notieren und alle Dialoge ohne seitliches Scrollen; breite Tabellen (Fortschritt) scrollen in sich.
 
 ## 7. Technik und Betrieb
 
-### 7.1 Aufbau
-
-- `src/` React + TypeScript, Routing per Hash-Router (GitHub Pages ohne Server-Rewrites).
-- Datenzugriff gekapselt in einer Schicht (`src/data/`), Typen aus dem DB-Schema.
-- `supabase/migrations/` – SQL für Tabellen, RLS-Policies, Seed (Firmen, Themen, Kategorien), `ping()`.
-- Tests mit Vitest für Logik (Fälligkeits-Gruppierung, Werktage-Rechnung, Filter, Gruppenfortschritt).
-
-### 7.2 Deployment
-
-GitHub Action bei Push auf `main`: install → test → build → Deploy auf Pages. Supabase-URL und anon key als Repository-Variablen, zur Build-Zeit injiziert.
-
-### 7.3 Keep-alive
-
-Geplante GitHub Action (alle 3 Tage) ruft `ping()` mit dem anon key auf, damit das kostenlose Supabase-Projekt nicht nach 7 Tagen Inaktivität pausiert. Kein Datenzugriff.
-
-### 7.4 Sitzung & Fehler
-
-- Login-Maske beim ersten Aufruf; Sitzung bleibt bestehen (Refresh-Token), Abmelden manuell.
-- Verbindungsverlust → fester Banner „Offline – Änderungen werden nicht gespeichert“. Offene Eingaben (Schnellerfassung, Notiz-Editor) werden lokal als Entwurf gesichert und nach Neuladen angeboten.
-- Fehlgeschlagenes Speichern wird sichtbar gemeldet; nichts geht „still“ verloren.
+- **Aufbau:** `src/data` (Typen, Backend Supabase/Demo, Store), `src/logic` (reine Logik mit Tests: Datum, Heute, Suche, Anbieter, Projekte, Menü, Ampel, Meilensteine, Briefing), `src/ui` (gemeinsame Bausteine), `src/pages` (Ansichten), `supabase/migrations`.
+- **Store:** lädt alles einmal, aktualisiert optimistisch (Rücknahme bei Fehler); `db` = aktuelles Projekt, `allDb` = Gesamtbestand; `project_id` wird beim Anlegen automatisch gesetzt.
+- **Ablauf für Änderungen:** Feature-Branch → Pull Request → Merge auf `main` → GitHub Action baut, testet und veröffentlicht. Datenbankänderungen als Migration; bei neuen Pflichtspalten ein Übergangs-Standardwert, damit die laufende Version bis zum Deploy weiter speichert.
+- **Keep-alive:** GitHub Action alle 3 Tage ruft `ping()` auf.
+- **Sitzung & Fehler:** Login bleibt bestehen; Offline-Hinweis; Fehler beim Speichern werden gemeldet.
 
 ## 8. Risiken und Tradeoffs
 
 | Risiko | Umgang |
 |---|---|
-| Firmendaten in externer Cloud | EU-Region, keine Dateien, echte Auth + RLS. Nikolaus verantwortet die Freigabe intern. |
-| Supabase Free pausiert / keine Backups | Keep-alive-Action, JSON-Export mit 14-Tage-Erinnerung. Upgrade auf Pro (~25 $/Monat) jederzeit möglich. |
-| RLS falsch konfiguriert → Daten offen | Akzeptanztest mit anon key (siehe 9); Policies als Migration versioniert. |
-| Pflegeaufwand zu hoch → Tool wird nicht genutzt | Minimale Pflichtfelder, Schnellerfassung, Kontext-Defaults. |
-| Öffentlicher Code | Enthält nur Logos/Firmennamen (bereits über tacto öffentlich), keine Daten. |
-| Online-only | Bewusster Verzicht; Entwurfsschutz verhindert Datenverlust beim Tippen. |
-| Single-User-Annahme | Delegierte bekommen keinen Zugang; spätere Öffnung erfordert Umbau von RLS und Auth. |
+| Firmendaten in externer Cloud | EU-Region, keine Dateien, Login + RLS + Freigabeliste. Interne Freigabe verantwortet Nikolaus. |
+| Supabase Free pausiert / keine Backups | Keep-alive, JSON-Backup mit Erinnerung; Upgrade jederzeit möglich. |
+| Öffentlicher Code | Nur Code, Logos und Firmennamen (bereits über tacto öffentlich), keine Daten. |
+| Keine Live-Synchronisierung | Bei Arbeit auf mehreren Geräten neu laden; bei Bedarf nachrüstbar. |
+| Pflegeaufwand | Minimal gehaltene Felder, Schnellerfassung, Kontext-Vorbelegung, Vorschläge statt Pflichtpflege. |
 
-## 9. Akzeptanzkriterien
+## 9. Akzeptanzkriterien (Auszug, alle umgesetzt und getestet)
 
-**Sicherheit**
-- [ ] Aufruf der Seite ohne Login zeigt nur die Login-Maske.
-- [ ] Ein direkter REST-Aufruf mit dem anon key auf jede Tabelle liefert **keine** Datensätze und kann nichts schreiben.
-- [ ] Selbstregistrierung ist deaktiviert (Signup-Versuch schlägt fehl).
-- [ ] Im Repo und im Build stehen keine Secrets außer URL + anon key.
-
-**Heute & Navigation**
-- [ ] Nach Login erscheint „Heute“ mit Ampelleiste (7 Firmen mit Logo) und den drei Blöcken; Überfälliges ist optisch hervorgehoben.
-- [ ] Eine delegierte Aufgabe mit Nachhak-Datum heute erscheint unter „Heute nachhaken“, nicht unter „Meine Fälligen“.
-- [ ] Tab-Titel zeigt die korrekte Anzahl offener Heute-Punkte.
-- [ ] Jede Ansicht ist von der Seitenleiste mit einem Klick erreichbar; Strg+K findet einen Eintrag per Titelteil in < 1 s bei 2.000 Einträgen.
-
-**Aufgaben & Delegation**
-- [ ] Schnellerfassung: N → Titel → Enter legt eine Aufgabe an; auf der Firmenseite HAZEMAG ist die Firma automatisch HAZEMAG, sonst SK/Übergreifend.
-- [ ] Status „Blockiert“ ist ohne Grund nicht speicherbar.
-- [ ] „Für mehrere Firmen anlegen“ mit 6 Firmen erzeugt 6 Aufgaben; nach Erledigen von 2 zeigt die Gruppe „2/6“ und nennt die offenen Firmen.
-- [ ] „Nachgehakt“ an einem Donnerstag schlägt den folgenden Dienstag vor und erhöht den Nachfragezähler.
-- [ ] Mail-Button öffnet das Mailprogramm mit Empfänger, Betreff und Text.
-- [ ] Checkliste zeigt Fortschritt (x/y) in Liste und Detail.
-- [ ] Erledigte Aufgaben verschwinden aus Standardansichten, sind über Suche und Filter „Erledigte zeigen“ auffindbar.
-
-**Notizen & Links**
-- [ ] Notiz-Arten sind filterbar; „Entscheidungen von Firma X zu Thema Y“ ist mit zwei Filtern auffindbar.
-- [ ] Aus einem Protokoll angelegte Aufgabe zeigt das Protokoll als Herkunft, das Protokoll listet die Aufgabe mit Status.
-- [ ] Ein Link lässt sich an eine Aufgabe und an eine Notiz hängen und erscheint zusätzlich in der Link-Sammlung.
-- [ ] Ungültige URLs (ohne `http(s)://`) werden abgelehnt.
-
-**Stammdaten**
-- [ ] Startbelegung: 7 Firmen mit Logos, 13 Themen, 6 Link-Kategorien vorhanden.
-- [ ] Person mit offenen Aufgaben kann nicht gelöscht, nur inaktiv gesetzt werden; inaktive Personen sind bei Neuanlage nicht mehr auswählbar, bestehende Zuordnungen bleiben sichtbar.
-- [ ] Ampel einer Firma ist von „Heute“ und der Firmenseite änderbar, Änderungsdatum wird gespeichert.
-
-**Löschen & Backup**
-- [ ] Gelöschter Eintrag ist per „Rückgängig“ (5 s) und aus dem Papierkorb wiederherstellbar; endgültiges Löschen nur mit Bestätigung.
-- [ ] JSON-Export enthält alle Tabellen; nach 14 Tagen ohne Export erscheint der Hinweis.
-
-**Betrieb**
-- [ ] Push auf `main` baut, testet und veröffentlicht automatisch auf GitHub Pages.
-- [ ] Keep-alive-Action läuft planmäßig erfolgreich.
-- [ ] Bei getrennter Verbindung erscheint der Offline-Banner; ein angefangener Schnellerfassungs-Text ist nach Neuladen als Entwurf verfügbar.
-- [ ] Auf 375 px Breite sind Heute, Abhaken, Schnellerfassung und Nachgehakt ohne horizontales Scrollen nutzbar.
+- Ohne Login und mit fremdem Konto sind keine Daten lesbar oder schreibbar; Registrierung ist aus.
+- Projekt anlegen mit Kopie; Daten strikt je Projekt getrennt; „Alle Projekte“ auf Heute.
+- Ampel ändert sich nicht per Einzelklick; Gelb/Rot nur mit Begründung; Verlauf mit von/nach.
+- Fortschritts-Matrix: Zelle setzen/ändern ohne Duplikate; überschrittene Ziele markiert; Ampel-Vorschlag passend.
+- Nachfragen bleiben alle im Verlauf; „Damit erledigt“ schließt ab; Grund und Stand in der Zeile.
+- Meeting-Briefing zeigt nur die gewählte Person/Firma; Protokoll mit Agenda und Teilnehmer.
+- Erledigte Aufgaben unter Trennlinie nach Datum.
+- Menü per Ziehen sortierbar, ohne versehentlichen Seitenwechsel.
+- Keine Themen-Felder außerhalb der Meilensteine; keine neuen Beschreibungen/Links an Aufgaben.
+- Alle Seiten ohne seitliches Scrollen bei 375 px und 1280 px.
 
 ## 10. Offene Punkte
 
 - Interne Freigabe zur Speicherung von Projektnotizen und Kontaktdaten bei Supabase (EU) – liegt bei Nikolaus.
-- Personenliste zum Start (optional, siehe 4.4).
+- Auswahlfelder in den Filterleisten öffnen noch das Browser-Menü (Chips bereits angeglichen).
+- Ziehen im Menü per Touch auf einem echten Handy noch nicht getestet; Kopieren in die Zwischenablage nur mit echtem Browser prüfbar.
+- Optional: Live-Synchronisierung zwischen Geräten.
+
+## 11. Entscheidungsprotokoll (15.10.2026)
+
+| Thema | Entscheidung |
+|---|---|
+| Plattform | GitHub Pages + Supabase statt lokaler Datei |
+| Zugriff | Echtes Login mit RLS und Freigabeliste; Frontend-Passwort verworfen; Login bleibt |
+| Dokumente | Nur Links, keine Uploads |
+| Design | Vereinfacht: Chips, eigene Auswahllisten, eine Schrift, nichts springt, leere Bereiche weg |
+| Backup-Hinweis | Icon mit Punkt statt gelber Leiste |
+| Tacto-Bereich | Eigener Bereich mit Status statt Notiz-Arten; Erfassungszeile, eine Filterzeile |
+| Mehrere Projekte | Alles je Projekt, Kopie bei Neuanlage, Anbieter-Bereich optional |
+| Menü | Sortierbar per Drag-and-Drop, gespeichert in der Datenbank |
+| Nachhaken | „Nachfrage notieren“ mit Verlauf statt „Nachgehakt“; keine eigene Aufgabe |
+| Ampel | Nur im Dialog mit Begründung und Verlauf; Vorschlag aus Meilensteinen |
+| Erledigte | Unter Trennlinie, nach Datum |
+| Meeting | Briefing zu Person/Firma mit Protokoll-Start |
+| Themen | Werden Meilensteine (Fortschritts-Matrix); kein Thema-Feld mehr an Einträgen |
+| Benennung | „Wartet auf…“ → „Delegiert“ |
+| Aufgaben-Panel | Keine neuen Beschreibungen und Links |
+| Meeting-Seite | Ohne Kopfkarte und „Erledigt“-Bereich; neuer Leer-Zustand mit „Aufgabe anlegen“ |

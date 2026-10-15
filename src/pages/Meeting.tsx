@@ -1,4 +1,4 @@
-import { ChevronDown, ClipboardCopy, NotebookPen } from "lucide-react";
+import { CheckCircle2, ChevronDown, ClipboardCopy, NotebookPen, Plus } from "lucide-react";
 import { useEffect, useMemo } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useLookups, useStore } from "../data/store";
@@ -7,9 +7,8 @@ import { agendaText, buildBriefing, type MeetingTarget } from "../logic/briefing
 import { formatDate, todayIso } from "../logic/dates";
 import { ageLabel, statusDef } from "../logic/vendor";
 import { Avatar, CompanyLogo, Dropdown, Empty, usePersisted } from "../ui/common";
-import { TaskList, TaskRow } from "../ui/tasks";
-import { TrafficStatus } from "../ui/traffic";
-import { useCaptureContext } from "../ui/uiState";
+import { TaskList } from "../ui/tasks";
+import { useCaptureContext, useUi } from "../ui/uiState";
 import { useVendor } from "../ui/vendor";
 import { KIND_ICON } from "./Notes";
 import { CATEGORY_ICON } from "./Tacto";
@@ -25,6 +24,7 @@ export function MeetingPage() {
   const { db, insert, toast } = useStore();
   const { people, companies, companyById, personById } = useLookups();
   const vendor = useVendor();
+  const { openCapture } = useUi();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const [saved, setSaved] = usePersisted<{ target: string }>("meeting", { target: "" });
@@ -101,7 +101,9 @@ export function MeetingPage() {
   };
 
   const b = briefing;
-  const totalOpen = b ? b.delegatedToPerson.length + b.myTasks.length + b.otherTasks.length + b.vendorItems.length : 0;
+  const hasTasks = b ? b.delegatedToPerson.length + b.myTasks.length + b.otherTasks.length > 0 : false;
+  // Rechte Spalte nur, wenn es Anbieter-Punkte oder Notizen gibt – sonst volle Breite
+  const hasSide = b ? (vendor !== undefined && b.vendorItems.length > 0) || b.notes.length > 0 : false;
 
   return (
     <div className="page">
@@ -133,111 +135,80 @@ export function MeetingPage() {
       {!b ? (
         <Empty>Wähle eine Person oder Firma – dann siehst du alle offenen Punkte und Notizen für das Gespräch.</Empty>
       ) : (
-        <>
-          <div className="card meeting-head">
-            {b.company && <CompanyLogo company={b.company} size={48} />}
-            <div className="grow">
-              <h2>{b.person?.name ?? b.company?.name}</h2>
-              <div className="muted small">
-                {[b.person?.role, b.person ? b.company?.name : null, b.person?.email].filter(Boolean).join(" · ")}
-              </div>
-              {b.company && (
-                <div className="meeting-traffic">
-                  <TrafficStatus company={b.company} />
-                  {b.company.traffic_comment && <span className="muted small">{b.company.traffic_comment}</span>}
+        <div className={`meeting-grid${hasSide ? "" : " single"}`}>
+          <div className="meeting-col">
+            {b.person && b.delegatedToPerson.length > 0 && (
+              <Section title={`Offen bei ${b.person.name.split(" ")[0]}`} count={b.delegatedToPerson.length}>
+                <div className="task-list">
+                  {b.delegatedToPerson.map((t) => (
+                    <FollowUpRow key={t.id} taskId={t.id} />
+                  ))}
                 </div>
-              )}
-            </div>
-            <div className="meeting-last">
-              <div className="muted small">Letztes Treffen</div>
-              {b.lastMeeting ? (
-                <Link to={`/notizen/${b.lastMeeting.id}`}>{formatDate(b.lastMeeting.meeting_date ?? b.lastMeeting.created_at.slice(0, 10))}</Link>
-              ) : (
-                <span className="muted">–</span>
-              )}
-            </div>
+              </Section>
+            )}
+            {b.myTasks.length > 0 && (
+              <Section title="Meine offenen Punkte" count={b.myTasks.length}>
+                <TaskList tasks={b.myTasks} showCompany={false} />
+              </Section>
+            )}
+            {b.otherTasks.length > 0 && (
+              <Section title={b.person ? "Weitere Offene der Firma" : "Delegiert"} count={b.otherTasks.length}>
+                <TaskList tasks={b.otherTasks} showCompany={false} />
+              </Section>
+            )}
+            {!hasTasks && (
+              <div className="card meeting-empty">
+                <CheckCircle2 size={28} className="meeting-empty-icon" />
+                <div className="grow">
+                  <div className="meeting-empty-title">Mit {b.person?.name.split(" ")[0] ?? b.company?.name} ist gerade nichts offen</div>
+                  <div className="muted small">Neue Punkte aus dem Gespräch legst du direkt hier an.</div>
+                </div>
+                <button className="btn" onClick={() => openCapture({ type: "task", companyId: b.company?.id })}>
+                  <Plus size={16} /> Aufgabe anlegen
+                </button>
+              </div>
+            )}
           </div>
-
-          {totalOpen === 0 && b.doneSince.length === 0 && b.notes.length === 0 ? (
-            <Empty>Nichts offen.</Empty>
-          ) : (
-            <div className="meeting-grid">
-              <div className="meeting-col">
-                {b.person && b.delegatedToPerson.length > 0 && (
-                  <Section title={`Offen bei ${b.person.name.split(" ")[0]}`} count={b.delegatedToPerson.length}>
-                    <div className="task-list">
-                      {b.delegatedToPerson.map((t) => (
-                        <FollowUpRow key={t.id} taskId={t.id} />
-                      ))}
-                    </div>
-                  </Section>
-                )}
-                {b.myTasks.length > 0 && (
-                  <Section title="Meine offenen Punkte" count={b.myTasks.length}>
-                    <TaskList tasks={b.myTasks} showCompany={false} />
-                  </Section>
-                )}
-                {b.otherTasks.length > 0 && (
-                  <Section title={b.person ? "Weitere Offene der Firma" : "Delegiert"} count={b.otherTasks.length}>
-                    <TaskList tasks={b.otherTasks} showCompany={false} />
-                  </Section>
-                )}
-                {b.delegatedToPerson.length + b.myTasks.length + b.otherTasks.length === 0 && (
-                  <div className="card empty-inline">Keine offenen Aufgaben.</div>
-                )}
-              </div>
-              <div className="meeting-col">
-                {vendor && b.vendorItems.length > 0 && (
-                  <Section title={vendor.name} count={b.vendorItems.length}>
-                    {b.vendorItems.map((v) => {
-                      const Icon = CATEGORY_ICON[v.category];
-                      const sd = statusDef(v);
-                      return (
-                        <Link key={v.id} to={`/anbieter?id=${v.id}`} className="vendor-row">
-                          <Icon size={18} className="row-icon" />
-                          <span className="note-main">
-                            <span className="task-title">{v.title}</span>
-                            <span className="task-sub">{ageLabel(v, today, vendor.name)}</span>
-                          </span>
-                          {sd && <span className={`status-pill${sd.tone ? ` tone-${sd.tone}` : ""}`}>{sd.label}</span>}
-                        </Link>
-                      );
-                    })}
-                  </Section>
-                )}
-                {b.doneSince.length > 0 && (
-                  <Section title={b.lastMeeting ? "Seit dem letzten Treffen erledigt" : "In den letzten 14 Tagen erledigt"} count={b.doneSince.length}>
-                    {b.doneSince.map((t) => (
-                      <TaskRow
-                        key={t.id}
-                        task={t}
-                        showCompany={false}
-                        rightLabel={<span className="due">{t.done_at ? formatDate(t.done_at.slice(0, 10)) : ""}</span>}
-                      />
-                    ))}
-                  </Section>
-                )}
-                {b.notes.length > 0 && (
-                  <Section title="Letzte Notizen" count={b.notes.length}>
-                    {b.notes.map((n) => {
-                      const Icon = KIND_ICON[n.kind];
-                      return (
-                        <Link key={n.id} to={`/notizen/${n.id}`} className="note-row">
-                          <Icon size={18} className={`row-icon${n.kind === "decision" ? " tone-blue" : ""}`} aria-label={NOTE_KIND_LABEL[n.kind]} />
-                          <span className="note-main">
-                            <span className="task-title">{n.title}</span>
-                            {n.body && <span className="task-sub">{n.body.replace(/[#*_>`[\]-]/g, "").replace(/\s+/g, " ").slice(0, 90)}</span>}
-                          </span>
-                          <span className="due">{formatDate(n.meeting_date ?? n.created_at.slice(0, 10))}</span>
-                        </Link>
-                      );
-                    })}
-                  </Section>
-                )}
-              </div>
+          {hasSide && (
+            <div className="meeting-col">
+              {vendor && b.vendorItems.length > 0 && (
+                <Section title={vendor.name} count={b.vendorItems.length}>
+                  {b.vendorItems.map((v) => {
+                    const Icon = CATEGORY_ICON[v.category];
+                    const sd = statusDef(v);
+                    return (
+                      <Link key={v.id} to={`/anbieter?id=${v.id}`} className="vendor-row">
+                        <Icon size={18} className="row-icon" />
+                        <span className="note-main">
+                          <span className="task-title">{v.title}</span>
+                          <span className="task-sub">{ageLabel(v, today, vendor.name)}</span>
+                        </span>
+                        {sd && <span className={`status-pill${sd.tone ? ` tone-${sd.tone}` : ""}`}>{sd.label}</span>}
+                      </Link>
+                    );
+                  })}
+                </Section>
+              )}
+              {b.notes.length > 0 && (
+                <Section title="Letzte Notizen" count={b.notes.length}>
+                  {b.notes.map((n) => {
+                    const Icon = KIND_ICON[n.kind];
+                    return (
+                      <Link key={n.id} to={`/notizen/${n.id}`} className="note-row">
+                        <Icon size={18} className={`row-icon${n.kind === "decision" ? " tone-blue" : ""}`} aria-label={NOTE_KIND_LABEL[n.kind]} />
+                        <span className="note-main">
+                          <span className="task-title">{n.title}</span>
+                          {n.body && <span className="task-sub">{n.body.replace(/[#*_>`[\]-]/g, "").replace(/\s+/g, " ").slice(0, 90)}</span>}
+                        </span>
+                        <span className="due">{formatDate(n.meeting_date ?? n.created_at.slice(0, 10))}</span>
+                      </Link>
+                    );
+                  })}
+                </Section>
+              )}
             </div>
           )}
-        </>
+        </div>
       )}
     </div>
   );

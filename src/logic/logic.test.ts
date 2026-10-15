@@ -347,7 +347,7 @@ describe("briefing", () => {
     const text = agendaText(buildBriefing(db, { kind: "person", id: anna.id }, today), () => "Max Muster");
     expect(text).toContain("## Offen bei Anna Beispiel\n- [ ] Anna blockiert (blockiert: x)");
     expect(text).toContain("- [ ] Max bei HAZ (Max Muster)");
-    expect(text).toContain("## Seit dem letzten Treffen erledigt\n- Erledigt neu");
+    expect(text).not.toContain("erledigt");
   });
 });
 
