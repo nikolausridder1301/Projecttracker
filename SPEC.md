@@ -180,7 +180,7 @@ Arten **Notiz · Meeting-Protokoll · Entscheidung** (Entscheidungen bewusst get
 ### 6.10 Firmen, Ampel, Personen, Links
 
 - **Ampel ändern nur im Dialog:** Grün/Gelb/Rot, **Begründung Pflicht bei Gelb und Rot**, jede Änderung im **Ampel-Verlauf**. Der Dialog zeigt einen **Vorschlag aus den Meilensteinen** (verzögert/überfällig → Rot, kritisch → Gelb) mit „Übernehmen“ – die Entscheidung bleibt manuell.
-- **Kontakte** (Firmen & Personen, ein Menüpunkt statt zwei): Firmen-Karten mit Logo, Ampel und offenen Aufgaben, darunter **die Personen der Firma** (mit Zahl offener Punkte) und **„+ Person“** zum direkten Anlegen. Personen ohne Firma in einer eigenen Karte; Suche nach Firma oder Person; „Inaktive zeigen“. Klick auf Firma oder Person öffnet die gemeinsame Detailansicht (6.7).
+- **Kontakte** (Firmen & Personen, ein Menüpunkt statt zwei): oben **Firmen**, darunter abgesetzt **Personen** – jeweils gleich aufgebaute Karten, die Fußzeile mit Trennlinie liegt immer auf gleicher Höhe. Firmenkarte: Logo, Name, Ampel, Ampel-Hinweis (max. zwei Zeilen), unten Zahl der Personen und – nur wenn vorhanden – „x Aufgaben offen“ (betrifft die Firma) und „x überfällig“. Personenkarte: Initialen, Name, Rolle, unten Firma und – nur wenn vorhanden – „x Aufgaben offen“ (verantwortlich oder mit offenem Schritt). Kein „0 offen“. „+ Person“ über der Personenliste (Name + Firma); Suche nach Firma oder Person; „Inaktive zeigen“. Klick öffnet die gemeinsame Detailansicht (6.7).
 - **Links:** zentrale Sammlung mit Firma und Kategorie, URL-Prüfung (nur `http(s)`).
 
 ### 6.11 Schnellerfassung
@@ -264,6 +264,7 @@ Seitenleiste als Menü; Heute, Abhaken, Schnellerfassung, Updates und alle Dialo
 | Mehrere Firmen | Kein „x/y Firmen“-Zähler mehr; Fortschritt nur über Nächste Schritte |
 | Nächste Schritte | Checkliste wird zu „Nächste Schritte“ mit optional Person und Datum (Unteraufgabe ohne eigenes Objekt); fällige Schritte auf Heute und im Meeting; Abhaken schreibt in den Verlauf; Verlauf-Datum änderbar |
 | Firmenauswahl | Ein Mehrfach-Dropdown statt Firma + „Mehrere Firmen“ |
+| Kontakte-Übersicht | Firmen und Personen getrennt (Firmen oben, Personen darunter), einheitliche Karten mit Fußzeile auf gleicher Höhe, klare Zahlen statt „0 offen“ |
 | Kontakte | Menüpunkt „Kontakte“ (kurz, passt in eine Zeile) für Firmen & Personen; ein Bereich statt zwei Seiten; gemeinsame Detailansicht und Logik für Firma, Person und Meeting; Meeting bleibt als Menüpunkt für den schnellen Zugriff |
 | Mehrfachauswahl überall | Firmen und Personen überall Mehrfachauswahl in derselben Liste; mehrere Firmen = eine Aufgabe (keine Kopien mehr); auch Notizen, Links, Teilnehmer, Schritte, Tacto-Ansprechpartner |
 | Verantwortlich | Mehrfachauswahl: mehrere Personen je Aufgabe (eine Aufgabe, keine Kopien); „Ich“ = niemand sonst |
