@@ -2461,3 +2461,17 @@ button.traffic-tile:hover {
 .capture .seg-group {
   flex-wrap: wrap;
 }
+
+/* Mehrere Verantwortliche in der Zeile */
+.avatars {
+  display: inline-flex;
+  align-items: center;
+}
+.avatars {
+  gap: 3px;
+}
+.avatar-more {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  margin-left: 4px;
+}

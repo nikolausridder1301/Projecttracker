@@ -6,6 +6,7 @@ import { isValidUrl, overarchingCompany } from "../logic/tasks";
 import { ChipDate, ChipMulti, ChipSelect, ImportantChip, useDraft } from "./common";
 import { useUi, type CaptureType } from "./uiState";
 import { freshNotes } from "../pages/Notes";
+import { AssigneeChip } from "./tasks";
 
 // Schnellerfassung (SPEC 6.5): Titel + Enter genügt, alles andere optional.
 
@@ -43,7 +44,7 @@ function CaptureDialog({
   onClose: () => void;
 }) {
   const { insert, toast } = useStore();
-  const { companies, people, categories } = useLookups();
+  const { companies, categories } = useLookups();
   const { openTask, openNote } = useUi();
 
   const defaultCompany = prefill.companyId ?? context.companyId ?? overarchingCompany(companies)?.id ?? "";
@@ -53,7 +54,7 @@ function CaptureDialog({
   const [companyIds, setCompanyIds] = useState<Id[]>(defaultCompany ? [defaultCompany] : []);
   const companyId = companyIds[0] ?? "";
   const setCompanyId = (id: Id) => setCompanyIds([id]);
-  const [assignee, setAssignee] = useState<Id | "">("");
+  const [assignees, setAssignees] = useState<Id[]>([]);
   const [due, setDue] = useState("");
   const [priority, setPriority] = useState<Priority>("medium");
   const [url, setUrl] = useState("");
@@ -113,7 +114,7 @@ function CaptureDialog({
             description: "",
             company_id: cid,
             topic_id: null,
-            assignee_person_id: assignee || null,
+            assignee_person_ids: assignees,
             status: "open" as const,
             blocked_reason: "",
             priority,
@@ -223,12 +224,7 @@ function CaptureDialog({
           )}
           {type === "task" && (
             <>
-              <ChipSelect
-                title="Verantwortlich"
-                value={assignee}
-                options={[{ value: "", label: "Ich" }, ...people.filter((p) => p.active).map((p) => ({ value: p.id, label: p.name }))]}
-                onChange={setAssignee}
-              />
+              <AssigneeChip value={assignees} onChange={setAssignees} />
               <ChipDate title="Fällig" value={due || null} onChange={(v) => setDue(v ?? "")} placeholder="Fällig" format={(v) => `fällig ${relativeLabel(v, todayIso())}`} />
               <ImportantChip value={priority === "high"} onChange={(v) => setPriority(v ? "high" : "medium")} />
             </>

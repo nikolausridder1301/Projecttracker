@@ -44,10 +44,10 @@ export function applyFilter(tasks: Task[], f: TaskFilter, today = todayIso()): T
       !f.assignee
         ? true
         : f.assignee === "me"
-          ? t.assignee_person_id === null
+          ? t.assignee_person_ids.length === 0
           : f.assignee === "delegated"
-            ? t.assignee_person_id !== null
-            : t.assignee_person_id === f.assignee,
+            ? t.assignee_person_ids.length > 0
+            : t.assignee_person_ids.includes(f.assignee),
     )
     .filter((t) => !f.status || f.status === "active" || t.status === f.status)
     .filter((t) => !f.important || t.priority === "high")
@@ -252,7 +252,7 @@ export function GroupedTasks({ tasks, groupBy, showCompany = true }: { tasks: Ta
       : groupBy === "topic"
         ? (t.topic_id ?? "")
         : groupBy === "person"
-          ? (t.assignee_person_id ?? "")
+          ? t.assignee_person_ids.join(",")
           : t.status;
   const labelOf = (k: string): string =>
     groupBy === "company"
@@ -260,7 +260,7 @@ export function GroupedTasks({ tasks, groupBy, showCompany = true }: { tasks: Ta
       : groupBy === "topic"
         ? (topicById.get(k)?.name ?? "Ohne Thema")
         : groupBy === "person"
-          ? (k ? (personById.get(k)?.name ?? "?") : "Ich")
+          ? (k ? k.split(",").map((id) => personById.get(id)?.name ?? "?").join(", ") : "Ich")
           : STATUS_LABEL[k as TaskStatus];
   const order = (k: string): number =>
     groupBy === "company"

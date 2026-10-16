@@ -33,7 +33,7 @@ const T = (o: Partial<Task>): Task => ({
   description: "",
   company_id: "c1",
   topic_id: null,
-  assignee_person_id: null,
+  assignee_person_ids: [],
   status: "open",
   blocked_reason: "",
   priority: "medium",
@@ -73,9 +73,9 @@ describe("todayView", () => {
     T({ title: "nächste woche", due_date: "2026-10-19" }),
     T({ title: "erledigt", due_date: today, status: "done" }),
     T({ title: "gelöscht", due_date: today, deleted_at: "x" }),
-    T({ title: "delegiert heute", assignee_person_id: "p1", follow_up_date: today, due_date: today }),
-    T({ title: "delegiert später", assignee_person_id: "p1", follow_up_date: "2026-10-20" }),
-    T({ title: "delegiert überfällig", assignee_person_id: "p1", due_date: "2026-10-01" }),
+    T({ title: "delegiert heute", assignee_person_ids: ["p1"], follow_up_date: today, due_date: today }),
+    T({ title: "delegiert später", assignee_person_ids: ["p1"], follow_up_date: "2026-10-20" }),
+    T({ title: "delegiert überfällig", assignee_person_ids: ["p1"], due_date: "2026-10-01" }),
     T({ title: "blockiert", status: "blocked", blocked_reason: "x", due_date: today }),
   ];
   const v = todayView(tasks, today);
@@ -344,11 +344,12 @@ describe("briefing", () => {
     const anna = db.people.find((p) => p.name === "Anna Beispiel")!; // HAZ
     const max = db.people.find((p) => p.name === "Max Muster")!; // FEST
     db.tasks = [
-      T({ title: "Anna offen", company_id: haz.id, assignee_person_id: anna.id }),
-      T({ title: "Anna blockiert", company_id: haz.id, assignee_person_id: anna.id, status: "blocked", blocked_reason: "x" }),
+      T({ title: "Anna offen", company_id: haz.id, assignee_person_ids: [anna.id] }),
+      T({ title: "Anna blockiert", company_id: haz.id, assignee_person_ids: [anna.id], status: "blocked", blocked_reason: "x" }),
       T({ title: "Meins HAZ", company_id: haz.id }),
-      T({ title: "Max bei HAZ", company_id: haz.id, assignee_person_id: max.id }),
+      T({ title: "Max bei HAZ", company_id: haz.id, assignee_person_ids: [max.id] }),
       T({ title: "Meins FEST", company_id: fest.id }),
+      T({ title: "Anna und Max", company_id: fest.id, assignee_person_ids: [max.id, anna.id] }),
       T({ title: "Erledigt neu", company_id: haz.id, status: "done", done_at: "2026-10-14T10:00:00Z" }),
       T({ title: "Erledigt alt", company_id: haz.id, status: "done", done_at: "2026-09-01T10:00:00Z" }),
     ];
@@ -359,7 +360,7 @@ describe("briefing", () => {
     const { db, anna } = setup();
     const b = buildBriefing(db, { kind: "person", id: anna.id }, today);
     expect(b.company?.short).toBe("HAZ");
-    expect(b.delegatedToPerson.map((t) => t.title)).toEqual(["Anna blockiert", "Anna offen"]);
+    expect(b.delegatedToPerson.map((t) => t.title)).toEqual(["Anna blockiert", "Anna offen", "Anna und Max"]);
     expect(b.myTasks.map((t) => t.title)).toEqual(["Meins HAZ"]);
     expect(b.otherTasks.map((t) => t.title)).toEqual(["Max bei HAZ"]);
   });

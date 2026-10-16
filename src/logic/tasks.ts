@@ -4,7 +4,7 @@ import { endOfWeek } from "./dates";
 const PRIO_RANK: Record<Priority, number> = { high: 0, medium: 1 };
 
 export const isActive = <T extends { deleted_at: string | null }>(r: T) => r.deleted_at === null;
-export const isDelegated = (t: Task) => t.assignee_person_id !== null;
+export const isDelegated = (t: Task) => t.assignee_person_ids.length > 0;
 export const isOpen = (t: Task) => t.status !== "done";
 
 /** Sortierung: Fälligkeit (ohne Datum zuletzt), dann Priorität, dann Titel. */

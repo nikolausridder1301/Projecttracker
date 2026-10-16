@@ -68,7 +68,7 @@ export function demoSeed(): Db {
     description: "",
     company_id: sk.id,
     topic_id: null,
-    assignee_person_id: null,
+    assignee_person_ids: [] as string[],
     status: "open" as const,
     blocked_reason: "",
     priority: "medium" as const,
@@ -87,7 +87,7 @@ export function demoSeed(): Db {
     task({
       title: "Datenexport aus ERP bereitstellen",
       company_id: fest.id,
-      assignee_person_id: people[1].id,
+      assignee_person_ids: [people[1].id],
       follow_up_date: today,
       due_date: addDays(today, 3),
       topic_id: topics[1].id,
@@ -96,7 +96,7 @@ export function demoSeed(): Db {
     task({
       title: "Academy-Schulung abschließen",
       company_id: haz.id,
-      assignee_person_id: people[0].id,
+      assignee_person_ids: [people[0].id],
       follow_up_date: addDays(today, 4),
       topic_id: topics[11].id,
       checklist: [

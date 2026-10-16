@@ -19,15 +19,17 @@ export function WaitingPage() {
   const groups = useMemo(() => {
     const open = db.tasks.filter((t) => isActive(t) && isOpen(t) && isDelegated(t));
     const m = new Map<string, Task[]>();
-    for (const t of open) m.set(t.assignee_person_id!, [...(m.get(t.assignee_person_id!) ?? []), t]);
+    // Aufgaben mit mehreren Personen stehen bei jeder von ihnen
+    for (const t of open) for (const pid of t.assignee_person_ids) m.set(pid, [...(m.get(pid) ?? []), t]);
     return [...m.entries()]
       .map(([pid, tasks]) => ({ pid, tasks: tasks.sort((a, b) => stale(b) - stale(a)) }))
       .sort((a, b) => stale(b.tasks[0]) - stale(a.tasks[0]));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [db.tasks, latest, today]);
 
-  const total = groups.reduce((s, g) => s + g.tasks.length, 0);
-  const staleCount = groups.reduce((s, g) => s + g.tasks.filter((t) => stale(t) >= STALE_DAYS).length, 0);
+  // Aufgaben mit mehreren Personen nur einmal zählen
+  const total = new Set(groups.flatMap((g) => g.tasks.map((t) => t.id))).size;
+  const staleCount = new Set(groups.flatMap((g) => g.tasks.filter((t) => stale(t) >= STALE_DAYS).map((t) => t.id))).size;
 
   return (
     <div className="page">
