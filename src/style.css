@@ -2190,12 +2190,6 @@ button.traffic-tile:hover {
     opacity: 1;
   }
 }
-.step-new {
-  margin-top: 2px;
-}
-.step-new .chip-empty {
-  opacity: 0.8;
-}
 .task-next {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2575,25 +2569,6 @@ button.traffic-tile:hover {
   line-height: 1.45;
   resize: none;
 }
-.step-new {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 8px 0 2px 30px;
-  border-top: 1px solid var(--surface-3);
-}
-.step-new .step-edit {
-  border-color: transparent !important;
-  background: transparent !important;
-}
-.step-new .step-edit:focus {
-  border-color: var(--border) !important;
-  background: var(--surface) !important;
-}
-.step-new .chip-empty {
-  opacity: 0.8;
-}
-
 /* Meilensteine & Schritte */
 .plan {
   display: flex;
@@ -2652,42 +2627,62 @@ button.traffic-tile:hover {
   margin: 2px 0 0 30px;
   align-self: flex-start;
 }
-.plan-group.has-ms .plan-add,
-.plan-group.has-ms .step-new {
+.plan-group.has-ms .plan-add {
   margin-left: 26px;
 }
-.plan-group .step-new {
-  padding-left: 30px;
-  border-top: 0;
-}
-.plan-group.has-ms .step-new {
-  padding-left: 30px;
-}
-.ms-new {
+/* Eingabezeilen „Schritt hinzufügen“ und „Meilenstein hinzufügen“ – identisch aufgebaut */
+.plan-adds {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding-top: 8px;
-  border-top: 1px solid var(--surface-3);
+  flex-direction: column;
+  gap: 2px;
   margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px solid var(--surface-3);
 }
-.ms-new .step-edit {
-  flex: 1;
-  border-color: transparent !important;
-  background: transparent !important;
+.plan-new {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 2px 0;
 }
-.ms-new .step-edit:focus {
-  border-color: var(--border) !important;
-  background: var(--surface) !important;
+.plan-new.in-card {
+  margin-left: 26px;
 }
-.ms-new-icon {
+.plan-new-icon {
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
   color: var(--text-faint);
   flex-shrink: 0;
 }
-.ms-new .chip {
+.plan-new-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.plan-new-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding-left: 9px;
+}
+.plan-new .step-edit {
+  border-color: transparent !important;
+  background: transparent !important;
+}
+.plan-new .step-edit:focus {
+  border-color: var(--border) !important;
+  background: var(--surface) !important;
+}
+.plan-new .chip {
   height: 26px;
   font-size: var(--fs-sm);
-  flex-shrink: 0;
+}
+.plan-new .chip-empty {
+  opacity: 0.8;
 }
 .task-ms .task-next-text {
   font-weight: 500;
@@ -2730,7 +2725,7 @@ button.traffic-tile:hover {
   font-size: var(--fs-xs);
   color: var(--text-faint);
 }
-.step-new:focus-within .md-hint {
+.plan-new:focus-within .md-hint {
   display: block;
 }
 /* Listen im Markdown nicht von der Schrittliste erben lassen */
