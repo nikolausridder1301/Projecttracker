@@ -9,7 +9,6 @@ import { useCaptureContext } from "../ui/uiState";
 interface LinkFilter {
   /** leer = alle Firmen */
   companies: Id[];
-  topic: Id | "";
   category: Id | "";
   q: string;
 }
@@ -17,7 +16,7 @@ interface LinkFilter {
 export function LinksPage() {
   const { db } = useStore();
   const { categories } = useLookups();
-  const [stored, setF] = usePersisted<LinkFilter>("links", { companies: [], topic: "", category: "", q: "" });
+  const [stored, setF] = usePersisted<LinkFilter>("links", { companies: [], category: "", q: "" });
   const f = { ...stored, companies: Array.isArray(stored.companies) ? stored.companies : [] };
   useCaptureContext(f.companies.length === 1 ? f.companies[0] : undefined);
   const set = (p: Partial<LinkFilter>) => setF({ ...f, ...p });

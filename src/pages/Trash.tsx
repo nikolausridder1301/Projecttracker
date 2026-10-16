@@ -1,6 +1,7 @@
 import { useStore } from "../data/store";
 import type { Id, TableName } from "../data/types";
 import { formatDateTime } from "../logic/dates";
+import { personRefs } from "../logic/tasks";
 import { CompanyBadge, Empty } from "../ui/common";
 
 // Papierkorb (SPEC 6.10): wiederherstellen oder endgültig löschen.
@@ -11,6 +12,7 @@ const KINDS: { table: TableName; label: string }[] = [
   { table: "links", label: "Link" },
   { table: "vendor_items", label: "Anbieter-Punkt" },
   { table: "people", label: "Person" },
+  { table: "companies", label: "Firma" },
 ];
 
 interface Item {
@@ -40,8 +42,16 @@ export function TrashPage() {
 
   const purgeItem = async (it: Item) => {
     if (!window.confirm(`„${it.title}“ endgültig löschen? Das kann nicht rückgängig gemacht werden.`)) return;
-    if (it.table === "people" && db.tasks.some((t) => t.assignee_person_ids.includes(it.id))) {
-      toast("Diese Person ist noch Aufgaben zugeordnet und kann nicht endgültig gelöscht werden.", "error");
+    if (
+      it.table === "companies" &&
+      ([...db.tasks, ...db.notes, ...db.links, ...db.vendor_items].some((r) => r.company_ids.includes(it.id)) ||
+        db.people.some((p) => p.company_id === it.id))
+    ) {
+      toast("Diese Firma kommt noch in Aufgaben, Notizen, Links, Anbieter-Punkten oder bei Personen vor und kann nicht endgültig gelöscht werden.", "error");
+      return;
+    }
+    if (it.table === "people" && personRefs(db, it.id).any) {
+      toast("Diese Person kommt noch in Aufgaben, Schritten, Protokollen oder Anbieter-Punkten vor und kann nicht endgültig gelöscht werden.", "error");
       return;
     }
     await purge(it.table, it.id);

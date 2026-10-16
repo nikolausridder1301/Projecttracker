@@ -105,9 +105,6 @@ export function StoreProvider({ backend, initial, children }: { backend: Backend
     [dismissToast],
   );
 
-  const replaceRow = <K extends TableName>(table: K, row: Tables[K]) =>
-    setDb((d) => ({ ...d, [table]: (d[table] as Tables[K][]).map((r) => (r.id === row.id ? row : r)) }));
-
   const insert = useCallback(
     async <K extends TableName>(table: K, rows: NewRow<K>[]) => {
       try {
@@ -124,16 +121,42 @@ export function StoreProvider({ backend, initial, children }: { backend: Backend
     [backend, toast],
   );
 
+  /** Nur die genannten Felder einer Zeile setzen – andere, parallel geänderte Felder bleiben. */
+  const mergeRow = <K extends TableName>(table: K, id: Id, fields: Partial<Tables[K]>) =>
+    setDb((d) => ({ ...d, [table]: (d[table] as Tables[K][]).map((r) => (r.id === id ? { ...r, ...fields } : r)) }));
+
   const update = useCallback(
     async <K extends TableName>(table: K, id: Id, patch: Patch<K>) => {
       const before = (dbRef.current[table] as Tables[K][]).find((r) => r.id === id);
       if (!before) return;
-      replaceRow(table, { ...before, ...patch });
+      const keys = Object.keys(patch) as (keyof Tables[K])[];
+      mergeRow(table, id, patch as Partial<Tables[K]>);
       try {
         const saved = await backend.update(table, id, patch);
-        replaceRow(table, saved);
+        // Nur die eigenen Felder aus der Antwort übernehmen – eine spätere, schon
+        // gesendete Änderung an anderen Feldern wird so nicht zurückgedreht.
+        setDb((d) => ({
+          ...d,
+          [table]: (d[table] as Tables[K][]).map((r) => {
+            if (r.id !== id) return r;
+            const next = { ...r, updated_at: saved.updated_at };
+            // Feld inzwischen erneut geändert? Dann den neueren lokalen Wert behalten.
+            for (const k of keys) if (r[k] === (patch as Partial<Tables[K]>)[k]) next[k] = saved[k];
+            return next;
+          }),
+        }));
       } catch (e) {
-        replaceRow(table, before);
+        // Nur zurückrollen, was diese Änderung gesetzt hat – und nur, solange
+        // keine spätere Änderung dasselbe Feld schon wieder überschrieben hat.
+        setDb((d) => ({
+          ...d,
+          [table]: (d[table] as Tables[K][]).map((r) => {
+            if (r.id !== id) return r;
+            const reverted = { ...r };
+            for (const k of keys) if (r[k] === (patch as Partial<Tables[K]>)[k]) reverted[k] = before[k];
+            return reverted;
+          }),
+        }));
         toast(`Speichern fehlgeschlagen: ${(e as Error).message}`, "error");
         throw e;
       }
@@ -155,7 +178,17 @@ export function StoreProvider({ backend, initial, children }: { backend: Backend
     async (table: TableName, id: Id) => {
       try {
         await backend.remove(table, id);
-        setDb((d) => ({ ...d, [table]: (d[table] as { id: Id }[]).filter((r) => r.id !== id) }));
+        setDb((d) => {
+          const next = { ...d, [table]: (d[table] as { id: Id }[]).filter((r) => r.id !== id) };
+          // In der Datenbank per Cascade gelöscht – lokal ebenso
+          if (table === "tasks") {
+            next.task_followups = d.task_followups.filter((f) => f.task_id !== id);
+            next.attachments = d.attachments.filter((a) => a.task_id !== id);
+          }
+          if (table === "notes") next.attachments = d.attachments.filter((a) => a.note_id !== id);
+          if (table === "links") next.attachments = d.attachments.filter((a) => a.link_id !== id);
+          return next;
+        });
       } catch (e) {
         toast(`Löschen fehlgeschlagen: ${(e as Error).message}`, "error");
       }

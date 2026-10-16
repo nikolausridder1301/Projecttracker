@@ -2,7 +2,7 @@ import type { Db, Id } from "../data/types";
 import { isActive } from "./tasks";
 import { categoryDef } from "./vendor";
 
-export type HitType = "task" | "note" | "vendor" | "link" | "person";
+export type HitType = "task" | "note" | "vendor" | "link" | "person" | "company";
 
 export interface Hit {
   type: HitType;
@@ -38,6 +38,9 @@ export function search(db: Db, query: string, limitPerType = 8): Hit[] {
   const company = (id: Id | null) => db.companies.find((c) => c.id === id)?.short ?? "";
   const companies = (ids: Id[]) => ids.map(company).join(", ");
   const hits: Hit[] = [];
+  // Verlauf je Aufgabe mitsuchen („Was hat Arman zu X gesagt?“)
+  const updatesOf = new Map<Id, string>();
+  for (const f of db.task_followups) if (f.deleted_at === null) updatesOf.set(f.task_id, `${updatesOf.get(f.task_id) ?? ""} ${f.note}`);
   const push = (list: Hit[]) =>
     hits.push(...list.filter((h) => h.score > 0).sort((a, b) => b.score - a.score).slice(0, limitPerType));
 
@@ -47,7 +50,7 @@ export function search(db: Db, query: string, limitPerType = 8): Hit[] {
       id: t.id,
       title: t.title,
       sub: `${companies(t.company_ids)}${t.status === "done" ? " · erledigt" : ""}`,
-      score: score(t.title, `${t.description} ${t.checklist.map((c) => c.text).join(" ")} ${t.blocked_reason}`),
+      score: score(t.title, `${t.description} ${t.checklist.map((c) => c.text).join(" ")} ${t.blocked_reason} ${updatesOf.get(t.id) ?? ""}`),
     })),
   );
   push(
@@ -75,6 +78,15 @@ export function search(db: Db, query: string, limitPerType = 8): Hit[] {
       title: l.title,
       sub: companies(l.company_ids),
       score: score(l.title, `${l.url} ${l.description}`),
+    })),
+  );
+  push(
+    db.companies.filter(isActive).map((c) => ({
+      type: "company" as const,
+      id: c.id,
+      title: c.name,
+      sub: c.short,
+      score: score(c.name, `${c.short} ${c.traffic_comment}`),
     })),
   );
   push(

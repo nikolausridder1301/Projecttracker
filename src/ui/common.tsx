@@ -10,7 +10,7 @@ import perforator from "../assets/logos/perforator.png";
 import sk from "../assets/logos/sk.jpg";
 import tacto from "../assets/logos/tacto.png";
 import { useLookups } from "../data/store";
-import { STATUS_LABEL, TRAFFIC_LABEL, type Company, type Id, type TaskStatus, type TrafficLight } from "../data/types";
+import { TRAFFIC_LABEL, type Company, type Id, type TrafficLight } from "../data/types";
 
 export const LOGOS: Record<string, string> = {
   sk,
@@ -43,10 +43,6 @@ export function CompanyBadge({ id }: { id: Id | null }) {
       {c.short}
     </span>
   );
-}
-
-export function StatusBadge({ status }: { status: TaskStatus }) {
-  return <span className={`badge status-${status}`}>{STATUS_LABEL[status]}</span>;
 }
 
 export function TrafficDot({ light, title }: { light: TrafficLight; title?: string }) {

@@ -1,5 +1,5 @@
 import { useStore } from "../data/store";
-import { daysBetween, formatDateTime, todayIso } from "../logic/dates";
+import { daysBetween, formatDateTime, localDate, todayIso } from "../logic/dates";
 
 // JSON-Backup (SPEC 6.11): Download aller Tabellen inkl. Papierkorb.
 // Erinnerung nur als dezenter Punkt am Export-Icon, wenn das letzte
@@ -8,7 +8,7 @@ import { daysBetween, formatDateTime, todayIso } from "../logic/dates";
 export function useBackup() {
   const { db, allDb, update, insert, toast } = useStore();
   const lastExport = db.app_meta[0]?.last_export_at ?? null;
-  const due = !lastExport || daysBetween(lastExport.slice(0, 10), todayIso()) > 14;
+  const due = !lastExport || daysBetween(localDate(lastExport), todayIso()) > 14;
   const label = lastExport ? `Backup exportieren (letztes: ${formatDateTime(lastExport)})` : "Backup exportieren (noch keins)";
 
   const run = async () => {

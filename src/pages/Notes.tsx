@@ -1,20 +1,22 @@
-import { CalendarDays, CheckSquare, Gavel, NotebookPen, Plus, Trash2, Users, X, type LucideIcon } from "lucide-react";
+import { CalendarDays, CheckSquare, ExternalLink, Gavel, NotebookPen, Trash2, Users, X, type LucideIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useStore } from "../data/store";
 import { NOTE_KIND_LABEL, type Id, type Note, type NoteKind } from "../data/types";
-import { formatDate } from "../logic/dates";
+import { buildBriefing, type MeetingTarget } from "../logic/briefing";
+import { formatDate, todayIso } from "../logic/dates";
 import { isActive } from "../logic/tasks";
 import { AttachedLinks } from "../ui/links";
 import { AutoText, ChipDate, ChipSelect, CompaniesChip, CompanyBadges, CompanyFilter, Disclosure, Empty, PeopleChip, usePersisted } from "../ui/common";
 import { TaskList } from "../ui/tasks";
 import { NoteLink, useCaptureContext, useUi } from "../ui/uiState";
+import { useVendor } from "../ui/vendor";
+import { OpenItems } from "./Contact";
 
 interface NoteFilter {
   kind: NoteKind | "";
   /** leer = alle Firmen */
   companies: Id[];
-  topic: Id | "";
   q: string;
 }
 
@@ -22,7 +24,7 @@ export const KIND_ICON: Record<NoteKind, LucideIcon> = { note: NotebookPen, meet
 
 export function NotesPage() {
   const { db } = useStore();
-  const [stored, setF] = usePersisted<NoteFilter>("notes", { kind: "", companies: [], topic: "", q: "" });
+  const [stored, setF] = usePersisted<NoteFilter>("notes", { kind: "", companies: [], q: "" });
   const f = { ...stored, companies: Array.isArray(stored.companies) ? stored.companies : [] };
   useCaptureContext(f.companies.length === 1 ? f.companies[0] : undefined);
   const set = (p: Partial<NoteFilter>) => setF({ ...f, ...p });
@@ -176,6 +178,7 @@ function NoteEditor({
       title.trim() === note.title &&
       !participantsText.trim() &&
       note.participant_ids.length === 0 &&
+      note.updated_at === note.created_at &&
       derived.length === 0 &&
       attachedCount === 0;
     freshNotes.delete(note.id);
@@ -197,6 +200,7 @@ function NoteEditor({
       type: "task",
       title: sel.replace(/^[-*]\s*(\[ \]\s*)?/, "").split("\n")[0],
       companyIds: note.company_ids,
+      assigneeIds: note.participant_ids.length === 1 ? note.participant_ids : undefined,
       sourceNoteId: note.id,
     });
   };
@@ -261,6 +265,8 @@ function NoteEditor({
           </button>
         </div>
 
+        {note.kind === "meeting" && <ProtocolOpenItems note={note} />}
+
         <AutoText
           textRef={textRef}
           value={body}
@@ -284,24 +290,56 @@ function NoteEditor({
           <TaskList tasks={derived} empty="Noch keine. Text markieren und „Aufgabe daraus“ klicken." />
         </Disclosure>
 
-        <Disclosure
-          title="Links"
-          meta={attachedCount > 0 ? attachedCount : undefined}
-          defaultOpen={attachedCount > 0}
-          action={
-            <button
-              className="icon-btn"
-              title="Neuer Link"
-              onClick={() =>
-                openCapture({ type: "link", companyIds: note.company_ids, attachTo: { noteId: note.id } })
-              }
-            >
-              <Plus size={16} />
-            </button>
-          }
-        >
-          <AttachedLinks target={{ noteId: note.id }} />
-        </Disclosure>
+        {/* Adressen im Text werden automatisch zu klickbaren Links – kein eigenes Anhängen nötig */}
+        {urlsIn(body).length > 0 && (
+          <div className="text-links">
+            {urlsIn(body).map((u) => (
+              <a key={u} href={u} target="_blank" rel="noopener noreferrer">
+                <ExternalLink size={13} /> {u.replace(/^https?:\/\//, "").slice(0, 70)}
+              </a>
+            ))}
+          </div>
+        )}
+
+        {/* Früher angehängte Links (Altbestand) weiter anzeigen */}
+        {attachedCount > 0 && (
+          <Disclosure title="Angehängte Links" meta={attachedCount} defaultOpen>
+            <AttachedLinks target={{ noteId: note.id }} />
+          </Disclosure>
+        )}
     </div>
+  );
+}
+
+/** http(s)-Adressen im Text (ohne Duplikate). */
+function urlsIn(text: string): string[] {
+  return [...new Set((text.match(/https?:\/\/[^\s<>()"']+/g) ?? []).map((u) => u.replace(/[.,;:!?]+$/, "")))];
+}
+
+/**
+ * Im Protokoll: die offenen Punkte der Person (bei genau einem Teilnehmer) bzw.
+ * der Firma als Liste mit „Update notieren…“ – was besprochen wird, landet so
+ * direkt im Verlauf der Aufgabe statt nur im Text.
+ */
+function ProtocolOpenItems({ note }: { note: Note }) {
+  const { db } = useStore();
+  const vendor = useVendor();
+  const today = todayIso();
+  const target: MeetingTarget | null =
+    note.participant_ids.length === 1
+      ? { kind: "person", id: note.participant_ids[0] }
+      : note.company_ids[0]
+        ? { kind: "company", id: note.company_ids[0] }
+        : null;
+  const b = useMemo(() => (target ? buildBriefing(db, target, today) : null), [db, target?.kind, target?.id, today]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!b) return null;
+  const count = b.delegatedToPerson.length + b.myTasks.length + b.otherTasks.length;
+  if (count === 0 && b.vendorItems.length === 0) return null;
+  return (
+    <Disclosure title="Offene Punkte" meta={count} defaultOpen>
+      <div className="protocol-open">
+        <OpenItems b={b} vendorName={vendor?.name} />
+      </div>
+    </Disclosure>
   );
 }

@@ -52,7 +52,7 @@ function CaptureDialog({
   const [title, setTitle, clearTitle] = useDraft("capture-title", "", prefill.title);
   // Eine oder mehrere Firmen – für Aufgaben, Notizen und Links gleich
   const [companyIds, setCompanyIds] = useState<Id[]>(prefill.companyIds ?? (defaultCompany ? [defaultCompany] : []));
-  const [assignees, setAssignees] = useState<Id[]>([]);
+  const [assignees, setAssignees] = useState<Id[]>(prefill.assigneeIds ?? (context.personId ? [context.personId] : []));
   const [due, setDue] = useState("");
   const [priority, setPriority] = useState<Priority>("medium");
   const [url, setUrl] = useState("");
@@ -124,21 +124,6 @@ function CaptureDialog({
         toast("Aufgabe angelegt", "info");
         // Gleicher Ablauf wie bei Notizen: das Neue öffnet sich – außer beim Mitschreiben im Protokoll
         if (!prefill.sourceNoteId && created[0]) openTask(created[0].id);
-      } else if (type === "note" || type === "meeting" || type === "decision") {
-        const kind: NoteKind = type;
-        const [n] = await insert("notes", [
-          {
-            title: title.trim(),
-            body: "",
-            kind,
-            company_ids: companyIds,
-            topic_id: null,
-            meeting_date: kind === "meeting" ? todayIso() : null,
-            participant_ids: [],
-            participants_text: "",
-          },
-        ]);
-        openNote(n.id);
       } else {
         if (!isValidUrl(url)) return toast("Bitte eine gültige Adresse mit http:// oder https:// eingeben.", "error");
         const [l] = await insert("links", [

@@ -1,6 +1,6 @@
 // Anbieter-Punkte (z. B. Tacto): Kategorien, Status-Abläufe, Alter und Jour-fixe-Text.
 import type { Company, Id, IsoDate, Person, VendorCategory, VendorItem } from "../data/types";
-import { daysBetween, formatDate } from "./dates";
+import { daysBetween, formatDate, localDate } from "./dates";
 
 export interface StatusDef {
   value: string;
@@ -143,7 +143,7 @@ export function statusPatch(item: Pick<VendorItem, "category" | "reported_at">, 
 /** „seit 23 T. bei Tacto" bzw. „seit 5 T. offen" – nur für offene Punkte. */
 export function ageLabel(item: VendorItem, today: IsoDate, vendorName = "Anbieter"): string {
   if (!isOpenItem(item)) return "";
-  const since = item.reported_at ?? item.created_at.slice(0, 10);
+  const since = item.reported_at ?? localDate(item.created_at);
   const days = Math.max(0, daysBetween(since, today));
   const where = statusDef(item)?.atVendor ? `bei ${vendorName}` : "offen";
   return days === 0 ? `seit heute ${where}` : `seit ${days} T. ${where}`;
@@ -176,7 +176,7 @@ export function jourFixeText(
       const meta = [
         statusDef(i)?.label,
         companiesLabel(i.company_ids, companies),
-        i.priority === "high" ? "Prio hoch" : "",
+        i.priority === "high" ? "Wichtig" : "",
         i.ticket ? `Ticket ${i.ticket}` : "",
         i.contact_person_ids.map((id) => people.find((p) => p.id === id)?.name ?? "").join(", "),
         ageLabel(i, today, vendorName),

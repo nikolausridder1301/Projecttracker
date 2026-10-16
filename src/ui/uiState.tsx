@@ -2,8 +2,8 @@ import { createContext, useContext, useEffect, useMemo, useState, type MouseEven
 import type { Id } from "../data/types";
 
 // Globale Oberflächen-Zustände: offenes Aufgaben-Panel, Schnellerfassung,
-// Suche und der "Kontext" (Firma/Thema der aktuellen Ansicht), den neue
-// Einträge übernehmen (SPEC 6.5).
+// Suche und der "Kontext" (Firma/Person der aktuellen Ansicht), den neue
+// Einträge übernehmen.
 
 /** Alles Neue läuft über „+ Neu“: Aufgabe, Notiz, Protokoll, Entscheidung, Link. */
 export type CaptureType = "task" | "note" | "meeting" | "decision" | "link";
@@ -14,14 +14,16 @@ export interface CapturePrefill {
   companyId?: Id;
   /** mehrere Firmen vorbelegen (z. B. aus einem Protokoll) */
   companyIds?: Id[];
-  topicId?: Id;
+  /** Verantwortliche vorbelegen (z. B. aus der Personen-Ansicht) */
+  assigneeIds?: Id[];
   sourceNoteId?: Id;
   attachTo?: { taskId?: Id; noteId?: Id };
 }
 
 export interface CaptureContext {
   companyId?: Id;
-  topicId?: Id;
+  /** Person der aktuellen Ansicht – neue Aufgaben gehen an sie */
+  personId?: Id;
 }
 
 interface UiValue {
@@ -74,12 +76,12 @@ export function useUi(): UiValue {
 }
 
 /** Setzt den Erfassungs-Kontext, solange die Ansicht sichtbar ist. */
-export function useCaptureContext(companyId?: Id, topicId?: Id) {
+export function useCaptureContext(companyId?: Id, personId?: Id) {
   const { setContext } = useUi();
   useEffect(() => {
-    setContext({ companyId, topicId });
+    setContext({ companyId, personId });
     return () => setContext({});
-  }, [companyId, topicId, setContext]);
+  }, [companyId, personId, setContext]);
 }
 
 /** Link auf eine Notiz: öffnet sie als Pop-up, statt die Seite zu wechseln. */

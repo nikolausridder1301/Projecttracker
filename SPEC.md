@@ -50,7 +50,7 @@ Mehrbenutzer/Zugang für Delegierte · Dateiuploads · E-Mail-/Push-Erinnerungen
 
 ### 4.1 Projekte
 
-- Oben links **Projekt-Umschalter**: aktuelles Projekt (Kürzel-Badge in Projektfarbe + Name), Liste aller Projekte, „Neues Projekt…“, „Projekteinstellungen“.
+- Oben links **Projekt-Umschalter**: aktuelles Projekt (Kürzel-Badge in Projektfarbe + Name), Liste aller Projekte, „Neues Projekt…“, „Projekteinstellungen“. **Bei nur einem Projekt** steht dort schlicht der Name; „Neues Projekt…“ liegt dann in den Einstellungen.
 - **Alles gehört zu einem Projekt** – auch Firmen und Personen. Ein neues Projekt kann Firmen, Personen, Meilensteine und Link-Kategorien eines bestehenden Projekts **als Kopie** übernehmen (Ampeln starten neutral); Aufgaben, Notizen, Links und Anbieter-Punkte werden nicht kopiert. Danach ist jedes Projekt unabhängig anpassbar.
 - Projekte lassen sich archivieren; das letzte aktive Projekt nicht.
 - Erstes Projekt: **„Tacto“** (Kürzel TAC) mit allen bisherigen Daten.
@@ -68,11 +68,11 @@ Mehrbenutzer/Zugang für Delegierte · Dateiuploads · E-Mail-/Push-Erinnerungen
 | PER | Perforator | Gesellschaft |
 | TAC | Tacto | **externer Partner** (Software-Anbieter) |
 
-Logos aus dem Repo `tacto`, Tacto-Logo von Nikolaus. Externe Partner zählen nicht zu „Alle Gesellschaften“ und erscheinen nicht in der Fortschritts-Matrix. Je Firma: Farbe, Kürzel, Ampel mit Begründung und Verlauf.
+Logos aus dem Repo `tacto`, Tacto-Logo von Nikolaus. Externe Partner zählen nicht zu „Alle Gesellschaften“ und haben keine Ampel-Kachel auf „Heute“. Je Firma: Farbe, Kürzel, Ampel mit Begründung und Verlauf.
 
 ### 4.3 Meilensteine (früher „Themen“)
 
-Die 13 Startthemen (10 tacto-Module plus Projektmanagement/Allgemein, Schulung/Academy, Stammdaten) sind jetzt **Meilensteine**: die Zeilen der Fortschritts-Matrix. In den Einstellungen umbenenn-, sortier-, ergänz- und archivierbar.
+Die 13 Startthemen (10 tacto-Module plus Projektmanagement/Allgemein, Schulung/Academy, Stammdaten) sind jetzt **Meilensteine** je Firma (Reiter in der Firmen-Ansicht, Grundlage des Ampel-Vorschlags); ausgeblendet, sobald ein Reporting-Link gesetzt ist. In den Einstellungen umbenenn-, sortier-, ergänz- und archivierbar.
 
 ### 4.4 Personen
 
@@ -134,9 +134,10 @@ Kopfzeile: globale Suche (Strg+K), Backup-Icon, „+ Neu“ (Taste N). **Alles N
 
 ### 6.5 Aufgaben
 
-- Liste mit Schnellfilter **Alle | Meine | Delegiert**, Firmenfilter (Mehrfachauswahl, leer = alle) und „Filter“-Knopf (Person, Status, Fälligkeit, Gruppierung nach Firma/Person/Status, Nur wichtige, Erledigte zeigen).
+- **Schlanke Filterleiste:** **Alle | Meine | Delegiert** (Delegiert = Person verantwortlich oder im offenen Schritt), Firmenfilter (Mehrfachauswahl), **Gruppieren** (nach Firma / nach Person / keine) und „Erledigte zeigen“. Kein weiteres Filter-Menü – Fälliges steht auf „Heute“, Delegiertes unter „Delegiert“. Eine Aufgabe steht in jeder ihrer Gruppen (jede Firma bzw. jede Person); ohne Firma in „Ohne Firma“.
+- **Ein Termin überall:** Zeile rechts, Sortierung, Heute und Firmenkarten nutzen den **nächsten Termin** = frühestes Datum aus Fälligkeit und offenen Schritten.
 - **Erledigte getrennt:** offene oben (gruppiert), darunter Trennlinie „Erledigt“ und die erledigten Aufgaben nach Erledigt-Datum, neueste zuerst.
-- **Detail-Panel:** Titel, Chips **Status · Firma · Verantwortlich · Fällig · Wichtig**; Status nur **Offen · Blockiert · Erledigt** („Blockiert“ nur mit Grund); Priorität ist eine Fahne zum An-/Ausschalten statt Hoch/Mittel/Niedrig; darunter **Verlauf** und **Nächste Schritte** (6.6).
+- **Detail-Panel:** oben Häkchen **„Erledigt?“**, Titel, Chips **Firmen · Verantwortlich · Fällig · Wichtig · Blockiert** – „Wichtig“ und „Blockiert“ sind Schalter (Blockiert fragt jedes Mal einen frischen Grund ab); kein eigener Status-Chip mehr. Darunter **Nächste Schritte**, dann **Verlauf** (6.6). Beim Schließen (auch Esc) wird noch nicht Gespeichertes gesichert.
 - **Keine neuen Beschreibungen und Link-Anhänge** mehr – vorhandene werden weiter angezeigt.
 - **Mehrere Firmen:** „Firmen“ ist in Schnellerfassung und Panel dieselbe Mehrfachauswahl. Mehrere Firmen = **eine Aufgabe** (wie bei mehreren Personen), sie erscheint bei jeder ihrer Firmen (Gruppierung, Firmenseite, Meeting, Filter). Was je Firma zu tun ist, steht in den Nächsten Schritten. Mindestens eine Firma bleibt gewählt; Schnellauswahl „Alle Gesellschaften“ (ohne Holding und externe Partner) unten in der Liste.
 - Löschen mit „Rückgängig“ und Papierkorb.
@@ -144,13 +145,13 @@ Kopfzeile: globale Suche (Strg+K), Backup-Icon, „+ Neu“ (Taste N). **Alles N
 ### 6.6 Verlauf und Delegiert
 
 - **Zwei klare Bereiche je Aufgabe:** **Nächste Schritte = was noch zu tun ist (wer, bis wann)**, **Verlauf = was passiert ist**.
-- **Nächste Schritte** (früher „Checkliste“): Text, optional **Person** („Wer?“) und **Datum** („Bis?“); leere Wer/Bis-Chips erscheinen erst beim Darüberfahren. Abhaken schreibt automatisch „✓ …“ in den Verlauf. Kein eigenes Objekt – die Schritte gehören zur Aufgabe.
+- **Nächste Schritte** (früher „Checkliste“): Text, optional **Person** („Wer?“) und **Datum** („Bis?“); leere Wer/Bis-Chips erscheinen erst beim Darüberfahren. Abhaken schreibt automatisch „✓ …“ in den Verlauf; der Text eines Schritts lässt sich per Klick bearbeiten. Kein eigenes Objekt – die Schritte gehören zur Aufgabe.
   - In Listen steht der **nächste offene Schritt** („→ Liefertermin klären · Arman · 23.10. (1/3)“, rot wenn überfällig).
   - Ein fälliger Schritt bringt die Aufgabe auf **Heute** („Fällig“ zählt das früheste Datum aus Aufgabe und offenen Schritten).
   - Hat eine Person einen offenen Schritt, erscheint die Aufgabe in **ihrem Meeting-Briefing**; die Agenda listet offene Schritte mit Person und Datum.
-- **Verlauf statt Nachhaken:** Jede Aufgabe hat im Panel den Bereich **„Verlauf“** – ein Feld „Update hinzufügen…“, Enter speichert den Satz; **Datum vorbelegt mit heute, änderbar** (z. B. Mail von gestern). Darunter alle Updates als Zeitleiste, neueste oben, einzeln löschbar. Kein Nachhak-Datum, keine Nachfrage-Box, kein Mail-Button.
-- **Letzter Stand in allen Listen:** unter dem Titel offener Aufgaben steht gekürzt „Stand 12.10.: …“.
-- Menüpunkt **„Delegiert“** (früher „Wartet auf…“): offene Delegationen nach Person, **am längsten ohne Update zuerst**; rechts „seit 23 T. kein Update“ (rot ab 14 Tagen), ohne Update zählt das Anlagedatum. Ersetzt die Erinnerung, ohne Datumspflege.
+- **Verlauf statt Nachhaken:** Jede Aufgabe hat im Panel den Bereich **„Verlauf“** – ein Feld „Update hinzufügen…“, Enter speichert den Satz; **Datum vorbelegt mit heute, änderbar** (z. B. Mail von gestern). Darunter alle Updates als Zeitleiste, neueste oben; Löschen mit „Rückgängig“. **Statuswechsel schreiben automatisch eine Zeile** (Erledigt / Wieder geöffnet / Blockiert mit Grund / Nicht mehr blockiert / Verantwortlich). Kein Nachhak-Datum, keine Nachfrage-Box, kein Mail-Button.
+- **Letzter Stand in allen Listen:** unter dem Titel offener Aufgaben steht gekürzt „Stand 12.10.: …“ (automatische Statuszeilen zählen dabei nicht).
+- Menüpunkt **„Delegiert“** (früher „Wartet auf…“): offene Delegationen nach Person (verantwortlich **oder mit offenem Schritt**), **am längsten ohne Update zuerst**; rechts „seit 23 T. kein Update“ (rot ab 14 Tagen), ohne Update zählt das Anlagedatum. Ersetzt die Erinnerung, ohne Datumspflege.
 - Delegieren bleibt einfach der Chip **„Verantwortlich“** – Mehrfachauswahl wie bei Firmen: „Ich“ oder eine bzw. mehrere Personen (eine Aufgabe, mehrere Verantwortliche). Eine Aufgabe mit mehreren Personen steht unter „Delegiert“ bei jeder von ihnen und im Meeting-Briefing jeder Person.
 
 ### 6.7 Meeting und Kontakte – eine Ansicht
@@ -160,11 +161,14 @@ Kopfzeile: globale Suche (Strg+K), Backup-Icon, „+ Neu“ (Taste N). **Alles N
   - **Reiter:** **Offen · Notizen · Links**, bei Firmen zusätzlich **Meilensteine · {Anbieter} · Ampel-Verlauf**.
   - **Offen:** bei Personen „Offen bei …“ (verantwortlich oder offener Schritt), dazu meine und weitere offene Punkte ihrer Firma; bei Firmen alles, was die Firma betrifft. Blockiertes zuerst, unter jeder Aufgabe ein dezentes **„Update notieren…“**. Nichts offen: Karte mit „Aufgabe anlegen“. Erledigte auf Wunsch („x erledigte anzeigen“).
 - **Meeting** bleibt im Menü für den schnellen Zugriff: oben Person oder Firma wählen (Suche, letzte Auswahl bleibt), darunter genau diese Ansicht.
-- **„Protokoll starten“** legt ein Meeting-Protokoll mit Teilnehmer, Firma, Datum und Agenda-Checkliste (inkl. letztem Stand und offenen Schritten) an und öffnet es; **„Agenda kopieren“** in die Zwischenablage.
+- **„Protokoll starten“** öffnet das **heutige Protokoll** mit dieser Person/Firma oder legt es an (Teilnehmer, Firma, Datum). Im Protokoll stehen die **offenen Punkte als Liste mit „Update notieren…“** – was besprochen wird, landet direkt im Verlauf; der Text bleibt für freie Notizen (keine kopierte Agenda mehr).
+- **„Agenda kopieren“** in die Zwischenablage (mit letztem Stand und offenen Schritten); für die Anbieter-Firma selbst der Jour-fixe-Text.
+- **Anbieter-Punkte:** Firma → was sie betrifft (inkl. „Alle Firmen“); Anbieter-Firma und ihre Leute → alle offenen; Person einer Gesellschaft → wo sie Ansprechpartner ist oder ihre Firma ausdrücklich genannt ist. Bei Personen stehen sie im Reiter „Offen“.
+- **„Aufgabe anlegen“ / „+ Neu“ in einer Personen-Ansicht** belegt diese Person als Verantwortliche vor (ebenso „Aufgabe daraus“ bei genau einem Teilnehmer).
 
 ### 6.8 Notizen
 
-Arten **Notiz · Meeting-Protokoll · Entscheidung** (Entscheidungen bewusst getrennt). Notizen öffnen sich – wie Aufgaben – als **Pop-up-Panel** über der aktuellen Seite (aus der Liste, der Suche, dem Meeting, der Firmen-/Personenseite); Direktlinks `/notizen/:id` öffnen ebenfalls das Panel. Chips für Art, Firma, Datum; Teilnehmer bei Protokollen; Text als mitwachsendes Feld (keine Markdown-Darstellung). **„Aufgabe daraus“** übernimmt markierten Text als Aufgabe, verknüpft in beide Richtungen; Bereiche klappen auf, sobald sie Inhalt bekommen. Links lassen sich an Notizen hängen.
+Arten **Notiz · Meeting-Protokoll · Entscheidung** (Entscheidungen bewusst getrennt). Notizen öffnen sich – wie Aufgaben – als **Pop-up-Panel** über der aktuellen Seite (aus der Liste, der Suche, dem Meeting, der Firmen-/Personenseite); Direktlinks `/notizen/:id` öffnen ebenfalls das Panel. Chips für Art, Firma, Datum; Teilnehmer bei Protokollen; Text als mitwachsendes Feld (keine Markdown-Darstellung). **„Aufgabe daraus“** übernimmt markierten Text als Aufgabe, verknüpft in beide Richtungen; Bereiche klappen auf, sobald sie Inhalt bekommen. **Adressen im Text werden automatisch als klickbare Links** darunter gezeigt; früher angehängte Links bleiben sichtbar, neue Anhänge gibt es nicht mehr.
 
 ### 6.9 Anbieter-Bereich (bei Tacto: „Tacto“)
 
@@ -187,16 +191,16 @@ Taste **N** oder „+ Neu“: Typ **Aufgabe · Notiz · Protokoll · Entscheidun
 
 ### 6.12 Suche
 
-**Strg+K** über Aufgaben, Notizen, Anbieter-Punkte, Links und Personen des aktuellen Projekts.
+**Strg+K** über Aufgaben (inkl. Verlauf und Schritte), Notizen, Anbieter-Punkte, Links, Personen und Firmen des aktuellen Projekts.
 
 ### 6.13 Papierkorb
 
-Gelöschtes landet im Papierkorb (je Projekt), wiederherstellbar oder endgültig löschbar; 5 Sekunden „Rückgängig“.
+Gelöschtes (Aufgaben, Notizen, Links, Anbieter-Punkte, Personen, Firmen) landet im Papierkorb (je Projekt), wiederherstellbar oder endgültig löschbar; 5 Sekunden „Rückgängig“. Endgültig löschen geht bei Personen/Firmen nur, wenn sie nirgends mehr vorkommen. Verlaufseinträge: Löschen mit „Rückgängig“.
 
 ### 6.14 Backup und Einstellungen
 
 - **Backup** per Download-Icon in der Kopfzeile (alle Projekte, JSON); oranger Punkt, wenn das letzte Backup älter als 14 Tage ist. Keine Banner-Leiste.
-- **Einstellungen:** Projekt (Name, Kürzel, Farbe, Anbieter-Bereich, Archivieren) · Menü (Standard-Reihenfolge) · Firmen (inkl. „Partner“) · Meilensteine · Link-Kategorien · Backup.
+- **Einstellungen:** Projekt (Name, Kürzel, Farbe, Reporting-Link – nur http(s) –, Anbieter-Bereich, Archivieren, bei nur einem Projekt „Neues Projekt…“) · Backup · Menü (Standard-Reihenfolge) · Firmen (inkl. „Partner“; neue Firma per Eingabezeile + Enter, Entfernen in den Papierkorb) · Meilensteine (nur ohne Reporting-Link) · Link-Kategorien.
 
 ### 6.15 Mobil
 
@@ -255,13 +259,14 @@ Seitenleiste als Menü; Heute, Abhaken, Schnellerfassung, Updates und alle Dialo
 | Ampel | Nur im Dialog mit Begründung und Verlauf; Vorschlag aus Meilensteinen |
 | Erledigte | Unter Trennlinie, nach Datum |
 | Meeting | Briefing zu Person/Firma mit Protokoll-Start |
-| Themen | Werden Meilensteine (Fortschritts-Matrix); kein Thema-Feld mehr an Einträgen |
+| Themen | Werden Meilensteine (je Firma); kein Thema-Feld mehr an Einträgen |
 | Benennung | „Wartet auf…“ → „Delegiert“ |
 | Aufgaben-Panel | Keine neuen Beschreibungen und Links |
 | Meeting-Seite | Ohne Kopfkarte und „Erledigt“-Bereich; neuer Leer-Zustand mit „Aufgabe anlegen“ |
 | Mehrere Firmen | Kein „x/y Firmen“-Zähler mehr; Fortschritt nur über Nächste Schritte |
 | Nächste Schritte | Checkliste wird zu „Nächste Schritte“ mit optional Person und Datum (Unteraufgabe ohne eigenes Objekt); fällige Schritte auf Heute und im Meeting; Abhaken schreibt in den Verlauf; Verlauf-Datum änderbar |
 | Firmenauswahl | Ein Mehrfach-Dropdown statt Firma + „Mehrere Firmen“ |
+| Review mit Subagenten (16.10.2026) | 10 Fehler behoben (u. a. ein Termin überall, Delegiert inkl. Schritt-Personen, Gruppen je Person, Vorbelegung der Person, Speichern bei Esc, gleichzeitige Änderungen, Datum um Mitternacht, Ampel „seit“, Agenda-Anbieterpunkte, Verlauf löschen mit Rückgängig); Vereinfachungen: Blockiert-Schalter statt Status-Chip, schlanke Filterleiste, Schritte vor Verlauf, automatische Statuszeilen, Protokoll mit Live-Liste, Meilensteine ausgeblendet bei Reporting-Link, schlichter Projekt-Umschalter, Firmen per Eingabezeile, Links im Text statt Anhänge, toter Code entfernt; Ergänzungen: Schritt bearbeiten, Protokoll wiederverwenden, Suche über Verlauf und Firmen, Jour-fixe als Agenda der Anbieter-Firma |
 | Fortschritt | Menüpunkt „Fortschritt“ entfällt; stattdessen Link „Reporting“ zum Tacto Reporting (Projekteinstellung `report_url`) |
 | Kontakte-Übersicht | Firmen und Personen getrennt (Firmen oben, Personen darunter), einheitliche Karten mit Fußzeile auf gleicher Höhe, klare Zahlen statt „0 offen“ |
 | Kontakte | Menüpunkt „Kontakte“ (kurz, passt in eine Zeile) für Firmen & Personen; ein Bereich statt zwei Seiten; gemeinsame Detailansicht und Logik für Firma, Person und Meeting; Meeting bleibt als Menüpunkt für den schnellen Zugriff |

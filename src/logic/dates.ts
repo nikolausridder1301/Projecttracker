@@ -39,6 +39,14 @@ export function endOfWeek(iso: IsoDate): IsoDate {
   return addDays(iso, wd === 0 ? 0 : 7 - wd);
 }
 
+/**
+ * Kalendertag eines Zeitstempels in lokaler Zeit. `timestamptz` kommt als UTC –
+ * einfaches Abschneiden auf 10 Zeichen ergäbe nachts den Vortag.
+ */
+export function localDate(value: string): IsoDate {
+  return value.length <= 10 ? value : toIso(new Date(value));
+}
+
 export function formatDate(iso: IsoDate | null | undefined): string {
   if (!iso) return "";
   const [y, m, d] = iso.slice(0, 10).split("-");

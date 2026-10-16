@@ -1,11 +1,11 @@
-import { Flag, MessageSquarePlus, Trash2, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { Ban, Flag, MessageSquarePlus, Trash2, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLookups, useStore } from "../data/store";
-import { STATUS_LABEL, type ChecklistItem, type Task, type TaskStatus } from "../data/types";
-import { formatDate, relativeLabel, todayIso } from "../logic/dates";
-import { checklistProgress, latestUpdates, nextStep, standText, stepPersons, validateTask } from "../logic/tasks";
+import type { ChecklistItem, Task } from "../data/types";
+import { formatDate, localDate, relativeLabel, todayIso } from "../logic/dates";
+import { checklistProgress, effectiveDue, latestUpdates, nextStep, standText, stepPersons, validateTask } from "../logic/tasks";
 import { AttachedLinks } from "./links";
-import { AutoText, Avatar, ChipDate, ChipSelect, CompaniesChip, CompanyBadges, Disclosure, ImportantChip, PeopleChip } from "./common";
+import { AutoText, Avatar, ChipDate, CompaniesChip, CompanyBadges, Disclosure, ImportantChip, PeopleChip } from "./common";
 import { ProjectBadge } from "./ProjectSwitcher";
 import { NoteLink, useUi } from "./uiState";
 
@@ -15,9 +15,32 @@ import { NoteLink, useUi } from "./uiState";
 
 export function useTaskActions() {
   const { update, insert, toast } = useStore();
+  const { personById } = useLookups();
 
-  const setDone = (t: Task, done: boolean) =>
-    update("tasks", t.id, done ? { status: "done", done_at: new Date().toISOString() } : { status: "open", done_at: null });
+  /** Zeile im Verlauf – Statuswechsel werden so automatisch festgehalten. */
+  const log = (taskId: string, note: string) => void insert("task_followups", [{ task_id: taskId, date: todayIso(), note }]).catch(() => {});
+
+  const setDone = async (t: Task, done: boolean) => {
+    await update("tasks", t.id, done ? { status: "done", done_at: new Date().toISOString() } : { status: "open", done_at: null });
+    log(t.id, done ? "✓ Erledigt" : "Wieder geöffnet");
+  };
+
+  /** Blockieren (mit Grund) bzw. wieder freigeben. */
+  const setBlocked = async (t: Task, reason: string | null) => {
+    if (reason) {
+      await update("tasks", t.id, { status: "blocked", blocked_reason: reason, done_at: null });
+      log(t.id, `Blockiert: ${reason}`);
+    } else {
+      await update("tasks", t.id, { status: "open", blocked_reason: "" });
+      log(t.id, "Nicht mehr blockiert");
+    }
+  };
+
+  const setAssignees = async (t: Task, ids: string[]) => {
+    await update("tasks", t.id, { assignee_person_ids: ids });
+    const names = ids.map((id) => personById.get(id)?.name ?? "?").join(", ");
+    log(t.id, ids.length ? `Verantwortlich: ${names}` : "Verantwortlich: ich");
+  };
 
   /** Neuen Stand in den Verlauf schreiben (nichts wird überschrieben). */
   const addUpdate = async (taskId: string, note: string, date: string = todayIso(), quiet = false) => {
@@ -25,7 +48,7 @@ export function useTaskActions() {
     if (!quiet) toast("Update gespeichert");
   };
 
-  return { setDone, addUpdate };
+  return { setDone, setBlocked, setAssignees, addUpdate };
 }
 
 /** Letzter Stand je Aufgabe (über alle Projekte). */
@@ -42,22 +65,17 @@ export function TaskRow({
   task,
   showCompany = true,
   showProject = false,
-  extra,
   rightLabel,
   subExtra,
-  hideStand = false,
 }: {
   task: Task;
   showCompany?: boolean;
   /** Projekt-Kürzel zeigen („Heute – Alle Projekte“) */
   showProject?: boolean;
-  extra?: React.ReactNode;
   /** ersetzt die Fälligkeit rechts (z. B. „seit 5 T. kein Update“) */
   rightLabel?: React.ReactNode;
   /** zusätzliche Angabe in der zweiten Zeile */
   subExtra?: React.ReactNode;
-  /** letzten Stand aus dem Verlauf nicht zeigen */
-  hideStand?: boolean;
 }) {
   const { project: currentProject, setProject } = useStore();
   const { personById, projectById } = useLookups();
@@ -69,7 +87,10 @@ export function TaskRow({
   const cl = checklistProgress(task);
   const persons = task.assignee_person_ids.map((id) => personById.get(id)).filter((p) => p !== undefined);
   const done = task.status === "done";
-  const overdue = !done && task.due_date !== null && task.due_date < today;
+  // Rechts der nächste Termin – Fälligkeit der Aufgabe oder eines offenen Schritts (wie auf „Heute“)
+  const due = done ? task.due_date : effectiveDue(task);
+  const overdue = !done && due !== null && due < today;
+  const dueFromStep = due !== null && due !== task.due_date;
 
   const sub: React.ReactNode[] = [];
   if (task.status === "blocked") sub.push(<span key="b" className="tone-red">Blockiert: {task.blocked_reason}</span>);
@@ -90,7 +111,7 @@ export function TaskRow({
     );
   } else if (cl.total > 0) sub.push(<span key="c">{cl.done}/{cl.total} Schritte</span>);
   if (subExtra) sub.push(<span key="x">{subExtra}</span>);
-  const stand = !hideStand && !done ? latest.get(task.id) : undefined;
+  const stand = !done ? latest.get(task.id) : undefined;
   if (stand) sub.push(<span key="s" className="task-stand" title={stand.note}>{standText(stand)}</span>);
 
   return (
@@ -117,7 +138,6 @@ export function TaskRow({
         {sub.length > 0 && <span className="task-sub">{sub}</span>}
       </button>
       <span className="task-right">
-        {extra}
         {showProject && taskProject && <ProjectBadge color={taskProject.color} short={taskProject.short} />}
         {showCompany && <CompanyBadges ids={task.company_ids} />}
         {persons.length > 0 && (
@@ -129,8 +149,11 @@ export function TaskRow({
           </span>
         )}
         {rightLabel ?? (
-          <span className={`due${overdue ? " overdue" : ""}`} title={task.due_date ? `Fällig ${formatDate(task.due_date)}` : undefined}>
-            {task.due_date ? relativeLabel(task.due_date, today) : ""}
+          <span
+            className={`due${overdue ? " overdue" : ""}`}
+            title={due ? `${dueFromStep ? "Nächster Schritt fällig" : "Fällig"} ${formatDate(due)}` : undefined}
+          >
+            {due ? relativeLabel(due, today) : ""}
           </span>
         )}
       </span>
@@ -164,7 +187,14 @@ function StepsEditor({ task, save }: { task: Task; save: (patch: { checklist: Ch
   const [text, setText] = useState("");
   const [persons, setPersons] = useState<string[]>([]);
   const [due, setDue] = useState<string | null>(null);
+  const [editing, setEditing] = useState<{ i: number; text: string } | null>(null);
   const cl = checklistProgress(task);
+  const saveText = () => {
+    if (!editing) return;
+    const t = editing.text.trim();
+    if (t && t !== task.checklist[editing.i]?.text) setItem(editing.i, { text: t });
+    setEditing(null);
+  };
   const setItem = (i: number, patch: Partial<ChecklistItem>) =>
     save({ checklist: task.checklist.map((c, j) => (j === i ? { ...c, ...patch } : c)) });
 
@@ -186,7 +216,31 @@ function StepsEditor({ task, save }: { task: Task; save: (patch: { checklist: Ch
         {task.checklist.map((item, i) => (
           <li key={i} className="step-row">
             <input type="checkbox" className="check" checked={item.done} onChange={() => toggle(i)} aria-label="Schritt erledigt" />
-            <span className={`grow${item.done ? " is-done-text" : ""}`}>{item.text}</span>
+            {editing?.i === i ? (
+              <input
+                autoFocus
+                className="plain-input grow"
+                value={editing.text}
+                onChange={(e) => setEditing({ i, text: e.target.value })}
+                onBlur={saveText}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") saveText();
+                  if (e.key === "Escape") {
+                    e.stopPropagation();
+                    setEditing(null);
+                  }
+                }}
+                aria-label="Schritt bearbeiten"
+              />
+            ) : (
+              <span
+                className={`grow step-text${item.done ? " is-done-text" : ""}`}
+                title="Klicken zum Bearbeiten"
+                onClick={() => setEditing({ i, text: item.text })}
+              >
+                {item.text}
+              </span>
+            )}
             {!item.done && (
               <>
                 <PeopleChip title="Wer?" emptyLabel="Wer?" value={stepPersons(item)} onChange={(ids) => setItem(i, { person_ids: ids, person_id: undefined })} />
@@ -285,7 +339,7 @@ export function UpdateInput({ taskId, compact = false }: { taskId: string; compa
 
 /** Alle Updates als Zeitleiste, neueste oben; einzelne Einträge löschbar. */
 export function UpdateTimeline({ taskId, limit = 5 }: { taskId: string; limit?: number }) {
-  const { allDb, purge } = useStore();
+  const { allDb, trash } = useStore();
   const [all, setAll] = useState(false);
   const entries = allDb.task_followups
     .filter((f) => f.task_id === taskId && f.deleted_at === null)
@@ -297,8 +351,8 @@ export function UpdateTimeline({ taskId, limit = 5 }: { taskId: string; limit?: 
       {shown.map((f) => (
         <li key={f.id}>
           <span className="timeline-date">{shortDay(f.date)}</span>
-          <span className="timeline-text">{f.note || <span className="muted">nachgefragt</span>}</span>
-          <button className="icon-btn hover-only" title="Eintrag löschen" onClick={() => void purge("task_followups", f.id)}>
+          <span className="timeline-text">{f.note}</span>
+          <button className="icon-btn hover-only" title="Eintrag löschen" onClick={() => void trash("task_followups", f.id, f.note || "Eintrag").catch(() => {})}>
             <X size={14} />
           </button>
         </li>
@@ -322,29 +376,45 @@ export function TaskPanel() {
   const { openTaskId, openTask, capture } = useUi();
   const { db } = useStore();
   const task = db.tasks.find((t) => t.id === openTaskId);
+  // Der Editor hängt hier ein, was beim Schließen noch zu sichern ist (z. B. Titel ohne Blur)
+  const beforeClose = useRef<(() => void) | null>(null);
+  const close = useRef(() => {});
+  close.current = () => {
+    beforeClose.current?.();
+    beforeClose.current = null;
+    openTask(null);
+  };
 
   useEffect(() => {
     if (!openTaskId) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && !capture && openTask(null);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && !capture && close.current();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [openTaskId, openTask, capture]);
+  }, [openTaskId, capture]);
 
   if (!task) return null;
   return (
     <>
-      <div className="panel-backdrop task-layer" onClick={() => openTask(null)} />
+      <div className="panel-backdrop task-layer" onClick={() => close.current()} />
       <aside className="panel task-layer" aria-label="Aufgabe">
-        <TaskEditor key={task.id} task={task} onClose={() => openTask(null)} />
+        <TaskEditor key={task.id} task={task} onClose={() => close.current()} beforeClose={beforeClose} />
       </aside>
     </>
   );
 }
 
-function TaskEditor({ task, onClose }: { task: Task; onClose: () => void }) {
+function TaskEditor({
+  task,
+  onClose,
+  beforeClose,
+}: {
+  task: Task;
+  onClose: () => void;
+  beforeClose: React.MutableRefObject<(() => void) | null>;
+}) {
   const { db, update, trash, toast } = useStore();
   const { noteById } = useLookups();
-  const { setDone } = useTaskActions();
+  const { setDone, setBlocked, setAssignees } = useTaskActions();
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description);
   // Nur zeigen, wenn beim Öffnen schon eine Beschreibung da war
@@ -358,27 +428,35 @@ function TaskEditor({ task, onClose }: { task: Task; onClose: () => void }) {
   const sourceNote = task.source_note_id ? noteById.get(task.source_note_id) : undefined;
   const today = todayIso();
 
-  const setStatus = (status: TaskStatus) => {
-    if (status === "blocked" && !blockedReason.trim()) {
+  // Beim Schließen (auch Esc) noch nicht per Blur gespeicherte Eingaben sichern
+  beforeClose.current = () => {
+    const patch: Parameters<typeof update<"tasks">>[2] = {};
+    if (title.trim() && title.trim() !== task.title) patch.title = title.trim();
+    if (task.status === "blocked" && blockedReason.trim() && blockedReason.trim() !== task.blocked_reason) patch.blocked_reason = blockedReason.trim();
+    if (hasDescription && description !== task.description) patch.description = description;
+    if (Object.keys(patch).length > 0) save(patch);
+  };
+
+  const blocked = task.status === "blocked";
+  // „Blockiert“ als Schalter: an = Grund abfragen (immer frisch), aus = wieder offen
+  const toggleBlocked = () => {
+    if (blocked) {
+      setBlockedReason("");
+      void setBlocked(task, null).catch(() => {});
+    } else if (pendingBlocked) {
+      setPendingBlocked(false);
+    } else {
+      setBlockedReason("");
       setPendingBlocked(true);
-      return;
     }
-    setPendingBlocked(false);
-    save({
-      status,
-      blocked_reason: status === "blocked" ? blockedReason.trim() : task.blocked_reason,
-      done_at: status === "done" ? new Date().toISOString() : null,
-    });
   };
 
   const confirmBlocked = () => {
     const err = validateTask({ title, status: "blocked", blocked_reason: blockedReason });
     if (err) return toast(err, "error");
-    save({ status: "blocked", blocked_reason: blockedReason.trim(), done_at: null });
+    void setBlocked(task, blockedReason.trim()).catch(() => {});
     setPendingBlocked(false);
   };
-
-  const statusTone: Record<TaskStatus, string | undefined> = { open: undefined, blocked: "red", done: "green" };
 
   return (
     <div className="editor">
@@ -388,7 +466,14 @@ function TaskEditor({ task, onClose }: { task: Task; onClose: () => void }) {
           <span>{task.status === "done" ? "Erledigt" : "Erledigt?"}</span>
         </label>
         <span className="spacer" />
-        <button className="icon-btn" title="In den Papierkorb" onClick={() => void trash("tasks", task.id, task.title).then(onClose)}>
+        <button
+          className="icon-btn"
+          title="In den Papierkorb"
+          onClick={() => {
+            beforeClose.current = null;
+            void trash("tasks", task.id, task.title).then(onClose).catch(() => {});
+          }}
+        >
           <Trash2 size={16} />
         </button>
         <button className="icon-btn" onClick={onClose} aria-label="Schließen" title="Schließen (Esc)">
@@ -407,15 +492,8 @@ function TaskEditor({ task, onClose }: { task: Task; onClose: () => void }) {
       </div>
 
       <div className="chips">
-        <ChipSelect
-          title="Status"
-          tone={pendingBlocked ? "red" : statusTone[task.status]}
-          value={pendingBlocked ? "blocked" : task.status}
-          options={(Object.keys(STATUS_LABEL) as TaskStatus[]).map((s) => ({ value: s, label: STATUS_LABEL[s] }))}
-          onChange={(v) => setStatus(v as TaskStatus)}
-        />
         <CompaniesChip value={task.company_ids} onChange={(ids) => save({ company_ids: ids })} />
-        <AssigneeChip value={task.assignee_person_ids} onChange={(ids) => save({ assignee_person_ids: ids })} />
+        <AssigneeChip value={task.assignee_person_ids} onChange={(ids) => void setAssignees(task, ids).catch(() => {})} />
         <ChipDate
           title="Fällig"
           value={task.due_date}
@@ -425,17 +503,27 @@ function TaskEditor({ task, onClose }: { task: Task; onClose: () => void }) {
           tone={task.due_date && task.due_date < today && task.status !== "done" ? "red" : undefined}
         />
         <ImportantChip value={task.priority === "high"} onChange={(v) => save({ priority: v ? "high" : "medium" })} />
+        {task.status !== "done" && (
+          <button
+            type="button"
+            className={`chip${blocked || pendingBlocked ? " tone-red" : " chip-empty"}`}
+            aria-pressed={blocked}
+            title={blocked ? "Nicht mehr blockiert" : "Als blockiert markieren (mit Grund)"}
+            onClick={toggleBlocked}
+          >
+            <Ban size={14} />
+            <span className="chip-text">Blockiert</span>
+          </button>
+        )}
       </div>
 
-      {(task.status === "blocked" || pendingBlocked) && (
+      {(blocked || pendingBlocked) && (
         <div className="blocked-box">
           <input
             autoFocus={pendingBlocked}
             value={blockedReason}
             onChange={(e) => setBlockedReason(e.target.value)}
-            onBlur={() =>
-              task.status === "blocked" && blockedReason.trim() && blockedReason !== task.blocked_reason && save({ blocked_reason: blockedReason.trim() })
-            }
+            onBlur={() => blocked && blockedReason.trim() && blockedReason !== task.blocked_reason && save({ blocked_reason: blockedReason.trim() })}
             onKeyDown={(e) => e.key === "Enter" && pendingBlocked && confirmBlocked()}
             placeholder="Woran hängt es?"
           />
@@ -451,6 +539,8 @@ function TaskEditor({ task, onClose }: { task: Task; onClose: () => void }) {
           )}
         </div>
       )}
+
+      <StepsEditor task={task} save={save} />
 
       <section className="updates">
         <h3 className="section-label">Verlauf</h3>
@@ -469,8 +559,6 @@ function TaskEditor({ task, onClose }: { task: Task; onClose: () => void }) {
         />
       )}
 
-      <StepsEditor task={task} save={save} />
-
       {/* Links nur noch anzeigen, wenn früher welche angehängt wurden */}
       {attachedCount > 0 && (
         <Disclosure title="Links" meta={attachedCount} defaultOpen>
@@ -479,8 +567,8 @@ function TaskEditor({ task, onClose }: { task: Task; onClose: () => void }) {
       )}
 
       <p className="meta-line">
-        Angelegt {formatDate(task.created_at.slice(0, 10))}
-        {task.done_at && ` · erledigt ${formatDate(task.done_at.slice(0, 10))}`}
+        Angelegt {formatDate(localDate(task.created_at))}
+        {task.done_at && ` · erledigt ${formatDate(localDate(task.done_at))}`}
         {sourceNote && (
           <>
             {" · aus "}

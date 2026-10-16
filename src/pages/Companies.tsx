@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { useLookups, useStore } from "../data/store";
 import { TRAFFIC_LABEL, type Id } from "../data/types";
 import { todayIso } from "../logic/dates";
-import { isActive, isOpen } from "../logic/tasks";
+import { effectiveDue, isActive, isOpen } from "../logic/tasks";
 import { Avatar, CompanyBadge, CompanyLogo, CompanySelect, Empty, TrafficDot, usePersisted } from "../ui/common";
 import { openPerPerson } from "./Contact";
 
@@ -32,7 +32,8 @@ export function CompaniesPage() {
       for (const cid of t.company_ids) {
         const s = m.get(cid) ?? { open: 0, overdue: 0 };
         s.open++;
-        if (t.due_date && t.due_date < today) s.overdue++;
+        const due = effectiveDue(t);
+        if (due && due < today) s.overdue++;
         m.set(cid, s);
       }
     }
