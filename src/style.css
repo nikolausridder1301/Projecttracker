@@ -2744,3 +2744,8 @@ button.traffic-tile:hover {
 .person-new {
   margin-bottom: 12px;
 }
+
+.nav-external {
+  opacity: 0.5;
+  flex-shrink: 0;
+}

@@ -11,12 +11,13 @@ import {
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
+  BarChart3,
   Building2,
   CheckSquare,
+  ExternalLink,
   GripVertical,
   Handshake,
   Hourglass,
-  LayoutGrid,
   Link2,
   NotebookPen,
   Sparkles,
@@ -37,15 +38,18 @@ const dragState: { endedAt: number; release?: () => void } = { endedAt: 0 };
 interface NavItem {
   key: string;
   to: string;
+  /** externer Link (öffnet im neuen Tab) statt Seite in der App */
+  href?: string;
   label: string;
   icon: LucideIcon;
 }
 
-/** Alle Menüpunkte in Standard-Reihenfolge; der Anbieter-Bereich nur, wenn das Projekt einen hat. */
-function allNavItems(vendorName: string | null): NavItem[] {
+/** Alle Menüpunkte in Standard-Reihenfolge; Anbieter-Bereich und Reporting nur, wenn das Projekt sie hat. */
+function allNavItems(vendorName: string | null, reportUrl: string): NavItem[] {
   return [
     { key: "today", to: "/", label: "Heute", icon: Sun },
-    { key: "progress", to: "/fortschritt", label: "Fortschritt", icon: LayoutGrid },
+    // Fortschritt steht im externen Reporting – dorthin verlinken statt eigener Seite
+    { key: "report", to: "", href: reportUrl, label: "Reporting", icon: BarChart3 },
     { key: "tasks", to: "/aufgaben", label: "Aufgaben", icon: CheckSquare },
     { key: "waiting", to: "/delegiert", label: "Delegiert", icon: Hourglass },
     { key: "meeting", to: "/meeting", label: "Meeting", icon: Handshake },
@@ -58,12 +62,13 @@ function allNavItems(vendorName: string | null): NavItem[] {
 }
 
 export function SortableNav({ vendorName, todayCount }: { vendorName: string | null; todayCount: number }) {
-  const { db, update, insert } = useStore();
+  const { db, update, insert, project } = useStore();
   const meta = db.app_meta[0];
   const saved = meta?.nav_order ?? [];
-  // Volle Liste (inkl. evtl. ausgeblendetem Anbieter), damit dessen Platz erhalten bleibt
-  const full = orderNav(allNavItems(vendorName), saved);
-  const visible = vendorName ? full : full.filter((i) => i.key !== "vendor");
+  const reportUrl = project?.report_url?.trim() ?? "";
+  // Volle Liste (inkl. evtl. ausgeblendeter Punkte), damit deren Platz erhalten bleibt
+  const full = orderNav(allNavItems(vendorName, reportUrl), saved);
+  const visible = full.filter((i) => (i.key !== "vendor" || vendorName) && (i.key !== "report" || reportUrl));
 
   const sensors = useSensors(
     // Erst ab 6 px Bewegung ziehen – ein normaler Klick bleibt ein Klick
@@ -120,34 +125,51 @@ function SortableNavItem({ item, count }: { item: NavItem; count: number }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.key });
   const downAt = useRef<{ x: number; y: number } | null>(null);
   const Icon = item.icon;
-  return (
-    <NavLink
-      ref={setNodeRef}
-      to={item.to}
-      end={item.to === "/"}
-      className={`nav-item sortable${isDragging ? " dragging" : ""}`}
-      style={{ transform: CSS.Translate.toString(transform), transition }}
-      {...attributes}
-      {...listeners}
-      // Rolle „Link“ behalten (dnd-kit setzt sonst role=button)
-      role="link"
-      aria-roledescription="verschiebbarer Menüpunkt"
-      onPointerDownCapture={(e) => {
-        downAt.current = { x: e.clientX, y: e.clientY };
-      }}
-      onClick={(e) => {
-        // Klick, der aus einem Ziehen entsteht (Maus bewegt oder Drag gerade beendet),
-        // wechselt nicht die Seite – React Router navigiert nicht bei defaultPrevented.
-        const d = downAt.current;
-        const moved = d !== null && e.detail > 0 && Math.hypot(e.clientX - d.x, e.clientY - d.y) > 5;
-        if (moved || isDragging || Date.now() - dragState.endedAt < 400) e.preventDefault();
-        downAt.current = null;
-      }}
-    >
+  const common = {
+    style: { transform: CSS.Translate.toString(transform), transition },
+    ...attributes,
+    ...listeners,
+    // Rolle „Link“ behalten (dnd-kit setzt sonst role=button)
+    role: "link",
+    "aria-roledescription": "verschiebbarer Menüpunkt",
+    onPointerDownCapture: (e: React.PointerEvent) => {
+      downAt.current = { x: e.clientX, y: e.clientY };
+    },
+    onClick: (e: React.MouseEvent) => {
+      // Klick, der aus einem Ziehen entsteht (Maus bewegt oder Drag gerade beendet),
+      // wechselt nicht die Seite – React Router navigiert nicht bei defaultPrevented.
+      const d = downAt.current;
+      const moved = d !== null && e.detail > 0 && Math.hypot(e.clientX - d.x, e.clientY - d.y) > 5;
+      if (moved || isDragging || Date.now() - dragState.endedAt < 400) e.preventDefault();
+      downAt.current = null;
+    },
+  };
+  const content = (
+    <>
       <Icon size={18} className="nav-icon" aria-hidden />
       <span className="grow">{item.label}</span>
+      {item.href && <ExternalLink size={13} className="nav-external" aria-label="öffnet in neuem Tab" />}
       {count > 0 && <span className="nav-count">{count}</span>}
       <GripVertical size={14} className="nav-grip" aria-hidden />
+    </>
+  );
+  if (item.href) {
+    return (
+      <a
+        ref={setNodeRef}
+        href={item.href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={`nav-item sortable${isDragging ? " dragging" : ""}`}
+        {...common}
+      >
+        {content}
+      </a>
+    );
+  }
+  return (
+    <NavLink ref={setNodeRef} to={item.to} end={item.to === "/"} className={`nav-item sortable${isDragging ? " dragging" : ""}`} {...common}>
+      {content}
     </NavLink>
   );
 }

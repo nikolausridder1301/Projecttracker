@@ -115,6 +115,7 @@ function NewProjectDialog({ onClose }: { onClose: () => void }) {
           short: (short.trim() || suggestShort(name)).toUpperCase().slice(0, 4),
           color,
           vendor_company_id: null,
+          report_url: "",
           sort: projects.length,
           archived: false,
         },

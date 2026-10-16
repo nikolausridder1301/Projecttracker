@@ -142,6 +142,7 @@ export function demoSeed(): Db {
       name: "Tacto",
       short: "TAC",
       color: "#ea7a0c",
+      report_url: "https://nikolausridder1301.github.io/tacto/",
       vendor_company_id: companies.find((c) => c.is_external)?.id ?? null,
       sort: 0,
       archived: false,

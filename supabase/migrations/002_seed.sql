@@ -6,7 +6,7 @@ declare
   pid uuid;
 begin
   -- Erstes Projekt; weitere legst du in der App an (mit Kopie der Stammdaten)
-  insert into projects (name, short, color, sort) values ('Tacto', 'TAC', '#ea7a0c', 0) returning id into pid;
+  insert into projects (name, short, color, report_url, sort) values ('Tacto', 'TAC', '#ea7a0c', 'https://nikolausridder1301.github.io/tacto/', 0) returning id into pid;
 
   insert into companies (project_id, name, short, color, logo_key, is_overarching, is_external, sort) values
     (pid, 'SK Group (Übergreifend)', 'SK', '#161b26', 'sk', true, false, 0),
