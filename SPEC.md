@@ -117,7 +117,7 @@ Die Spalten `topic_id` an Aufgaben, Notizen, Links und Anbieter-Punkten bestehen
 
 Seitenleiste (Reihenfolge per **Drag-and-Drop** änderbar, gilt für alle Projekte und Geräte; zurücksetzbar in den Einstellungen):
 **Heute · Fortschritt · Aufgaben · Delegiert · Meeting · Notizen · {Anbieter, z. B. Tacto} · Links · Personen · Firmen** – unten Papierkorb, Einstellungen, Abmelden.
-Kopfzeile: globale Suche (Strg+K), Backup-Icon, „+ Neu“ (Taste N).
+Kopfzeile: globale Suche (Strg+K), Backup-Icon, „+ Neu“ (Taste N). **Alles Neue entsteht nur über „+ Neu“** – Seiten haben keine eigenen Neu-Buttons.
 
 ### 6.3 Heute
 
@@ -160,7 +160,7 @@ Kopfzeile: globale Suche (Strg+K), Backup-Icon, „+ Neu“ (Taste N).
 
 ### 6.8 Notizen
 
-Arten **Notiz · Meeting-Protokoll · Entscheidung**; Chips für Art, Firma, Datum; Teilnehmer bei Protokollen; Text als mitwachsendes Feld (keine Markdown-Darstellung). **„Aufgabe daraus“** übernimmt markierten Text als Aufgabe, verknüpft in beide Richtungen; Bereiche klappen auf, sobald sie Inhalt bekommen. Links lassen sich an Notizen hängen.
+Arten **Notiz · Meeting-Protokoll · Entscheidung** (Entscheidungen bewusst getrennt). Notizen öffnen sich – wie Aufgaben – als **Pop-up-Panel** über der aktuellen Seite (aus der Liste, der Suche, dem Meeting, der Firmen-/Personenseite); Direktlinks `/notizen/:id` öffnen ebenfalls das Panel. Chips für Art, Firma, Datum; Teilnehmer bei Protokollen; Text als mitwachsendes Feld (keine Markdown-Darstellung). **„Aufgabe daraus“** übernimmt markierten Text als Aufgabe, verknüpft in beide Richtungen; Bereiche klappen auf, sobald sie Inhalt bekommen. Links lassen sich an Notizen hängen.
 
 ### 6.9 Anbieter-Bereich (bei Tacto: „Tacto“)
 
@@ -180,7 +180,7 @@ Arten **Notiz · Meeting-Protokoll · Entscheidung**; Chips für Art, Firma, Dat
 
 ### 6.11 Schnellerfassung
 
-Taste **N** oder „+ Neu“: Typ (Aufgabe/Notiz/Link), Titel, Enter. Chips für Firma (aus dem Kontext vorbelegt; bei Aufgaben Mehrfachauswahl), Verantwortlich, Fällig, Wichtig bzw. Art/Kategorie. Entwürfe bleiben erhalten.
+Taste **N** oder „+ Neu“: Typ **Aufgabe · Notiz · Protokoll · Entscheidung · Link**, Titel, Enter. **Danach öffnet sich das Neue sofort** im Pop-up (Aufgabe bzw. Notiz) – immer derselbe Ablauf. Ausnahme: „Aufgabe daraus“ im Protokoll bleibt im Protokoll (die Aufgabe erscheint dort unter „Aufgaben“). Links werden nur gespeichert. Chips für Firma (aus dem Kontext vorbelegt; bei Aufgaben Mehrfachauswahl), Verantwortlich, Fällig, Wichtig bzw. Kategorie. Entwürfe bleiben erhalten.
 
 ### 6.12 Suche
 
@@ -261,4 +261,5 @@ Seitenleiste als Menü; Heute, Abhaken, Schnellerfassung, Updates und alle Dialo
 | Filterleisten | Firmenfilter als Mehrfach-Dropdown auf Aufgaben, Notizen, Links, Tacto; keine Browser-Auswahlfelder mehr in Filtern |
 | Priorität | Nur noch Fahne „Wichtig“ (an/aus); „Niedrig“ entfällt |
 | Status | Offen · Blockiert · Erledigt; „In Arbeit“ entfällt |
+| Neu anlegen | Nur über „+ Neu“ mit allen Arten; das Neue öffnet sich danach im Pop-up; Notizen als Pop-up-Panel statt eigener Seite |
 | Notiz-Arten | Bleiben drei: Entscheidungen werden bewusst getrennt von Protokollen festgehalten, weil sie auch außerhalb von Meetings fallen |

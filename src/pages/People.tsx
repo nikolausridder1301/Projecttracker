@@ -6,6 +6,7 @@ import type { Id, Person } from "../data/types";
 import { compareTasks, isActive, isOpen } from "../logic/tasks";
 import { CompanyBadge, CompanySelect, Empty } from "../ui/common";
 import { TaskList } from "../ui/tasks";
+import { NoteLink } from "../ui/uiState";
 
 export function PeoplePage() {
   const { db, insert } = useStore();
@@ -182,7 +183,7 @@ function PersonEditor({ person }: { person: Person }) {
           <h3>Teilgenommen an</h3>
           {meetings.map((n) => (
             <div key={n.id}>
-              <Link to={`/notizen/${n.id}`}>{n.title}</Link>
+              <NoteLink id={n.id}>{n.title}</NoteLink>
             </div>
           ))}
         </section>

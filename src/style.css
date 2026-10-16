@@ -2447,3 +2447,17 @@ button.traffic-tile:hover {
 .task-sub {
   min-width: 0;
 }
+
+/* Notiz-Panel breiter (Text), Aufgaben-Panel liegt bei Bedarf darüber */
+.panel.wide {
+  width: min(760px, 100vw);
+}
+.panel-backdrop.task-layer {
+  z-index: 32;
+}
+.panel.task-layer {
+  z-index: 33;
+}
+.capture .seg-group {
+  flex-wrap: wrap;
+}

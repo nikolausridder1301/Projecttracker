@@ -4,7 +4,7 @@ import type { Id, Link } from "../data/types";
 import { isActive, isValidUrl } from "../logic/tasks";
 import { LinkRow } from "../ui/links";
 import { CompanyFilter, CompanySelect, Empty, FilterSelect, usePersisted } from "../ui/common";
-import { useCaptureContext, useUi } from "../ui/uiState";
+import { useCaptureContext } from "../ui/uiState";
 
 interface LinkFilter {
   /** leer = alle Firmen */
@@ -17,7 +17,6 @@ interface LinkFilter {
 export function LinksPage() {
   const { db } = useStore();
   const { categories } = useLookups();
-  const { openCapture } = useUi();
   const [stored, setF] = usePersisted<LinkFilter>("links", { companies: [], topic: "", category: "", q: "" });
   const f = { ...stored, companies: Array.isArray(stored.companies) ? stored.companies : [] };
   useCaptureContext(f.companies.length === 1 ? f.companies[0] : undefined);
@@ -40,10 +39,6 @@ export function LinksPage() {
       <div className="page-head">
         <h1>Links</h1>
         <span className="muted">{links.length} Einträge</span>
-        <span className="spacer" />
-        <button className="btn primary" onClick={() => openCapture({ type: "link" })}>
-          + Link
-        </button>
       </div>
       <div className="filters">
         <CompanyFilter value={f.companies} onChange={(v) => set({ companies: v })} />

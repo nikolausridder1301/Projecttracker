@@ -8,7 +8,7 @@ import { isActive, isOpen } from "../logic/tasks";
 import { affectsCompany, ageLabel, categoryDef, isOpenItem, statusDef } from "../logic/vendor";
 import { CompanyLogo, Empty, TrafficDot } from "../ui/common";
 import { LinkRow } from "../ui/links";
-import { useCaptureContext, useUi } from "../ui/uiState";
+import { NoteLink, useCaptureContext } from "../ui/uiState";
 import { CompanyMilestones } from "../ui/milestones";
 import { TrafficDialog, TrafficHistoryList, TrafficStatus } from "../ui/traffic";
 import { useVendor } from "../ui/vendor";
@@ -78,7 +78,6 @@ type Tab = "ms" | "tasks" | "notes" | "links" | "tacto" | "ampel";
 function CompanyView({ company }: { company: Company }) {
   const { db } = useStore();
   const { people } = useLookups();
-  const { openCapture } = useUi();
   const [tab, setTab] = useState<Tab>("tasks");
   const [trafficOpen, setTrafficOpen] = useState(false);
   const [f, setF] = useState<TaskFilter>({
@@ -152,15 +151,6 @@ function CompanyView({ company }: { company: Company }) {
             {label}
           </button>
         ))}
-        <span className="spacer" />
-        {tab !== "tacto" && tab !== "ampel" && tab !== "ms" && (
-          <button
-            className="btn primary"
-            onClick={() => openCapture({ type: tab === "tasks" ? "task" : tab === "notes" ? "note" : "link", companyId: company.id })}
-          >
-            + {tab === "tasks" ? "Aufgabe" : tab === "notes" ? "Notiz" : "Link"}
-          </button>
-        )}
       </div>
 
       {tab === "tasks" && (
@@ -175,11 +165,11 @@ function CompanyView({ company }: { company: Company }) {
         ) : (
           <div className="card">
             {notes.map((n) => (
-              <Link key={n.id} to={`/notizen/${n.id}`} className="note-row">
+              <NoteLink key={n.id} id={n.id} className="note-row">
                 <span className="note-main">
                   <span className="task-title">{n.title}</span>
                 </span>
-              </Link>
+              </NoteLink>
             ))}
           </div>
         ))}

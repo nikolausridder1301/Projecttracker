@@ -1,6 +1,6 @@
-import { ArrowLeft, CalendarDays, CheckSquare, Gavel, NotebookPen, Plus, Trash2, Users, type LucideIcon } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { CalendarDays, CheckSquare, Gavel, NotebookPen, Plus, Trash2, Users, X, type LucideIcon } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { useLookups, useStore } from "../data/store";
 import { NOTE_KIND_LABEL, type Id, type Note, type NoteKind } from "../data/types";
 import { formatDate } from "../logic/dates";
@@ -8,7 +8,7 @@ import { isActive } from "../logic/tasks";
 import { AttachedLinks } from "../ui/links";
 import { AutoText, ChipDate, ChipSelect, CompanyBadge, CompanyFilter, Disclosure, Empty, usePersisted } from "../ui/common";
 import { TaskList } from "../ui/tasks";
-import { useCaptureContext, useUi } from "../ui/uiState";
+import { NoteLink, useCaptureContext, useUi } from "../ui/uiState";
 
 interface NoteFilter {
   kind: NoteKind | "";
@@ -22,7 +22,6 @@ export const KIND_ICON: Record<NoteKind, LucideIcon> = { note: NotebookPen, meet
 
 export function NotesPage() {
   const { db } = useStore();
-  const { openCapture } = useUi();
   const [stored, setF] = usePersisted<NoteFilter>("notes", { kind: "", companies: [], topic: "", q: "" });
   const f = { ...stored, companies: Array.isArray(stored.companies) ? stored.companies : [] };
   useCaptureContext(f.companies.length === 1 ? f.companies[0] : undefined);
@@ -44,10 +43,6 @@ export function NotesPage() {
       <div className="page-head">
         <h1>Notizen</h1>
         <span className="muted">{notes.length}</span>
-        <span className="spacer" />
-        <button className="btn primary" onClick={() => openCapture({ type: "note" })}>
-          <Plus size={16} /> Notiz
-        </button>
       </div>
       <div className="filters">
         <div className="seg-group">
@@ -70,7 +65,7 @@ export function NotesPage() {
           {notes.map((n) => {
             const Icon = KIND_ICON[n.kind];
             return (
-              <Link key={n.id} to={`/notizen/${n.id}`} className="note-row">
+              <NoteLink key={n.id} id={n.id} className="note-row">
                 <Icon size={18} className="row-icon" aria-label={NOTE_KIND_LABEL[n.kind]} />
                 <span className="note-main">
                   <span className="task-title">{n.title}</span>
@@ -78,7 +73,7 @@ export function NotesPage() {
                 </span>
                 <CompanyBadge id={n.company_id} />
                 <span className="due">{formatDate(noteDate(n))}</span>
-              </Link>
+              </NoteLink>
             );
           })}
         </div>
@@ -92,21 +87,47 @@ const excerpt = (s: string) => s.replace(/[#*_>`[\]()-]/g, "").replace(/\s+/g, "
 
 // ---------------------------------------------------------------------------
 
+/** Direktlink /notizen/:id: Liste zeigen und die Notiz als Pop-up öffnen. */
 export function NoteDetailPage() {
   const { id } = useParams();
-  const { db } = useStore();
-  const note = db.notes.find((n) => n.id === id);
-  if (!note) return <Empty>Notiz nicht gefunden.</Empty>;
-  if (note.deleted_at) return <Empty>Diese Notiz liegt im Papierkorb.</Empty>;
-  return <NoteEditor key={note.id} note={note} />;
+  const { openNote } = useUi();
+  const navigate = useNavigate();
+  useEffect(() => {
+    if (id) openNote(id);
+    navigate("/notizen", { replace: true });
+  }, [id, openNote, navigate]);
+  return null;
 }
 
-function NoteEditor({ note }: { note: Note }) {
+/** Notiz, Protokoll oder Entscheidung als Pop-up-Panel – gleich wie bei Aufgaben. */
+export function NotePanel() {
+  const { openNoteId, openNote, openTaskId, capture } = useUi();
+  const { db } = useStore();
+  const note = db.notes.find((n) => n.id === openNoteId && n.deleted_at === null);
+
+  useEffect(() => {
+    if (!openNoteId) return;
+    // Esc schließt zuerst Erfassung bzw. eine darüber geöffnete Aufgabe
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && !openTaskId && !capture && openNote(null);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [openNoteId, openNote, openTaskId, capture]);
+
+  if (!note) return null;
+  return (
+    <>
+      <div className="panel-backdrop" onClick={() => openNote(null)} />
+      <aside className="panel wide" aria-label="Notiz">
+        <NoteEditor key={note.id} note={note} onClose={() => openNote(null)} />
+      </aside>
+    </>
+  );
+}
+
+function NoteEditor({ note, onClose }: { note: Note; onClose: () => void }) {
   const { db, update, trash } = useStore();
   const { people, companies } = useLookups();
   const { openCapture } = useUi();
-  const navigate = useNavigate();
-  useCaptureContext(note.company_id);
   const [title, setTitle] = useState(note.title);
   const [body, setBody] = useState(note.body);
   const [participantsText, setParticipantsText] = useState(note.participants_text);
@@ -136,18 +157,16 @@ function NoteEditor({ note }: { note: Note }) {
   const participantCount = note.participant_ids.length + (note.participants_text.trim() ? 1 : 0);
 
   return (
-    <div className="page narrow">
-      <div className="page-head">
-        <Link to="/notizen" className="back-link">
-          <ArrowLeft size={16} /> Notizen
-        </Link>
+    <div className="editor">
+      <div className="panel-head">
         <span className="spacer" />
-        <button className="icon-btn" title="In den Papierkorb" onClick={() => void trash("notes", note.id, note.title).then(() => navigate("/notizen"))}>
+        <button className="icon-btn" title="In den Papierkorb" onClick={() => void trash("notes", note.id, note.title).then(onClose)}>
           <Trash2 size={16} />
         </button>
+        <button className="icon-btn" onClick={onClose} aria-label="Schließen" title="Schließen (Esc)">
+          <X size={18} />
+        </button>
       </div>
-
-      <div className="card editor">
         <div className="title-field">
           <AutoText
             value={title}
@@ -237,7 +256,6 @@ function NoteEditor({ note }: { note: Note }) {
         >
           <AttachedLinks target={{ noteId: note.id }} />
         </Disclosure>
-      </div>
     </div>
   );
 }
