@@ -30,9 +30,6 @@ export function demoSeed(): Db {
     logo_key,
     is_overarching,
     is_external: name === "Tacto",
-    traffic_light: (sort === 5 ? "red" : sort === 2 ? "yellow" : "green") as "red" | "yellow" | "green",
-    traffic_comment: sort === 5 ? "ERP-Datenexport fehlt noch" : "",
-    traffic_changed_at: null,
     sort,
   }));
 
@@ -165,7 +162,6 @@ export function demoSeed(): Db {
     attachments: [],
     app_meta: [{ ...meta(), last_export_at: null, nav_order: [] }],
     vendor_items: [],
-    traffic_history: [],
     milestone_status: demoMilestones(),
   };
 }

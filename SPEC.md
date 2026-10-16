@@ -13,7 +13,7 @@ Ein persönliches Projektleiter-Cockpit für Rollouts in der SK Group – zuerst
 
 - **Eigene Aufgaben** planen und abarbeiten.
 - **Delegierte Aufgaben** nachhalten: wer, bis wann, wann zuletzt nachgefragt, was gesagt wurde.
-- **Fortschritt je Gesellschaft** über Meilensteine sehen und die Firmen-Ampel bewusst setzen.
+- **Fortschritt je Gesellschaft** über das externe Reporting sehen (Verweis im Menü).
 - **Meetings vorbereiten:** alles Relevante zu einer Person oder Firma auf einen Blick.
 - **Notizen, Protokolle, Entscheidungen** festhalten; **Links** zu Dokumenten sammeln.
 - **Anbieter-Themen** (bei Tacto: Feature Requests, Fragen, Bugs, Best Practices, Fails & Claims) mit Status verfolgen.
@@ -51,7 +51,7 @@ Mehrbenutzer/Zugang für Delegierte · Dateiuploads · E-Mail-/Push-Erinnerungen
 ### 4.1 Projekte
 
 - Oben links **Projekt-Umschalter**: aktuelles Projekt (Kürzel-Badge in Projektfarbe + Name), Liste aller Projekte, „Neues Projekt…“, „Projekteinstellungen“. **Bei nur einem Projekt** steht dort schlicht der Name; „Neues Projekt…“ liegt dann in den Einstellungen.
-- **Alles gehört zu einem Projekt** – auch Firmen und Personen. Ein neues Projekt kann Firmen, Personen, Meilensteine und Link-Kategorien eines bestehenden Projekts **als Kopie** übernehmen (Ampeln starten neutral); Aufgaben, Notizen, Links und Anbieter-Punkte werden nicht kopiert. Danach ist jedes Projekt unabhängig anpassbar.
+- **Alles gehört zu einem Projekt** – auch Firmen und Personen. Ein neues Projekt kann Firmen, Personen, Meilensteine und Link-Kategorien eines bestehenden Projekts **als Kopie** übernehmen ; Aufgaben, Notizen, Links und Anbieter-Punkte werden nicht kopiert. Danach ist jedes Projekt unabhängig anpassbar.
 - Projekte lassen sich archivieren; das letzte aktive Projekt nicht.
 - Erstes Projekt: **„Tacto“** (Kürzel TAC) mit allen bisherigen Daten.
 
@@ -68,11 +68,11 @@ Mehrbenutzer/Zugang für Delegierte · Dateiuploads · E-Mail-/Push-Erinnerungen
 | PER | Perforator | Gesellschaft |
 | TAC | Tacto | **externer Partner** (Software-Anbieter) |
 
-Logos aus dem Repo `tacto`, Tacto-Logo von Nikolaus. Externe Partner zählen nicht zu „Alle Gesellschaften“ und haben keine Ampel-Kachel auf „Heute“. Je Firma: Farbe, Kürzel, Ampel mit Begründung und Verlauf.
+Logos aus dem Repo `tacto`, Tacto-Logo von Nikolaus. Externe Partner zählen nicht zu „Alle Gesellschaften“. Je Firma: Farbe, Kürzel. Es gibt **keine Firmen-Ampel** mehr – Status und Fortschritt stehen im externen Reporting.
 
 ### 4.3 Meilensteine (früher „Themen“)
 
-Die 13 Startthemen (10 tacto-Module plus Projektmanagement/Allgemein, Schulung/Academy, Stammdaten) sind jetzt **Meilensteine** je Firma (Reiter in der Firmen-Ansicht, Grundlage des Ampel-Vorschlags); ausgeblendet, sobald ein Reporting-Link gesetzt ist. In den Einstellungen umbenenn-, sortier-, ergänz- und archivierbar.
+Die 13 Startthemen (10 tacto-Module plus Projektmanagement/Allgemein, Schulung/Academy, Stammdaten) sind jetzt **Meilensteine** je Firma (Reiter in der Firmen-Ansicht); ausgeblendet, sobald ein Reporting-Link gesetzt ist. In den Einstellungen umbenenn-, sortier-, ergänz- und archivierbar.
 
 ### 4.4 Personen
 
@@ -89,8 +89,8 @@ Alle Tabellen: `id`, `created_at`, `updated_at`, `deleted_at` (Papierkorb). Proj
 | Tabelle | Inhalt |
 |---|---|
 | `projects` | Name, Kürzel, Farbe, `vendor_company_id` (Anbieter-Bereich an/aus), Sortierung, archiviert |
-| `companies` | Name, Kürzel, Farbe, Logo-Schlüssel, übergreifend, **extern**, Ampel + Begründung + Zeitpunkt |
-| `traffic_history` | Ampel-Verlauf: Firma, von, nach, Begründung |
+| `companies` | Name, Kürzel, Farbe, Logo-Schlüssel, übergreifend, **extern** (die früheren Ampel-Spalten bleiben ungenutzt in der Datenbank) |
+| `traffic_history` | Früherer Ampel-Verlauf – wird nicht mehr angezeigt oder beschrieben, Daten bleiben erhalten |
 | `topics` | **Meilensteine** (Name, Sortierung, archiviert) |
 | `milestone_status` | Stand je Meilenstein und Firma: Status, Zieldatum, Kommentar (eindeutig je Paar) |
 | `people` | Personen je Projekt |
@@ -121,16 +121,15 @@ Kopfzeile: globale Suche (Strg+K), Backup-Icon, „+ Neu“ (Taste N). **Alles N
 
 ### 6.3 Heute
 
-1. **Ampelleiste** der Firmen – **nur Anzeige**: Logo, Kürzel, ein Punkt, „seit …“, farbiger Rand bei Gelb/Rot. Klick öffnet den Ampel-Dialog (6.10).
-2. **Fällig** (überfällig / heute / diese Woche – eigene und delegierte) und **Blockiert** – leere Bereiche entfallen; sind alle leer, erscheint eine schlichte Zeile „Alles erledigt für heute“.
-3. Bei mehreren Projekten: Umschalter **„Dieses Projekt | Alle Projekte“**; in der Gesamtansicht trägt jede Aufgabe ihr Projekt-Kürzel, ein Klick wechselt ins Projekt.
-4. Tab-Titel und Menü-Zähler zeigen die Anzahl überfälliger und heute fälliger Aufgaben.
+1. **Fällig** (überfällig / heute / diese Woche – eigene und delegierte) und **Blockiert** – leere Bereiche entfallen; sind alle leer, erscheint eine schlichte Zeile „Alles erledigt für heute“.
+2. Bei mehreren Projekten: Umschalter **„Dieses Projekt | Alle Projekte“**; in der Gesamtansicht trägt jede Aufgabe ihr Projekt-Kürzel, ein Klick wechselt ins Projekt.
+3. Tab-Titel und Menü-Zähler zeigen die Anzahl überfälliger und heute fälliger Aufgaben.
 
 ### 6.4 Fortschritt → externes Reporting
 
 - **Keine eigene Fortschritts-Seite mehr:** Der Fortschritt ist im **Tacto Reporting** dokumentiert (https://nikolausridder1301.github.io/tacto/). Der Menüpunkt **„Reporting“** öffnet es in einem neuen Tab.
 - Der Link ist eine Projekteinstellung („Reporting-Link im Menü“); leer = kein Menüpunkt. Für das Projekt Tacto ist er gesetzt.
-- Meilensteine je Firma gibt es weiterhin als Reiter in der Firmen-Ansicht; sie speisen auch den Ampel-Vorschlag.
+- Meilensteine je Firma gibt es weiterhin als Reiter in der Firmen-Ansicht.
 
 ### 6.5 Aufgaben
 
@@ -159,8 +158,8 @@ Kopfzeile: globale Suche (Strg+K), Backup-Icon, „+ Neu“ (Taste N). **Alles N
 ### 6.7 Meeting und Kontakte – eine Ansicht
 
 - **Eine Detailansicht für Firmen und Personen**, auch auf der Meeting-Seite. Dahinter steht **eine gemeinsame Logik „was gehört zu X“** (`buildBriefing`); Detailansicht, Agenda und Protokoll nutzen sie alle.
-  - **Kopf:** Logo bzw. Initialen, Name; bei Firmen Ampel mit „Ampel ändern“ und darunter ihre Personen (mit „+ Person“); bei Personen Firma, Rolle, E-Mail, Telefon und „Bearbeiten“ (Name, Firma, Rolle, Kontakt, aktiv, löschen). Rechts **„Agenda kopieren“** und **„Protokoll starten“**.
-  - **Reiter:** **Offen · Notizen · Links**, bei Firmen zusätzlich **Meilensteine · {Anbieter} · Ampel-Verlauf**.
+  - **Kopf:** Logo bzw. Initialen, Name; bei Firmen ihre Personen (mit „+ Person“); bei Personen Firma, Rolle, E-Mail, Telefon und „Bearbeiten“ (Name, Firma, Rolle, Kontakt, aktiv, löschen). Rechts **„Agenda kopieren“** und **„Protokoll starten“**.
+  - **Reiter:** **Offen · Notizen · Links**, bei Firmen zusätzlich **Meilensteine · {Anbieter}**.
   - **Offen:** bei Personen „Offen bei …“ (verantwortlich oder offener Schritt), dazu meine und weitere offene Punkte ihrer Firma; bei Firmen alles, was die Firma betrifft. Blockiertes zuerst; Schritte lassen sich über den Hinweis in der Karte aufklappen. Nichts offen: Karte mit „Aufgabe anlegen“. Erledigte auf Wunsch („x erledigte anzeigen“).
 - **Meeting** bleibt im Menü für den schnellen Zugriff: oben Person oder Firma wählen (Suche, letzte Auswahl bleibt), darunter genau diese Ansicht.
 - **„Protokoll starten“** öffnet das **heutige Protokoll** mit dieser Person/Firma oder legt es an (Teilnehmer, Firma, Datum). Im Protokoll stehen die **offenen Punkte als Liste mit aufklappbaren Schritten** – was vereinbart wird, landet direkt als Schritt in der Aufgabe; der Text bleibt für freie Notizen (keine kopierte Agenda mehr).
@@ -181,10 +180,9 @@ Arten **Notiz · Meeting-Protokoll · Entscheidung** (Entscheidungen bewusst get
 - Detail: Chips Status · Firmen (Mehrfachauswahl, leer = alle) · Wichtig; Ansprechpartner und Kategorie hinter „Mehr…“; Ticketfeld erst ab Meldung; Fragen mit Antwort (setzt „Beantwortet“, „Als Best Practice übernehmen“); Claims mit Versprochen/Tatsächlich/Beleg.
 - **„Für Jour fixe kopieren“**: offene Punkte nach Kategorie als Text.
 
-### 6.10 Firmen, Ampel, Personen, Links
+### 6.10 Firmen, Personen, Links
 
-- **Ampel ändern nur im Dialog:** Grün/Gelb/Rot, **Begründung Pflicht bei Gelb und Rot**, jede Änderung im **Ampel-Verlauf**. Der Dialog zeigt einen **Vorschlag aus den Meilensteinen** (verzögert/überfällig → Rot, kritisch → Gelb) mit „Übernehmen“ – die Entscheidung bleibt manuell.
-- **Kontakte** (Firmen & Personen, ein Menüpunkt statt zwei): oben **Firmen**, darunter abgesetzt **Personen** – jeweils gleich aufgebaute Karten, die Fußzeile mit Trennlinie liegt immer auf gleicher Höhe. Firmenkarte: Logo, Name, Ampel, Ampel-Hinweis (max. zwei Zeilen), unten Zahl der Personen und – nur wenn vorhanden – „x Aufgaben offen“ (betrifft die Firma) und „x überfällig“. Personenkarte: Initialen, Name, Rolle, unten Firma und – nur wenn vorhanden – „x Aufgaben offen“ (verantwortlich oder mit offenem Schritt). Kein „0 offen“. „+ Person“ über der Personenliste (Name + Firma); Suche nach Firma oder Person; „Inaktive zeigen“. Klick öffnet die gemeinsame Detailansicht (6.7).
+- **Kontakte** (Firmen & Personen, ein Menüpunkt statt zwei): oben **Firmen**, darunter abgesetzt **Personen** – jeweils gleich aufgebaute, schlichte Karten in einer Zeile: Logo bzw. Initialen, Name, darunter eine Zeile (Firma: Zahl der Personen; Person: Firma und Rolle), rechts – nur wenn vorhanden – eine kleine Marke „x offen“ (Firma: betrifft sie; Person: verantwortlich oder mit offenem Schritt), bei überfälligen Firmenaufgaben rot „x überfällig“. Keine Ampel, kein „0 offen“. „+ Person“ über der Personenliste (Name + Firma); Suche nach Firma oder Person; „Inaktive zeigen“. Klick öffnet die gemeinsame Detailansicht (6.7).
 - **Links:** zentrale Sammlung mit Firma und Kategorie, URL-Prüfung (nur `http(s)`).
 
 ### 6.11 Schnellerfassung
@@ -210,7 +208,7 @@ Seitenleiste als Menü; Heute, Abhaken, Schnellerfassung, Schritte und alle Dial
 
 ## 7. Technik und Betrieb
 
-- **Aufbau:** `src/data` (Typen, Backend Supabase/Demo, Store), `src/logic` (reine Logik mit Tests: Datum, Heute, Suche, Anbieter, Projekte, Menü, Ampel, Meilensteine, Briefing), `src/ui` (gemeinsame Bausteine), `src/pages` (Ansichten), `supabase/migrations`.
+- **Aufbau:** `src/data` (Typen, Backend Supabase/Demo, Store), `src/logic` (reine Logik mit Tests: Datum, Heute, Suche, Anbieter, Projekte, Menü, Meilensteine, Briefing), `src/ui` (gemeinsame Bausteine), `src/pages` (Ansichten), `supabase/migrations`.
 - **Store:** lädt alles einmal, aktualisiert optimistisch (Rücknahme bei Fehler); `db` = aktuelles Projekt, `allDb` = Gesamtbestand; `project_id` wird beim Anlegen automatisch gesetzt.
 - **Ablauf für Änderungen:** Feature-Branch → Pull Request → Merge auf `main` → GitHub Action baut, testet und veröffentlicht. Datenbankänderungen als Migration; bei neuen Pflichtspalten ein Übergangs-Standardwert, damit die laufende Version bis zum Deploy weiter speichert.
 - **Keep-alive:** GitHub Action alle 3 Tage ruft `ping()` auf.
@@ -230,8 +228,8 @@ Seitenleiste als Menü; Heute, Abhaken, Schnellerfassung, Schritte und alle Dial
 
 - Ohne Login und mit fremdem Konto sind keine Daten lesbar oder schreibbar; Registrierung ist aus.
 - Projekt anlegen mit Kopie; Daten strikt je Projekt getrennt; „Alle Projekte“ auf Heute.
-- Ampel ändert sich nicht per Einzelklick; Gelb/Rot nur mit Begründung; Verlauf mit von/nach.
-- Meilensteine je Firma: Status setzen/ändern ohne Duplikate; überschrittene Ziele markiert; Ampel-Vorschlag passend.
+- Keine Firmen-Ampel nirgends (Heute, Kontakte, Firmen-Ansicht, Einstellungen).
+- Meilensteine je Firma: Status setzen/ändern ohne Duplikate; überschrittene Ziele markiert.
 - Schritte und Meilensteine je Aufgabe unabhängig voneinander (Meilensteine ohne Datum und Schritte); aktueller Meilenstein und nächster Schritt in der Zeile; „Delegiert“ sortiert nach nächstem Termin.
 - Meeting-Briefing zeigt nur die gewählte Person/Firma; Protokoll mit Agenda und Teilnehmer.
 - Erledigte Aufgaben unter Trennlinie nach Datum.
@@ -258,7 +256,7 @@ Seitenleiste als Menü; Heute, Abhaken, Schnellerfassung, Schritte und alle Dial
 | Mehrere Projekte | Alles je Projekt, Kopie bei Neuanlage, Anbieter-Bereich optional |
 | Menü | Sortierbar per Drag-and-Drop, gespeichert in der Datenbank |
 | Nachhaken | Ersetzt durch **Verlauf** (datierte Updates je Aufgabe); kein Nachhak-Datum, kein „Heute nachhaken“ |
-| Ampel | Nur im Dialog mit Begründung und Verlauf; Vorschlag aus Meilensteinen |
+| Ampel | Entfällt komplett (steht im externen Reporting); Ampel-Leiste auf Heute, Dialog, Verlauf und Vorschlag entfernt; schlichtere Firmen-Karten |
 | Erledigte | Unter Trennlinie, nach Datum |
 | Meeting | Briefing zu Person/Firma mit Protokoll-Start |
 | Themen | Werden Meilensteine (je Firma); kein Thema-Feld mehr an Einträgen |

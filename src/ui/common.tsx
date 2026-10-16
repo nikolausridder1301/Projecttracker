@@ -11,7 +11,7 @@ import sk from "../assets/logos/sk.jpg";
 import tacto from "../assets/logos/tacto.png";
 import { useLookups } from "../data/store";
 import { listIndent, listNewline, parseBlocks, parseInline, type Edit } from "../logic/markdown";
-import { TRAFFIC_LABEL, type Company, type Id, type TrafficLight } from "../data/types";
+import type { Company, Id } from "../data/types";
 
 export const LOGOS: Record<string, string> = {
   sk,
@@ -44,10 +44,6 @@ export function CompanyBadge({ id }: { id: Id | null }) {
       {c.short}
     </span>
   );
-}
-
-export function TrafficDot({ light, title }: { light: TrafficLight; title?: string }) {
-  return <span className={`dot dot-${light}`} title={title ?? TRAFFIC_LABEL[light]} />;
 }
 
 /** Initialen-Kreis für Personen (statt ausgeschriebenem Namen in Listen). */

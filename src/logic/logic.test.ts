@@ -5,9 +5,8 @@ import { addWorkdays, endOfWeek, formatDate, relativeLabel } from "./dates";
 import { copyProjectMasterData, suggestShort } from "./projects";
 import { moveItem, orderNav } from "./nav";
 import { agendaText, buildBriefing, sectionTitles } from "./briefing";
-import { isOverdue, progress, suggestTraffic } from "./milestones";
+import { isOverdue, progress } from "./milestones";
 import { search } from "./search";
-import { sinceLabel, validateTrafficChange } from "./traffic";
 import { affectsCompany, ageLabel, isOpenItem, jourFixeText, newVendorItem, showTicket, statusPatch } from "./vendor";
 import { localDate } from "./dates";
 import { listIndent, listNewline, parseBlocks, parseInline } from "./markdown";
@@ -219,7 +218,7 @@ describe("projects", () => {
     let n = 0;
     const copy = copyProjectMasterData(db, src, "neu", () => `id${++n}`);
     expect(copy.companies).toHaveLength(db.companies.length);
-    expect(copy.companies.every((c) => c.project_id === "neu" && c.traffic_light === "green")).toBe(true);
+    expect(copy.companies.every((c) => c.project_id === "neu")).toBe(true);
     const newCompanyIds = new Set(copy.companies.map((c) => c.id));
     expect(copy.people.every((p) => p.company_id === null || newCompanyIds.has(p.company_id))).toBe(true);
     expect(copy.topics).toHaveLength(db.topics.length);
@@ -277,24 +276,6 @@ describe("Nächste Schritte", () => {
     expect(v.overdue.map((t) => t.title)).toEqual(["Schritt überfällig"]);
     expect(v.today.map((t) => t.title)).toEqual(["Frist später, Schritt heute"]);
     expect(effectiveDue(T({ due_date: null, checklist: [] }))).toBeNull();
-  });
-});
-
-describe("traffic", () => {
-  it("Gelb/Rot nur mit Begründung", () => {
-    expect(validateTrafficChange({ light: "green", comment: "" }, { light: "red", comment: " " })).toMatch(/begründen/);
-    expect(validateTrafficChange({ light: "green", comment: "" }, { light: "red", comment: "Export hängt" })).toBeNull();
-    expect(validateTrafficChange({ light: "red", comment: "x" }, { light: "green", comment: "" })).toBeNull();
-  });
-  it("ohne Änderung nichts speichern, Kommentar allein reicht", () => {
-    expect(validateTrafficChange({ light: "yellow", comment: "a" }, { light: "yellow", comment: "a " })).toBe("Keine Änderung.");
-    expect(validateTrafficChange({ light: "yellow", comment: "a" }, { light: "yellow", comment: "b" })).toBeNull();
-  });
-  it("seit-Angabe", () => {
-    expect(sinceLabel("2026-10-15T08:00:00Z", "2026-10-15")).toBe("seit heute");
-    expect(sinceLabel("2026-10-14T08:00:00Z", "2026-10-15")).toBe("seit gestern");
-    expect(sinceLabel("2026-10-12T08:00:00Z", "2026-10-15")).toBe("seit 3 T.");
-    expect(sinceLabel(null, "2026-10-15")).toBe("");
   });
 });
 
@@ -368,13 +349,6 @@ describe("briefing", () => {
 describe("milestones", () => {
   const today = "2026-10-15";
   const C = (status: MilestoneStatus["status"], target_date: string | null = null) => ({ status, target_date });
-  it("Ampel-Vorschlag: verzögert/überfällig → Rot, kritisch → Gelb, sonst Grün", () => {
-    expect(suggestTraffic([C("on_track"), C("delayed"), C("at_risk")], today)).toEqual({ light: "red", reason: "1 verzögert, 1 kritisch" });
-    expect(suggestTraffic([C("on_track", "2026-10-01")], today)?.light).toBe("red");
-    expect(suggestTraffic([C("at_risk"), C("done")], today)).toEqual({ light: "yellow", reason: "1 kritisch" });
-    expect(suggestTraffic([C("done"), C("on_track")], today)?.light).toBe("green");
-    expect(suggestTraffic([C("n_a")], today)).toBeNull();
-  });
   it("Fortschritt ohne „nicht relevant“", () => {
     expect(progress([C("done"), C("n_a"), C("on_track")], 13)).toEqual({ done: 1, total: 12 });
   });

@@ -2,17 +2,17 @@ import { Plus, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useLookups, useStore } from "../data/store";
-import { TRAFFIC_LABEL, type Id } from "../data/types";
+import type { Id } from "../data/types";
 import { todayIso } from "../logic/dates";
 import { effectiveDue, isActive, isOpen } from "../logic/tasks";
-import { Avatar, CompanyBadge, CompanyLogo, CompanySelect, Empty, TrafficDot, usePersisted } from "../ui/common";
+import { Avatar, CompanyBadge, CompanyLogo, CompanySelect, Empty, usePersisted } from "../ui/common";
 import { openPerPerson } from "./Contact";
 
 // „Kontakte“: oben die Firmen, darunter die Personen – jeweils gleich aufgebaute
 // Karten. Ein Klick öffnet dieselbe Detailansicht (siehe Contact.tsx).
 
 const norm = (t: string) => t.toLocaleLowerCase("de").normalize("NFKD").replace(/[̀-ͯ]/g, "");
-const tasksLabel = (n: number) => (n === 1 ? "1 Aufgabe offen" : `${n} Aufgaben offen`);
+const tasksLabel = (n: number) => (n === 1 ? "1 offen" : `${n} offen`);
 
 export function CompaniesPage() {
   const { db, insert } = useStore();
@@ -91,21 +91,12 @@ export function CompaniesPage() {
               const n = peopleCount(c.id);
               return (
                 <Link key={c.id} to={`/firmen/${c.id}`} className="card contact-card">
-                  <div className="contact-card-head">
-                    <CompanyLogo company={c} size={40} />
-                    <div className="contact-card-title">
-                      <div className="task-title">{c.name}</div>
-                      <div className="row tight muted small">
-                        <TrafficDot light={c.traffic_light} /> {TRAFFIC_LABEL[c.traffic_light]}
-                      </div>
-                    </div>
+                  <CompanyLogo company={c} size={44} />
+                  <div className="contact-card-body">
+                    <div className="contact-card-name">{c.name}</div>
+                    <div className="contact-card-sub">{n === 0 ? "Noch keine Personen" : n === 1 ? "1 Person" : `${n} Personen`}</div>
                   </div>
-                  <p className="contact-card-note muted small">{c.traffic_comment}</p>
-                  <div className="contact-card-foot">
-                    <span>{n === 0 ? "Noch keine Personen" : n === 1 ? "1 Person" : `${n} Personen`}</span>
-                    {s.open > 0 && <span className="foot-strong">{tasksLabel(s.open)}</span>}
-                    {s.overdue > 0 && <span className="overdue">{s.overdue} überfällig</span>}
-                  </div>
+                  {s.open > 0 && <span className={`count-pill${s.overdue > 0 ? " red" : ""}`}>{s.overdue > 0 ? `${s.overdue} überfällig` : tasksLabel(s.open)}</span>}
                 </Link>
               );
             })}
@@ -136,19 +127,18 @@ export function CompaniesPage() {
               const open = personOpen.get(p.id) ?? 0;
               return (
                 <Link key={p.id} to={`/personen/${p.id}`} className={`card contact-card${p.active ? "" : " inactive"}`}>
-                  <div className="contact-card-head">
-                    <span className="contact-card-avatar">
-                      <Avatar name={p.name} />
-                    </span>
-                    <div className="contact-card-title">
-                      <div className="task-title">{p.name}</div>
-                      <div className="muted small">{p.role || (p.active ? " " : "inaktiv")}</div>
+                  <span className="contact-card-avatar">
+                    <Avatar name={p.name} />
+                  </span>
+                  <div className="contact-card-body">
+                    <div className="contact-card-name">{p.name}</div>
+                    <div className="contact-card-sub">
+                      {p.company_id ? <CompanyBadge id={p.company_id} /> : <span>ohne Firma</span>}
+                      {p.role && <span className="contact-card-role">{p.role}</span>}
+                      {!p.active && <span>inaktiv</span>}
                     </div>
                   </div>
-                  <div className="contact-card-foot">
-                    {p.company_id ? <CompanyBadge id={p.company_id} /> : <span>ohne Firma</span>}
-                    {open > 0 && <span className="foot-strong">{tasksLabel(open)}</span>}
-                  </div>
+                  {open > 0 && <span className="count-pill">{tasksLabel(open)}</span>}
                 </Link>
               );
             })}

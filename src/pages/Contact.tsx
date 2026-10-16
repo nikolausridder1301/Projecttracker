@@ -11,7 +11,6 @@ import { Avatar, CompanyBadge, CompanyLogo, CompanySelect, Empty } from "../ui/c
 import { LinkRow } from "../ui/links";
 import { CompanyMilestones } from "../ui/milestones";
 import { TaskList, TaskRow } from "../ui/tasks";
-import { TrafficDialog, TrafficHistoryList, TrafficStatus } from "../ui/traffic";
 import { NoteLink, useCaptureContext, useUi } from "../ui/uiState";
 import { useVendor } from "../ui/vendor";
 import { KIND_ICON } from "./Notes";
@@ -20,7 +19,7 @@ import { CATEGORY_ICON } from "./Tacto";
 // Eine Ansicht für Firmen und Personen (auch auf der Meeting-Seite):
 // Kopf mit Eckdaten, „Protokoll starten“/„Agenda kopieren“, darunter gleiche Reiter.
 
-type Tab = "open" | "notes" | "links" | "ms" | "vendor" | "ampel";
+type Tab = "open" | "notes" | "links" | "ms" | "vendor";
 
 export function CompanyDetailPage() {
   const { id } = useParams();
@@ -58,7 +57,6 @@ export function ContactView({ target }: { target: MeetingTarget }) {
   const vendor = useVendor();
   const today = todayIso();
   const [tab, setTab] = useState<Tab>("open");
-  const [trafficOpen, setTrafficOpen] = useState(false);
   const b = useMemo(() => buildBriefing(db, target, today), [db, target, today]);
   useCaptureContext(b.company?.id, b.person?.id);
 
@@ -124,7 +122,6 @@ export function ContactView({ target }: { target: MeetingTarget }) {
       ? ([
           ...(showMilestones ? ([["ms", "Meilensteine"]] as [Tab, string][]) : []),
           ...(vendor ? ([["vendor", `${vendor.name} (${vendorItems.length})`]] as [Tab, string][]) : []),
-          ["ampel", "Ampel-Verlauf"],
         ] as [Tab, string][])
       : []),
   ];
@@ -139,13 +136,6 @@ export function ContactView({ target }: { target: MeetingTarget }) {
             <CompanyLogo company={company} size={56} />
             <div className="grow">
               <h1>{company.name}</h1>
-              <div className="row">
-                <TrafficStatus company={company} />
-                <button className="btn small" onClick={() => setTrafficOpen(true)}>
-                  Ampel ändern
-                </button>
-              </div>
-              {company.traffic_comment && <p className="traffic-comment-text">{company.traffic_comment}</p>}
             </div>
           </>
         ) : null}
@@ -226,12 +216,6 @@ export function ContactView({ target }: { target: MeetingTarget }) {
           <CompanyMilestones company={company} />
         </div>
       )}
-      {tab === "ampel" && company && (
-        <div className="card">
-          <TrafficHistoryList companyId={company.id} />
-        </div>
-      )}
-      {trafficOpen && company && <TrafficDialog company={company} onClose={() => setTrafficOpen(false)} />}
     </>
   );
 }

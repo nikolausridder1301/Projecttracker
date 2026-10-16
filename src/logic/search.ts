@@ -83,7 +83,7 @@ export function search(db: Db, query: string, limitPerType = 8): Hit[] {
       id: c.id,
       title: c.name,
       sub: c.short,
-      score: score(c.name, `${c.short} ${c.traffic_comment}`),
+      score: score(c.name, c.short),
     })),
   );
   push(

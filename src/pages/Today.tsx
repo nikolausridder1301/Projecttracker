@@ -1,12 +1,9 @@
 import { CheckCircle2 } from "lucide-react";
-import { useMemo, useState } from "react";
-import { useLookups, useStore } from "../data/store";
-import { TRAFFIC_LABEL, type Company } from "../data/types";
+import { useMemo } from "react";
+import { useStore } from "../data/store";
 import { todayIso } from "../logic/dates";
 import { todayView } from "../logic/tasks";
-import { sinceLabel } from "../logic/traffic";
-import { TrafficDialog } from "../ui/traffic";
-import { CompanyLogo, TrafficDot, usePersisted } from "../ui/common";
+import { usePersisted } from "../ui/common";
 import { TaskList } from "../ui/tasks";
 
 export function TodayPage() {
@@ -43,8 +40,6 @@ export function TodayPage() {
           </div>
         )}
       </div>
-
-      {!all && <TrafficBar />}
 
       {allClear ? (
         <div className="all-clear">
@@ -86,40 +81,5 @@ export function TodayPage() {
         </div>
       )}
     </div>
-  );
-}
-
-export function TrafficBar() {
-  // Nur Gesellschaften der Gruppe – externe Partner (z. B. der Software-Anbieter) haben hier keine Ampel
-  const companies = useLookups().companies.filter((c) => !c.is_external);
-  const [editing, setEditing] = useState<Company | null>(null);
-  return (
-    <>
-      <div className="traffic-bar">
-        {companies.map((c) => (
-          <TrafficTile key={c.id} company={c} onOpen={() => setEditing(c)} />
-        ))}
-      </div>
-      {editing && <TrafficDialog company={companies.find((c) => c.id === editing.id) ?? editing} onClose={() => setEditing(null)} />}
-    </>
-  );
-}
-
-/** Kachel: Logo, Kürzel, ein Ampelpunkt + „seit …“. Klick öffnet den Ampel-Dialog. */
-function TrafficTile({ company, onOpen }: { company: Company; onOpen: () => void }) {
-  const since = sinceLabel(company.traffic_changed_at, todayIso());
-  return (
-    <button
-      className={`traffic-tile light-${company.traffic_light}`}
-      onClick={onOpen}
-      title={`${company.name}: ${TRAFFIC_LABEL[company.traffic_light]}${company.traffic_comment ? ` – ${company.traffic_comment}` : ""}`}
-    >
-      <CompanyLogo company={company} size={36} />
-      <span className="traffic-name">{company.short}</span>
-      <span className="traffic-state">
-        <TrafficDot light={company.traffic_light} />
-        {since && <span>{since}</span>}
-      </span>
-    </button>
   );
 }

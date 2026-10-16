@@ -16,7 +16,6 @@ interface InProject {
   project_id: Id;
 }
 
-export type TrafficLight = "green" | "yellow" | "red";
 export type TaskStatus = "open" | "blocked" | "done";
 /** "high" = als wichtig markiert (Fahne), sonst "medium" */
 export type Priority = "high" | "medium";
@@ -42,9 +41,6 @@ export interface Company extends Base, InProject {
   is_overarching: boolean;
   /** Externer Partner (z. B. Software-Anbieter), keine Gesellschaft der Gruppe */
   is_external: boolean;
-  traffic_light: TrafficLight;
-  traffic_comment: string;
-  traffic_changed_at: IsoDateTime | null;
   sort: number;
 }
 
@@ -163,15 +159,6 @@ export interface VendorItem extends Base, InProject {
   status_changed_at: IsoDateTime | null;
 }
 
-/** Eine Änderung der Firmen-Ampel mit Begründung. */
-export interface TrafficHistory extends Base, InProject {
-  company_id: Id;
-  /** null = erster Eintrag (vorheriger Stand unbekannt) */
-  from_light: TrafficLight | null;
-  to_light: TrafficLight;
-  comment: string;
-}
-
 export type MilestoneState = "not_started" | "on_track" | "at_risk" | "delayed" | "done" | "n_a";
 
 /** Stand eines Meilensteins (Thema) bei einer Firma. */
@@ -202,7 +189,6 @@ export interface Tables {
   attachments: Attachment;
   app_meta: AppMeta;
   vendor_items: VendorItem;
-  traffic_history: TrafficHistory;
   milestone_status: MilestoneStatus;
 }
 
@@ -221,7 +207,6 @@ export const TABLE_NAMES: TableName[] = [
   "attachments",
   "app_meta",
   "vendor_items",
-  "traffic_history",
   "milestone_status",
 ];
 
@@ -237,7 +222,6 @@ export const PROJECT_TABLES = [
   "tasks",
   "links",
   "vendor_items",
-  "traffic_history",
   "milestone_status",
 ] as const satisfies readonly TableName[];
 
@@ -260,10 +244,4 @@ export const NOTE_KIND_LABEL: Record<NoteKind, string> = {
   note: "Notiz",
   meeting: "Meeting-Protokoll",
   decision: "Entscheidung",
-};
-
-export const TRAFFIC_LABEL: Record<TrafficLight, string> = {
-  green: "Grün",
-  yellow: "Gelb",
-  red: "Rot",
 };
