@@ -2510,3 +2510,22 @@ section.card h2 + p {
   padding: 4px 0 6px 30px;
   cursor: default;
 }
+
+/* Schnellerfassung: Notiz, Protokoll, Entscheidung im selben Fenster */
+.modal.capture.wide {
+  width: min(760px, 100%);
+}
+.modal-backdrop.confirm-layer {
+  z-index: 45;
+  align-items: center;
+  padding-top: 16px;
+}
+.modal.confirm {
+  width: min(420px, 100%);
+}
+.modal.confirm h2 {
+  margin: 0;
+}
+.modal.confirm p {
+  margin: 0;
+}

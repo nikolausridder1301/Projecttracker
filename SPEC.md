@@ -188,7 +188,7 @@ Arten **Notiz · Meeting-Protokoll · Entscheidung** (Entscheidungen bewusst get
 
 ### 6.11 Schnellerfassung
 
-Taste **N** oder „+ Neu“: Typ **Aufgabe · Notiz · Protokoll · Entscheidung · Link**. **Notiz, Protokoll und Entscheidung öffnen sich mit einem Klick direkt im Pop-up** (Titel „Meeting – TT.MM.JJJJ“ o. ä. vorbelegt und markiert, Datum heute, ggf. schon getippter Titel übernommen); wird so ein Eintrag unverändert geschlossen, verschwindet er wieder. Aufgaben und Links: Titel, Enter – Aufgaben öffnen sich danach ebenfalls im Pop-up. Ausnahme: „Aufgabe hinzufügen“ im Protokoll bleibt im Protokoll (die Aufgabe erscheint dort unter „Offene Punkte“). Links werden nur gespeichert. Chips für Firma (aus dem Kontext vorbelegt; bei Aufgaben Mehrfachauswahl), Verantwortlich, Fällig, Wichtig bzw. Kategorie. Entwürfe bleiben erhalten.
+Taste **N** oder „+ Neu“: Typ **Aufgabe · Notiz · Protokoll · Entscheidung · Link**. **Alle fünf Arten bleiben im selben Fenster – nur der Reiter wechselt.** Bei Notiz, Protokoll und Entscheidung erscheinen Titel (optional; ohne Titel „Notiz – TT.MM.JJJJ“ o. ä.), Chips (Firma, beim Protokoll Teilnehmer – ich bin vorbelegt –, Datum; Protokoll und Entscheidung gelten für heute), das Textfeld (Aufzählungen wie überall) und beim Protokoll die Liste der offenen Punkte mit aufklappbaren Schritten. Gespeichert wird erst mit „Speichern“ (Strg+Enter); Enter im Titel springt in den Text. **Wechsel oder Schließen mit ungespeichertem Text fragt nach:** „Speichern“, „Verwerfen“ oder „Zurück“; nach „Speichern“ bleibt das Fenster beim neuen Reiter offen. Aufgaben und Links: Titel, Enter – Aufgaben öffnen sich danach im Pop-up (Ausnahme: „Aufgabe hinzufügen“ im Protokoll bleibt im Protokoll). Links werden nur gespeichert. Chips für Firma (aus dem Kontext vorbelegt; bei Aufgaben Mehrfachauswahl), Verantwortlich, Fällig, Wichtig bzw. Kategorie. Entwürfe bleiben erhalten.
 
 ### 6.12 Suche
 
@@ -277,6 +277,7 @@ Seitenleiste als Menü; Heute, Abhaken, Schnellerfassung, Schritte und alle Dial
 | Verantwortlich | Mehrfachauswahl: eigene Person und mehrere Personen je Aufgabe (eine Aufgabe, keine Kopien); ohne Auswahl = ich |
 | Eigene Person | „Ich“ ist ein echter Kontakt (`people.is_me`, Nikolaus Ridder bei der Holding) statt eines Sondereintrags; Teilnehmer in Protokollen, Auswahl bei Verantwortlich |
 | Protokoll-Ansicht | Text zuerst, offene Punkte darunter; „Aufgabe hinzufügen“ statt „Aufgabe daraus“; kein eigener Aufgaben-Block im Protokoll |
+| Ein Erfassungsfenster | „+ Neu“ bleibt für alle Arten im selben Fenster (Reiterwechsel statt Panel-Wechsel); Notiz/Protokoll/Entscheidung werden erst mit „Speichern“ angelegt; bei ungespeichertem Text fragt ein Dialog nach (Speichern/Verwerfen/Zurück) |
 | Filterleisten | Firmenfilter als Mehrfach-Dropdown auf Aufgaben, Notizen, Links, Tacto; keine Browser-Auswahlfelder mehr in Filtern |
 | Priorität | Nur noch Fahne „Wichtig“ (an/aus); „Niedrig“ entfällt |
 | Status | Offen · Blockiert · Erledigt; „In Arbeit“ entfällt |

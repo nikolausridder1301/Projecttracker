@@ -105,8 +105,6 @@ export function NoteDetailPage() {
  * Gerade über „+ Neu“ angelegte Notizen: Wird so eine Notiz unverändert
  * wieder geschlossen, verschwindet sie – es bleiben keine leeren Einträge.
  */
-export const freshNotes = new Set<Id>();
-
 /** Notiz, Protokoll oder Entscheidung als Pop-up-Panel – gleich wie bei Aufgaben. */
 export function NotePanel() {
   const { openNoteId, openNote, openTaskId, capture } = useUi();
@@ -149,43 +147,20 @@ function NoteEditor({
   onClose: () => void;
   beforeClose: React.MutableRefObject<(() => void) | null>;
 }) {
-  const { db, update, trash, purge } = useStore();
+  const { db, update, trash } = useStore();
   const { openCapture } = useUi();
   const { me } = useLookups();
   const [title, setTitle] = useState(note.title);
   const [body, setBody] = useState(note.body);
   const [participantsText, setParticipantsText] = useState(note.participants_text);
-  const titleRef = useRef<HTMLTextAreaElement>(null);
-  const fresh = freshNotes.has(note.id);
 
   const save = (patch: Parameters<typeof update<"notes">>[2]) => void update("notes", note.id, patch).catch(() => {});
 
   const derived = db.tasks.filter((t) => isActive(t) && t.source_note_id === note.id);
   const attachedCount = db.attachments.filter((a) => a.deleted_at === null && a.note_id === note.id).length;
 
-  // Neu angelegt: Titel markiert – einfach lostippen, Tab springt in den Text
-  useEffect(() => {
-    if (!fresh) return;
-    titleRef.current?.focus();
-    titleRef.current?.select();
-  }, [fresh]);
-
-  // Beim Schließen: unverändert neue Notiz verwerfen, sonst noch nicht Gespeichertes sichern
+  // Beim Schließen noch nicht Gespeichertes sichern
   beforeClose.current = () => {
-    const untouched =
-      fresh &&
-      !body.trim() &&
-      title.trim() === note.title &&
-      !participantsText.trim() &&
-      note.participant_ids.length === 0 &&
-      note.updated_at === note.created_at &&
-      derived.length === 0 &&
-      attachedCount === 0;
-    freshNotes.delete(note.id);
-    if (untouched) {
-      void purge("notes", note.id).catch(() => {});
-      return;
-    }
     const patch: Parameters<typeof update<"notes">>[2] = {};
     if (title.trim() && title.trim() !== note.title) patch.title = title.trim();
     if (body !== note.body) patch.body = body;
@@ -213,7 +188,6 @@ function NoteEditor({
           title="In den Papierkorb"
           onClick={() => {
             beforeClose.current = null;
-            freshNotes.delete(note.id);
             void trash("notes", note.id, note.title).then(onClose);
           }}
         >
@@ -225,7 +199,6 @@ function NoteEditor({
       </div>
         <div className="title-field">
           <AutoText
-            textRef={titleRef}
             value={title}
             onChange={(v) => setTitle(v.replace(/\n/g, " "))}
             onBlur={() => (title.trim() ? title !== note.title && save({ title: title.trim() }) : setTitle(note.title))}
@@ -280,7 +253,7 @@ function NoteEditor({
 
         {/* Im Protokoll stehen die Aufgaben schon unter „Offene Punkte“; bei Notizen nur die daraus entstandenen */}
         {note.kind === "meeting" ? (
-          <ProtocolOpenItems note={note} />
+          <ProtocolOpenItems participantIds={note.participant_ids} companyIds={note.company_ids} />
         ) : (
           derived.length > 0 && (
             <Disclosure title="Aufgaben" meta={derived.length} defaultOpen>
@@ -324,18 +297,18 @@ function urlsIn(text: string): string[] {
  * der Firma als Liste mit aufklappbaren Schritten – was vereinbart wird, landet so
  * direkt als Schritt in der Aufgabe statt nur im Text.
  */
-function ProtocolOpenItems({ note }: { note: Note }) {
+export function ProtocolOpenItems({ participantIds, companyIds }: { participantIds: Id[]; companyIds: Id[] }) {
   const { db } = useStore();
   const { me } = useLookups();
   const vendor = useVendor();
   const today = todayIso();
   // Gegenüber: die einzige andere Person; sonst die Firma des Protokolls
-  const others = note.participant_ids.filter((id) => id !== me?.id);
+  const others = participantIds.filter((id) => id !== me?.id);
   const target: MeetingTarget | null =
     others.length === 1
       ? { kind: "person", id: others[0] }
-      : note.company_ids[0]
-        ? { kind: "company", id: note.company_ids[0] }
+      : companyIds[0]
+        ? { kind: "company", id: companyIds[0] }
         : null;
   const b = useMemo(() => (target ? buildBriefing(db, target, today) : null), [db, target?.kind, target?.id, today]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!b) return null;
