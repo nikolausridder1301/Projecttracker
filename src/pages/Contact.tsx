@@ -3,10 +3,10 @@ import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useLookups, useStore } from "../data/store";
 import { NOTE_KIND_LABEL, type Id, type Person, type Task } from "../data/types";
-import { agendaText, buildBriefing, type Briefing, type MeetingTarget } from "../logic/briefing";
+import { agendaText, buildBriefing, sectionTitles, type Briefing, type MeetingTarget } from "../logic/briefing";
 import { formatDate, todayIso } from "../logic/dates";
-import { isOpen, stepPersons } from "../logic/tasks";
-import { ageLabel, categoryDef, isOpenItem, statusDef } from "../logic/vendor";
+import { isOpen, personRefs, stepPersons } from "../logic/tasks";
+import { ageLabel, categoryDef, jourFixeText, statusDef } from "../logic/vendor";
 import { Avatar, CompanyBadge, CompanyLogo, CompanySelect, Empty } from "../ui/common";
 import { LinkRow } from "../ui/links";
 import { CompanyMilestones } from "../ui/milestones";
@@ -52,21 +52,32 @@ function DetailPage({ target }: { target: MeetingTarget }) {
 }
 
 export function ContactView({ target }: { target: MeetingTarget }) {
-  const { db, insert, toast } = useStore();
-  const { companies, personById } = useLookups();
+  const { db, insert, toast, project } = useStore();
+  const { companies, people, personById } = useLookups();
   const { openNote } = useUi();
   const vendor = useVendor();
   const today = todayIso();
   const [tab, setTab] = useState<Tab>("open");
   const [trafficOpen, setTrafficOpen] = useState(false);
   const b = useMemo(() => buildBriefing(db, target, today), [db, target, today]);
-  useCaptureContext(b.company?.id);
+  useCaptureContext(b.company?.id, b.person?.id);
 
   const personName = (id: Id | null) => (id ? (personById.get(id)?.name ?? "") : "");
 
   const copyAgenda = async () => {
     try {
-      await navigator.clipboard.writeText(agendaText(b, personName));
+      // Für die Anbieter-Firma selbst: der Jour-fixe-Text (alle offenen Punkte nach Kategorie)
+      const text =
+        target.kind === "company" && b.company?.is_external
+          ? jourFixeText(
+              db.vendor_items.filter((i) => i.deleted_at === null),
+              companies,
+              people,
+              today,
+              vendor?.name,
+            )
+          : agendaText(b, personName, vendor?.name);
+      await navigator.clipboard.writeText(text);
       toast("Agenda kopiert");
     } catch {
       toast("Kopieren nicht möglich – Browser hat den Zugriff verweigert", "error");
@@ -74,6 +85,8 @@ export function ContactView({ target }: { target: MeetingTarget }) {
   };
 
   const startProtocol = async () => {
+    // Heute schon ein Protokoll mit X? Dann dieses öffnen statt ein zweites anzulegen
+    if (b.todayMeeting) return openNote(b.todayMeeting.id);
     const companyId = b.company?.id ?? companies.find((c) => c.is_overarching)?.id ?? companies[0]?.id;
     if (!companyId) return;
     const who = b.person?.name ?? b.company?.name ?? "";
@@ -81,7 +94,8 @@ export function ContactView({ target }: { target: MeetingTarget }) {
       const [n] = await insert("notes", [
         {
           title: `Meeting ${who} – ${formatDate(today)}`,
-          body: agendaText(b, personName),
+          // Die offenen Punkte stehen im Protokoll als Liste mit Update-Feld – der Text bleibt frei
+          body: "",
           kind: "meeting",
           company_ids: [companyId],
           topic_id: null,
@@ -98,8 +112,9 @@ export function ContactView({ target }: { target: MeetingTarget }) {
 
   const openCount = b.delegatedToPerson.length + b.myTasks.length + b.otherTasks.length;
   const company = target.kind === "company" ? b.company : undefined;
-  // Anbieter-Punkte: auf der Anbieter-Firma selbst alle offenen, sonst die betroffenen
-  const vendorItems = company?.is_external ? db.vendor_items.filter((i) => i.deleted_at === null && isOpenItem(i)) : b.vendorItems;
+  const vendorItems = b.vendorItems;
+  // Fortschritt steht im externen Reporting – dann keine Meilensteine im Tool
+  const showMilestones = !project?.report_url?.trim();
 
   const tabs: [Tab, string][] = [
     ["open", `Offen (${openCount})`],
@@ -107,7 +122,7 @@ export function ContactView({ target }: { target: MeetingTarget }) {
     ["links", `Links (${b.links.length})`],
     ...(company
       ? ([
-          ["ms", "Meilensteine"],
+          ...(showMilestones ? ([["ms", "Meilensteine"]] as [Tab, string][]) : []),
           ...(vendor ? ([["vendor", `${vendor.name} (${vendorItems.length})`]] as [Tab, string][]) : []),
           ["ampel", "Ampel-Verlauf"],
         ] as [Tab, string][])
@@ -153,7 +168,7 @@ export function ContactView({ target }: { target: MeetingTarget }) {
         ))}
       </div>
 
-      {tab === "open" && <OpenTab b={b} />}
+      {tab === "open" && <OpenTab b={b} vendorName={vendor?.name} />}
       {tab === "notes" &&
         (b.notes.length === 0 ? (
           <Empty>Keine Notizen.</Empty>
@@ -221,28 +236,58 @@ export function ContactView({ target }: { target: MeetingTarget }) {
   );
 }
 
-/** Offene Punkte wie im Meeting: mit Update-Feld je Aufgabe; Erledigte auf Wunsch. */
-function OpenTab({ b }: { b: Briefing }) {
+/** Offene Punkte zu X mit Update-Feld je Aufgabe – in der Ansicht und im Protokoll. */
+export function OpenItems({ b, vendorName }: { b: Briefing; vendorName?: string }) {
+  const titles = sectionTitles(b);
+  const today = todayIso();
+  return (
+    <>
+      {b.delegatedToPerson.length > 0 && (
+        <Section title={titles.delegated} count={b.delegatedToPerson.length}>
+          <UpdatableTasks tasks={b.delegatedToPerson} />
+        </Section>
+      )}
+      {b.myTasks.length > 0 && (
+        <Section title={titles.mine} count={b.myTasks.length}>
+          <UpdatableTasks tasks={b.myTasks} />
+        </Section>
+      )}
+      {b.otherTasks.length > 0 && (
+        <Section title={titles.other} count={b.otherTasks.length}>
+          <UpdatableTasks tasks={b.otherTasks} />
+        </Section>
+      )}
+      {/* Bei Personen: ihre Anbieter-Punkte (bei Firmen gibt es dafür einen eigenen Reiter) */}
+      {b.person && vendorName && b.vendorItems.length > 0 && (
+        <Section title={`${vendorName}-Punkte`} count={b.vendorItems.length}>
+          {b.vendorItems.map((i) => {
+            const Icon = CATEGORY_ICON[i.category];
+            const sd = statusDef(i);
+            return (
+              <Link key={i.id} to={`/anbieter?id=${i.id}`} className="vendor-row">
+                <Icon size={18} className="row-icon" />
+                <span className="note-main">
+                  <span className="task-title">{i.title}</span>
+                  <span className="task-sub">{ageLabel(i, today, vendorName)}</span>
+                </span>
+                {sd && <span className={`status-pill${sd.tone ? ` tone-${sd.tone}` : ""}`}>{sd.label}</span>}
+              </Link>
+            );
+          })}
+        </Section>
+      )}
+    </>
+  );
+}
+
+/** Offene Punkte wie im Meeting; nichts offen → „Aufgabe anlegen“; Erledigte auf Wunsch. */
+function OpenTab({ b, vendorName }: { b: Briefing; vendorName?: string }) {
   const { openCapture } = useUi();
   const [showDone, setShowDone] = useState(false);
   const hasTasks = b.delegatedToPerson.length + b.myTasks.length + b.otherTasks.length > 0;
   return (
     <div className="contact-open">
-      {b.person && b.delegatedToPerson.length > 0 && (
-        <Section title={`Offen bei ${b.person.name.split(" ")[0]}`} count={b.delegatedToPerson.length}>
-          <UpdatableTasks tasks={b.delegatedToPerson} />
-        </Section>
-      )}
-      {b.myTasks.length > 0 && (
-        <Section title="Meine offenen Punkte" count={b.myTasks.length}>
-          <UpdatableTasks tasks={b.myTasks} />
-        </Section>
-      )}
-      {b.otherTasks.length > 0 && (
-        <Section title={b.person ? "Weitere Offene der Firma" : "Delegiert"} count={b.otherTasks.length}>
-          <UpdatableTasks tasks={b.otherTasks} />
-        </Section>
-      )}
+      <OpenItems b={b} vendorName={vendorName} />
       {!hasTasks && (
         <div className="card meeting-empty">
           <CheckCircle2 size={28} className="meeting-empty-icon" />
@@ -250,7 +295,10 @@ function OpenTab({ b }: { b: Briefing }) {
             <div className="meeting-empty-title">Mit {b.person?.name.split(" ")[0] ?? b.company?.name} ist gerade nichts offen</div>
             <div className="muted small">Neue Punkte aus dem Gespräch legst du direkt hier an.</div>
           </div>
-          <button className="btn" onClick={() => openCapture({ type: "task", companyId: b.company?.id })}>
+          <button
+            className="btn"
+            onClick={() => openCapture({ type: "task", companyId: b.company?.id, assigneeIds: b.person ? [b.person.id] : undefined })}
+          >
             <Plus size={16} /> Aufgabe anlegen
           </button>
         </div>
@@ -284,12 +332,15 @@ function PersonHead({ person }: { person: Person }) {
   };
 
   const remove = () => {
-    const open = db.tasks.filter((t) => t.deleted_at === null && isOpen(t) && t.assignee_person_ids.includes(person.id)).length;
+    // Offen ist alles, wo die Person verantwortlich ist oder einen offenen Schritt hat
+    const { open } = personRefs(db, person.id);
     if (open > 0) {
       toast(`${person.name} hat noch ${open} offene Aufgabe(n) – bitte stattdessen auf „inaktiv“ setzen.`, "error");
       return;
     }
-    void trash("people", person.id, person.name).then(() => navigate("/firmen"));
+    void trash("people", person.id, person.name)
+      .then(() => navigate("/firmen"))
+      .catch(() => {});
   };
 
   return (

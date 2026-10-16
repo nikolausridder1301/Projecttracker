@@ -47,7 +47,7 @@ function supabaseBackend(client: SupabaseClient): Backend {
           // Supabase liefert max. 1000 Zeilen je Abfrage → seitenweise laden.
           const rows: unknown[] = [];
           for (let from = 0; ; from += 1000) {
-            const { data, error } = await client.from(t).select("*").range(from, from + 999);
+            const { data, error } = await client.from(t).select("*").order("id").range(from, from + 999);
             fail(error);
             rows.push(...(data ?? []));
             if (!data || data.length < 1000) break;

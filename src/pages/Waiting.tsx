@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useLookups, useStore } from "../data/store";
 import type { Task } from "../data/types";
 import { formatDate, todayIso } from "../logic/dates";
-import { STALE_DAYS, daysSinceUpdate, isActive, isDelegated, isOpen, staleLabel } from "../logic/tasks";
+import { STALE_DAYS, daysSinceUpdate, isActive, isOpen, personsOf, staleLabel } from "../logic/tasks";
 import { CompanyBadge, Empty } from "../ui/common";
 import { TaskRow, useLatestUpdates } from "../ui/tasks";
 
@@ -17,10 +17,10 @@ export function WaitingPage() {
   const stale = (t: Task) => daysSinceUpdate(t, latest.get(t.id), today);
 
   const groups = useMemo(() => {
-    const open = db.tasks.filter((t) => isActive(t) && isOpen(t) && isDelegated(t));
+    const open = db.tasks.filter((t) => isActive(t) && isOpen(t) && personsOf(t).length > 0);
     const m = new Map<string, Task[]>();
-    // Aufgaben mit mehreren Personen stehen bei jeder von ihnen
-    for (const t of open) for (const pid of t.assignee_person_ids) m.set(pid, [...(m.get(pid) ?? []), t]);
+    // Bei jeder Person, die verantwortlich ist oder einen offenen Schritt hat
+    for (const t of open) for (const pid of personsOf(t)) m.set(pid, [...(m.get(pid) ?? []), t]);
     return [...m.entries()]
       .map(([pid, tasks]) => ({ pid, tasks: tasks.sort((a, b) => stale(b) - stale(a)) }))
       .sort((a, b) => stale(b.tasks[0]) - stale(a.tasks[0]));

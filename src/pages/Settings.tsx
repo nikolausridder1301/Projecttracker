@@ -1,11 +1,14 @@
-import { ArrowDown, ArrowUp, Download } from "lucide-react";
+import { ArrowDown, ArrowUp, Download, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { resetDemoData } from "../data/backend";
 import { useLookups, useStore } from "../data/store";
 import type { Company, LinkCategory, Topic } from "../data/types";
 import { formatDateTime } from "../logic/dates";
+import { suggestShort } from "../logic/projects";
+import { isValidUrl } from "../logic/tasks";
 import { useBackup } from "../ui/backup";
 import { ChipSelect, CompanyLogo } from "../ui/common";
+import { NewProjectDialog } from "../ui/ProjectSwitcher";
 
 export function SettingsPage() {
   const { db, backend, project } = useStore();
@@ -42,7 +45,8 @@ export function SettingsPage() {
       <NavSettings />
 
       <CompaniesSettings />
-      <TopicsSettings />
+      {/* Fortschritt im externen Reporting → keine Meilensteine im Tool */}
+      {!project?.report_url?.trim() && <TopicsSettings />}
       <CategoriesSettings />
     </div>
   );
@@ -52,10 +56,15 @@ function ProjectSettings() {
   const { project, projects, update, toast } = useStore();
   const { companies } = useLookups();
   const [v, setV] = useState(project);
+  const [creating, setCreating] = useState(false);
   if (!project || !v) return null;
   const save = (k: "name" | "short" | "report_url") => () => {
     const val = k === "short" ? v[k].trim().toUpperCase() : v[k].trim();
     if (!val && k !== "report_url") return setV(project);
+    if (k === "report_url" && val && !isValidUrl(val)) {
+      toast("Bitte eine gültige Adresse mit http:// oder https:// eingeben.", "error");
+      return setV(project);
+    }
     if (val !== project[k]) void update("projects", project.id, { [k]: val }).catch(() => {});
   };
   const activeCount = projects.filter((p) => !p.archived).length;
@@ -101,8 +110,14 @@ function ProjectSettings() {
         </label>
       </div>
       <p className="muted small settings-hint">
-        Firmen, Personen, Meilensteine und Kategorien unten gelten nur für dieses Projekt.
+        Firmen, Personen und Kategorien unten gelten nur für dieses Projekt.
       </p>
+      {projects.length <= 1 && (
+        <button className="btn ghost" onClick={() => setCreating(true)}>
+          <Plus size={16} /> Neues Projekt…
+        </button>
+      )}
+      {creating && <NewProjectDialog onClose={() => setCreating(false)} />}
       <button
         className="btn ghost"
         onClick={() => {
@@ -147,6 +162,7 @@ function ExportButton() {
 function CompaniesSettings() {
   const { companies } = useLookups();
   const { insert } = useStore();
+  const [name, setName] = useState("");
   return (
     <section className="card">
       <h2>Firmen</h2>
@@ -158,6 +174,7 @@ function CompaniesSettings() {
             <th>Kürzel</th>
             <th>Farbe</th>
             <th title="Externer Partner, z. B. Software-Anbieter – nicht Teil von „Alle Gesellschaften“">Partner</th>
+            <th />
           </tr>
         </thead>
         <tbody>
@@ -166,13 +183,17 @@ function CompaniesSettings() {
           ))}
         </tbody>
       </table>
-      <button
-        className="btn ghost"
-        onClick={() =>
+      {/* Wie überall: Name tippen, Enter – kein Platzhalter-Eintrag */}
+      <form
+        className="row"
+        onSubmit={(e) => {
+          e.preventDefault();
+          const n = name.trim();
+          if (!n) return;
           void insert("companies", [
             {
-              name: "Neue Firma",
-              short: "NEU",
+              name: n,
+              short: suggestShort(n),
               color: "#5a6577",
               logo_key: null,
               is_overarching: false,
@@ -182,17 +203,18 @@ function CompaniesSettings() {
               traffic_changed_at: null,
               sort: companies.length,
             },
-          ]).catch(() => {})
-        }
+          ]).catch(() => {});
+          setName("");
+        }}
       >
-        + Firma
-      </button>
+        <input placeholder="Neue Firma: Name, Enter" value={name} onChange={(e) => setName(e.target.value)} />
+      </form>
     </section>
   );
 }
 
 function CompanyRow({ company }: { company: Company }) {
-  const { update } = useStore();
+  const { update, trash } = useStore();
   const [v, setV] = useState(company);
   const save = (k: "name" | "short" | "color") => () =>
     v[k].trim() && v[k] !== company[k] ? void update("companies", company.id, { [k]: v[k].trim() }).catch(() => {}) : setV(company);
@@ -219,6 +241,15 @@ function CompanyRow({ company }: { company: Company }) {
           aria-label={`${company.name} ist externer Partner`}
         />
       </td>
+      <td>
+        <button
+          className="icon-btn"
+          title="Firma entfernen (in den Papierkorb, wiederherstellbar)"
+          onClick={() => void trash("companies", company.id, company.name).catch(() => {})}
+        >
+          <Trash2 size={15} />
+        </button>
+      </td>
     </tr>
   );
 }
@@ -237,7 +268,7 @@ function TopicsSettings() {
   return (
     <section className="card">
       <h2>Meilensteine</h2>
-      <p className="muted small settings-hint">Zeilen der Fortschritts-Matrix – je Firma bekommt jeder Meilenstein einen Status.</p>
+      <p className="muted small settings-hint">Meilensteine je Firma (Reiter in der Firmen-Ansicht) – Grundlage für den Ampel-Vorschlag. Ausgeblendet, sobald ein Reporting-Link gesetzt ist.</p>
       {all.map((t, i) => (
         <div key={t.id} className={`row settings-row${t.archived ? " inactive" : ""}`}>
           <RenameInput value={t.name} onSave={(name) => void update("topics", t.id, { name })} />

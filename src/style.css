@@ -262,17 +262,6 @@ input.compact {
   opacity: 0.5;
   cursor: default;
 }
-.btn .count {
-  background: var(--accent);
-  color: #fff;
-  border-radius: 999px;
-  font-size: var(--fs-xs);
-  min-width: 18px;
-  height: 18px;
-  display: inline-grid;
-  place-content: center;
-  padding: 0 5px;
-}
 .btn.active-filter {
   border-color: var(--accent);
   color: var(--accent);
@@ -594,11 +583,6 @@ kbd {
   font-weight: 500;
   text-decoration: none !important;
 }
-.traffic-picker {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
 .traffic-comment {
   width: min(420px, 100%);
 }
@@ -681,10 +665,6 @@ kbd {
   border: 1px solid;
   font-weight: 600;
 }
-.status-in_progress {
-  background: var(--accent-bg);
-  color: var(--accent);
-}
 .status-blocked {
   background: var(--red-bg);
   color: var(--red);
@@ -719,8 +699,7 @@ kbd {
   border-radius: var(--radius-sm);
   flex-wrap: wrap;
 }
-.task-row + .task-row,
-.followup-wrap + .followup-wrap {
+.task-row + .task-row {
   border-top: 1px solid var(--surface-3);
 }
 .task-row:hover {
@@ -771,11 +750,6 @@ kbd {
   text-decoration: line-through;
   color: var(--text-faint);
 }
-.last-followup {
-  margin: -4px 0 6px 36px;
-  font-size: var(--fs-sm);
-  color: var(--text-muted);
-}
 .group-title {
   display: flex;
   gap: 8px;
@@ -790,35 +764,6 @@ kbd {
   flex-wrap: wrap;
   align-items: center;
   margin-bottom: 16px;
-}
-.popover-anchor {
-  position: relative;
-}
-.popover {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  z-index: 20;
-  width: 280px;
-  background: var(--surface);
-  border-radius: var(--radius);
-  box-shadow: 0 12px 32px rgba(20, 30, 50, 0.18);
-  border: 1px solid var(--border);
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.popover label:not(.inline) {
-  display: grid;
-  grid-template-columns: 80px 1fr;
-  align-items: center;
-  gap: 8px;
-  font-size: var(--fs-sm);
-  color: var(--text-muted);
-}
-.popover select {
-  width: 100%;
 }
 
 /* ---------- Chips (Eigenschaften) ---------- */
@@ -917,12 +862,6 @@ kbd {
   border-color: transparent;
   color: var(--green);
 }
-.chip-checks {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 8px;
-}
 
 /* ---------- Detail-Panel ---------- */
 .panel-backdrop {
@@ -990,8 +929,7 @@ kbd {
 .editor > .autotext:focus {
   background: var(--surface);
 }
-.blocked-box,
-.delegation-box {
+.blocked-box {
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -1005,9 +943,6 @@ kbd {
 }
 .blocked-box input {
   flex: 1;
-}
-.delegation-box {
-  background: var(--accent-bg);
 }
 .plain-input {
   width: 100%;
@@ -1079,22 +1014,6 @@ kbd {
 .history li {
   padding: 3px 0;
 }
-.followup-form {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  align-items: center;
-}
-.followup-form > input {
-  flex: 1;
-  min-width: 180px;
-}
-.followup-wrap .followup-form {
-  padding: 8px;
-  margin: 0 0 8px 36px;
-  background: var(--surface-2);
-  border-radius: var(--radius-sm);
-}
 
 /* ---------- Modal / Schnellerfassung / Suche ---------- */
 .modal-backdrop {
@@ -1137,12 +1056,6 @@ kbd {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
-}
-.multi-companies {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 6px;
 }
 .chip-check {
   border: 1px solid var(--border);
@@ -1321,49 +1234,8 @@ section.card h2 + p {
   margin-bottom: 12px;
 }
 
-/* ---------- Firmen ---------- */
-.company-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 16px;
-}
-.company-card {
-  color: var(--text);
-  text-decoration: none !important;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  transition: box-shadow 0.15s;
-}
-.company-card:hover {
-  box-shadow: 0 2px 4px rgba(20, 30, 50, 0.06), 0 10px 28px rgba(20, 30, 50, 0.1);
-}
-.company-card .task-title {
-  font-weight: 600;
-}
-.company-stats {
-  display: flex;
-  gap: 12px;
-  font-size: var(--fs-sm);
-  color: var(--text-muted);
-  margin-top: auto;
-}
-.company-head {
-  display: flex;
-  gap: 18px;
-  align-items: flex-start;
-  flex-wrap: wrap;
-}
-.company-head h1 {
-  margin-bottom: 8px;
-}
-.contacts {
-  min-width: 200px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
+/* ---------- Reiter ---------- */
+
 .tabs {
   display: flex;
   align-items: center;
@@ -1490,12 +1362,7 @@ section.card h2 + p {
 }
 
 /* ---------- Tacto ---------- */
-.popover-list {
-  width: 220px;
-  gap: 6px;
-  max-height: 320px;
-  overflow-y: auto;
-}
+
 .seg .seg-count {
   margin-left: 6px;
   color: var(--text-faint);
@@ -1789,42 +1656,8 @@ section.card h2 + p {
   opacity: 0.8;
 }
 
-/* ---------- Nachhaken ---------- */
-.followup-reason {
-  font-size: var(--fs-sm);
-  color: var(--text-muted);
-  white-space: nowrap;
-  min-width: 72px;
-  text-align: right;
-}
-.followup-form {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 12px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-}
-.followup-wrap .followup-form {
-  margin: 0 0 10px 36px;
-}
-.followup-note {
-  width: 100%;
-}
-.followup-next {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.followup-preview {
-  font-variant-numeric: tabular-nums;
-}
-.followup-done {
-  font-size: var(--fs-sm);
-  color: var(--text-muted);
-}
+/* ---------- Verlauf ---------- */
+
 .timeline {
   list-style: none;
   margin: 0;
@@ -1851,35 +1684,8 @@ section.card h2 + p {
 .timeline-text {
   flex: 1;
 }
-.delegation-box .row .muted.small {
-  white-space: nowrap;
-}
-@media (max-width: 767px) {
-  .followup-wrap .followup-form {
-    margin-left: 0;
-  }
-}
+
 /* Formular sauber untereinander, auch im schmalen Panel */
-.followup-form {
-  align-items: stretch;
-  min-width: 0;
-}
-.followup-form > input.followup-note {
-  flex: none;
-  min-width: 0;
-  width: 100%;
-}
-.followup-form .followup-done {
-  align-self: flex-start;
-}
-.followup-next .seg-group {
-  flex-wrap: wrap;
-  overflow: visible;
-}
-.followup-form > .row {
-  flex-wrap: wrap;
-  gap: 6px;
-}
 
 /* ---------- Eigene Auswahlliste (statt Browser-Menü) ---------- */
 .chip-caret {
@@ -2081,74 +1887,10 @@ button.traffic-tile:hover {
   color: var(--text-faint);
   border-style: dashed;
 }
-.meeting-head {
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-.meeting-head h2 {
-  font-size: var(--fs-xl);
-  margin-bottom: 2px;
-}
-.meeting-traffic {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-top: 8px;
-}
-.meeting-last {
-  text-align: right;
-  min-width: 110px;
-}
-.meeting-topics {
-  margin-bottom: 16px;
-}
-.meeting-topics .chip .muted {
-  font-weight: 400;
-}
-.meeting-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
-  gap: 16px;
-  align-items: start;
-}
-.meeting-col {
-  min-width: 0;
-}
-@media (max-width: 1000px) {
-  .meeting-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .meeting-last {
-    text-align: left;
-  }
-}
 
 /* ---------- Fortschritt / Meilensteine ---------- */
 .page.wide {
   max-width: none;
-}
-.ms-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 16px;
-  margin-bottom: 12px;
-  font-size: var(--fs-sm);
-  color: var(--text-muted);
-}
-.ms-legend-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-.matrix-card {
-  padding: 0;
-  overflow: hidden;
-}
-.matrix-scroll {
-  overflow-x: auto;
 }
 .matrix {
   border-collapse: separate;
@@ -2169,37 +1911,9 @@ button.traffic-tile:hover {
   vertical-align: bottom;
   padding-top: 12px;
 }
-.matrix-corner,
-.matrix-row-head {
-  text-align: left !important;
-  font-weight: 500;
-  position: sticky;
-  left: 0;
-  background: var(--surface);
-  z-index: 1;
-  min-width: 190px;
-  padding-left: 16px !important;
-}
-.matrix-corner {
-  font-size: var(--fs-xs);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-faint);
-  font-weight: 600;
-}
 .matrix tbody tr:hover td,
 .matrix tbody tr:hover th {
   background: var(--surface-2);
-}
-.matrix-company {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  color: var(--text);
-  font-size: var(--fs-sm);
-  font-weight: 500;
-  text-decoration: none !important;
 }
 .ms-cell {
   display: inline-flex;
@@ -2344,11 +2058,6 @@ button.traffic-tile:hover {
     grid-template-columns: repeat(2, 1fr);
   }
 }
-
-.meeting-grid.single {
-  grid-template-columns: minmax(0, 1fr);
-  max-width: 860px;
-}
 .meeting-empty {
   display: flex;
   align-items: center;
@@ -2381,10 +2090,6 @@ button.traffic-tile:hover {
   text-overflow: ellipsis;
   white-space: nowrap;
   text-align: left;
-}
-.popover .filter-select {
-  width: 100%;
-  max-width: none;
 }
 
 /* Verlauf (Updates je Aufgabe) */
@@ -2527,24 +2232,11 @@ button.traffic-tile:hover {
 }
 
 /* Firmen & Personen: eine Ansicht für beide */
-.company-card-head {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  color: var(--text);
-  text-decoration: none !important;
-}
-.company-card-head:hover .task-title {
-  color: var(--accent);
-}
+
 .company-people {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-}
-.company-card .company-people {
-  border-top: 1px solid var(--border);
-  padding-top: 10px;
 }
 .person-pill {
   display: inline-flex;
@@ -2748,4 +2440,42 @@ button.traffic-tile:hover {
 .nav-external {
   opacity: 0.5;
   flex-shrink: 0;
+}
+
+/* Lösch-Kreuze u. ä. auf Touch-Geräten sichtbar (dort gibt es kein Darüberfahren) */
+@media (hover: none) {
+  .hover-only {
+    opacity: 1 !important;
+  }
+}
+.step-text {
+  cursor: text;
+}
+
+.text-links {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: var(--fs-sm);
+}
+.text-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.protocol-open {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.protocol-open .card {
+  box-shadow: none;
+  border: 1px solid var(--border);
+}
+
+.project-current.static {
+  cursor: default;
 }

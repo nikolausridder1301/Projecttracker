@@ -1,6 +1,6 @@
 // Firmen-Ampel: Änderungen nur bewusst und mit Begründung.
 import type { IsoDate, TrafficLight } from "../data/types";
-import { daysBetween } from "./dates";
+import { daysBetween, localDate } from "./dates";
 
 /** Gelb und Rot brauchen eine Begründung; ohne Änderung wird nichts gespeichert. */
 export function validateTrafficChange(
@@ -16,7 +16,7 @@ export function validateTrafficChange(
 /** „seit heute“, „seit gestern“, „seit 3 T.“ */
 export function sinceLabel(changedAt: string | null, today: IsoDate): string {
   if (!changedAt) return "";
-  const days = daysBetween(changedAt.slice(0, 10), today);
+  const days = daysBetween(localDate(changedAt), today);
   if (days <= 0) return "seit heute";
   if (days === 1) return "seit gestern";
   return `seit ${days} T.`;

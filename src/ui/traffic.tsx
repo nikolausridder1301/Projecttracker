@@ -65,7 +65,12 @@ export function TrafficDialog({ company, onClose }: { company: Company; onClose:
     setBusy(true);
     try {
       const text = comment.trim();
-      await update("companies", company.id, { traffic_light: light, traffic_comment: text, traffic_changed_at: new Date().toISOString() });
+      // „seit …“ zählt ab dem letzten Farbwechsel – nur die Begründung ändern setzt es nicht zurück
+      await update("companies", company.id, {
+        traffic_light: light,
+        traffic_comment: text,
+        ...(light !== company.traffic_light ? { traffic_changed_at: new Date().toISOString() } : {}),
+      });
       await insert("traffic_history", [{ company_id: company.id, from_light: company.traffic_light, to_light: light, comment: text }]);
       toast(`Ampel ${company.short}: ${TRAFFIC_LABEL[light]}`);
       onClose();

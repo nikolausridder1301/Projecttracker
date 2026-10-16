@@ -90,7 +90,8 @@ export function TodayPage() {
 }
 
 export function TrafficBar() {
-  const { companies } = useLookups();
+  // Nur Gesellschaften der Gruppe – externe Partner (z. B. der Software-Anbieter) haben hier keine Ampel
+  const companies = useLookups().companies.filter((c) => !c.is_external);
   const [editing, setEditing] = useState<Company | null>(null);
   return (
     <>

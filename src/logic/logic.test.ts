@@ -4,13 +4,16 @@ import type { MilestoneStatus, Task, VendorItem } from "../data/types";
 import { addWorkdays, endOfWeek, formatDate, relativeLabel } from "./dates";
 import { copyProjectMasterData, suggestShort } from "./projects";
 import { moveItem, orderNav } from "./nav";
-import { agendaText, buildBriefing } from "./briefing";
+import { agendaText, buildBriefing, sectionTitles } from "./briefing";
 import { isOverdue, progress, suggestTraffic } from "./milestones";
 import { search } from "./search";
 import { sinceLabel, validateTrafficChange } from "./traffic";
 import { affectsCompany, ageLabel, isOpenItem, jourFixeText, newVendorItem, showTicket, statusPatch } from "./vendor";
+import { localDate } from "./dates";
 import {
   compareTasks,
+  personRefs,
+  personsOf,
   daysSinceUpdate,
   effectiveDue,
   nextStep,
@@ -203,7 +206,7 @@ describe("vendor", () => {
     );
     expect(text).toContain("Feature Requests (1)");
     expect(text).toContain("Offene Punkte Tacto – Stand 15.10.2026");
-    expect(text).toContain("- Schnittstelle (Angefragt · Alle Firmen · Prio hoch");
+    expect(text).toContain("- Schnittstelle (Angefragt · Alle Firmen · Wichtig");
     expect(text).toContain("- Export bricht ab (Gemeldet · FEST · seit 5 T. bei Tacto)");
     expect(text).not.toContain("Alt");
   });
@@ -385,11 +388,9 @@ describe("briefing", () => {
     expect(b.myTasks.map((t) => t.title)).toEqual(["Meins HAZ"]);
     expect(b.otherTasks.map((t) => t.title)).toEqual(["Max bei HAZ"]);
   });
-  it("ohne früheres Treffen: erledigt der letzten 14 Tage (Firma)", () => {
+  it("Firma: erledigte Aufgaben, neueste zuerst", () => {
     const { db, haz } = setup();
     const b = buildBriefing(db, { kind: "company", id: haz.id }, today);
-    expect(b.doneSinceDate).toBe("2026-10-01");
-    expect(b.doneSince.map((t) => t.title)).toEqual(["Erledigt neu"]);
     expect(b.doneTasks.map((t) => t.title)).toEqual(["Erledigt neu", "Erledigt alt"]);
   });
   it("Person: Erledigte nur ihre eigenen, Kontakte nur bei Firmen", () => {
@@ -406,7 +407,7 @@ describe("briefing", () => {
   it("Agenda als Checkliste", () => {
     const { db, anna } = setup();
     const text = agendaText(buildBriefing(db, { kind: "person", id: anna.id }, today), () => "Max Muster");
-    expect(text).toContain("## Offen bei Anna Beispiel\n- [ ] Anna blockiert (blockiert: x)");
+    expect(text).toContain("## Offen bei Anna\n- [ ] Anna blockiert (blockiert: x)");
     expect(text).toContain("- [ ] Max bei HAZ (Max Muster)");
     expect(text).not.toContain("erledigt");
   });
@@ -428,5 +429,71 @@ describe("milestones", () => {
   it("überfällig nur, wenn nicht abgeschlossen", () => {
     expect(isOverdue(C("on_track", "2026-10-01"), today)).toBe(true);
     expect(isOverdue(C("done", "2026-10-01"), today)).toBe(false);
+  });
+});
+
+describe("Überarbeitung: Fälligkeit, Personen, Anbieter-Punkte", () => {
+  const today = "2026-10-15";
+  it("Sortierung nutzt den nächsten Termin (auch aus Schritten)", () => {
+    const a = T({ title: "a", due_date: "2026-10-30" });
+    const b = T({ title: "b", checklist: [{ text: "s", done: false, due: "2026-10-12" }] });
+    const c = T({ title: "c" });
+    expect([a, c, b].sort(compareTasks).map((t) => t.title)).toEqual(["b", "a", "c"]);
+  });
+  it("personsOf: Verantwortliche und offene Schritte, ohne Doppelte, ohne erledigte Schritte", () => {
+    const t = T({
+      assignee_person_ids: ["p1"],
+      checklist: [
+        { text: "x", done: false, person_ids: ["p2", "p1"] },
+        { text: "y", done: true, person_ids: ["p3"] },
+        { text: "z", done: false, person_id: "p4" },
+      ],
+    });
+    expect(personsOf(t).sort()).toEqual(["p1", "p2", "p4"]);
+  });
+  it("Statuszeilen zählen nicht als Stand", () => {
+    const U = (note: string, created_at: string) => ({ id: crypto.randomUUID(), created_at, updated_at: created_at, deleted_at: null, task_id: "a", date: "2026-10-15", note });
+    const m = latestUpdates([U("Testexport läuft", "2026-10-15T08:00:00Z"), U("Verantwortlich: Anna", "2026-10-15T09:00:00Z"), U("Blockiert: x", "2026-10-15T10:00:00Z")]);
+    expect(m.get("a")?.note).toBe("Testexport läuft");
+  });
+  it("personRefs: offen nur bei offenen Aufgaben, „irgendwo“ auch Protokolle und Anbieter-Punkte", () => {
+    const db = {
+      tasks: [T({ status: "done", assignee_person_ids: ["p1"] }), T({ checklist: [{ text: "s", done: false, person_ids: ["p2"] }] })],
+      notes: [{ participant_ids: ["p3"], deleted_at: null }],
+      vendor_items: [{ contact_person_ids: ["p4"] }],
+    };
+    expect(personRefs(db, "p1")).toEqual({ open: 0, any: true });
+    expect(personRefs(db, "p2")).toEqual({ open: 1, any: true });
+    expect(personRefs(db, "p3").any).toBe(true);
+    expect(personRefs(db, "p4").any).toBe(true);
+    expect(personRefs(db, "p5")).toEqual({ open: 0, any: false });
+  });
+  it("localDate: UTC-Zeitstempel → lokaler Kalendertag, reine Daten bleiben", () => {
+    expect(localDate("2026-10-15")).toBe("2026-10-15");
+    const d = new Date(2026, 9, 16, 0, 30); // 16.10. 00:30 Ortszeit
+    expect(localDate(d.toISOString())).toBe("2026-10-16");
+  });
+  it("Briefing: Anbieter-Punkte je nach Person/Firma, heutiges Protokoll, gleiche Überschriften", () => {
+    const db = demoSeed();
+    const haz = db.companies.find((c) => c.short === "HAZ")!;
+    const tac = db.companies.find((c) => c.is_external)!;
+    const anna = db.people.find((p) => p.name === "Anna Beispiel")!; // HAZ
+    const V = (o: Partial<VendorItem>): VendorItem => ({ ...newVendorItem("feature", "x", []), id: crypto.randomUUID(), created_at: "", updated_at: "", deleted_at: null, project_id: db.projects[0].id, ...o }) as VendorItem;
+    db.vendor_items = [
+      V({ title: "Alle Firmen" }),
+      V({ title: "Nur HAZ", company_ids: [haz.id] }),
+      V({ title: "Anna Ansprechpartnerin", contact_person_ids: [anna.id] }),
+    ];
+    const pA = buildBriefing(db, { kind: "person", id: anna.id }, today);
+    expect(pA.vendorItems.map((v) => v.title).sort()).toEqual(["Anna Ansprechpartnerin", "Nur HAZ"]);
+    expect(buildBriefing(db, { kind: "company", id: haz.id }, today).vendorItems.map((v) => v.title).sort()).toEqual(["Alle Firmen", "Anna Ansprechpartnerin", "Nur HAZ"]);
+    expect(buildBriefing(db, { kind: "company", id: tac.id }, today).vendorItems).toHaveLength(3);
+    db.notes = [
+      { id: "n1", created_at: "", updated_at: "", deleted_at: null, project_id: db.projects[0].id, title: "Meeting Anna", body: "", kind: "meeting", company_ids: [haz.id], topic_id: null, meeting_date: today, participant_ids: [anna.id], participants_text: "" },
+    ];
+    expect(buildBriefing(db, { kind: "person", id: anna.id }, today).todayMeeting?.id).toBe("n1");
+    expect(buildBriefing(db, { kind: "person", id: anna.id }, "2026-10-16").todayMeeting).toBeUndefined();
+    expect(sectionTitles({ person: anna }).delegated).toBe("Offen bei Anna");
+    expect(sectionTitles({}).other).toBe("Delegiert");
   });
 });

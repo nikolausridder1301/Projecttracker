@@ -25,7 +25,8 @@ export function Layout({ email, onSignOut }: { email: string; onSignOut: () => v
   useEffect(() => setMenuOpen(false), [location.pathname]);
 
   // Tab-Titel mit Anzahl offener Heute-Punkte (SPEC 6.2)
-  const count = useMemo(() => todayCount(todayView(db.tasks, todayIso())), [db.tasks]);
+  const today = todayIso();
+  const count = useMemo(() => todayCount(todayView(db.tasks, today)), [db.tasks, today]);
   useEffect(() => {
     document.title = count > 0 ? `(${count}) Projecttracker` : "Projecttracker";
   }, [count]);

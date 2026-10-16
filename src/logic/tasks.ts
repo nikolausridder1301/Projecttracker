@@ -1,5 +1,5 @@
 import type { ChecklistItem, Company, Id, IsoDate, Priority, Task, TaskFollowup } from "../data/types";
-import { endOfWeek } from "./dates";
+import { endOfWeek, localDate } from "./dates";
 
 const PRIO_RANK: Record<Priority, number> = { high: 0, medium: 1 };
 
@@ -7,10 +7,10 @@ export const isActive = <T extends { deleted_at: string | null }>(r: T) => r.del
 export const isDelegated = (t: Task) => t.assignee_person_ids.length > 0;
 export const isOpen = (t: Task) => t.status !== "done";
 
-/** Sortierung: Fälligkeit (ohne Datum zuletzt), dann Priorität, dann Titel. */
+/** Sortierung: nächster Termin (Aufgabe oder offener Schritt; ohne Datum zuletzt), dann Wichtig, dann Titel. */
 export function compareTasks(a: Task, b: Task): number {
-  const da = a.due_date ?? "9999-99-99";
-  const db = b.due_date ?? "9999-99-99";
+  const da = effectiveDue(a) ?? "9999-99-99";
+  const db = effectiveDue(b) ?? "9999-99-99";
   if (da !== db) return da < db ? -1 : 1;
   if (a.priority !== b.priority) return PRIO_RANK[a.priority] - PRIO_RANK[b.priority];
   return a.title.localeCompare(b.title, "de");
@@ -59,6 +59,26 @@ export function effectiveDue(t: Pick<Task, "due_date" | "checklist">): IsoDate |
 /** Personen eines Schritts (auch Altbestand mit einer Person). */
 export const stepPersons = (c: ChecklistItem): Id[] => c.person_ids ?? (c.person_id ? [c.person_id] : []);
 
+/** Personen, bei denen die Aufgabe offen ist: Verantwortliche und Personen in offenen Schritten. */
+export function personsOf(t: Pick<Task, "assignee_person_ids" | "checklist">): Id[] {
+  return [...new Set([...t.assignee_person_ids, ...t.checklist.filter((c) => !c.done).flatMap(stepPersons)])];
+}
+
+/** Wo eine Person noch vorkommt (für „Löschen“): offene Aufgaben bzw. irgendwo im Bestand. */
+export function personRefs(
+  db: { tasks: Task[]; notes: { participant_ids: Id[]; deleted_at: string | null }[]; vendor_items: { contact_person_ids: Id[] }[] },
+  personId: Id,
+): { open: number; any: boolean } {
+  const tasks = db.tasks.filter((t) => personsOf(t).includes(personId) || t.assignee_person_ids.includes(personId));
+  const open = tasks.filter((t) => t.deleted_at === null && t.status !== "done" && personsOf(t).includes(personId)).length;
+  const any =
+    tasks.length > 0 ||
+    db.tasks.some((t) => t.checklist.some((c) => stepPersons(c).includes(personId))) ||
+    db.notes.some((n) => n.participant_ids.includes(personId)) ||
+    db.vendor_items.some((v) => v.contact_person_ids.includes(personId));
+  return { open, any };
+}
+
 /** Hat die Person einen offenen Schritt in der Aufgabe? */
 export const hasStepFor = (t: Pick<Task, "checklist">, personId: Id) => t.checklist.some((c) => !c.done && stepPersons(c).includes(personId));
 
@@ -91,11 +111,16 @@ export function isValidUrl(url: string): boolean {
 // Verlauf: datierte Updates je Aufgabe (Tabelle task_followups)
 // ---------------------------------------------------------------------------
 
-/** Jüngstes Update je Aufgabe. */
+/** Automatische Verlaufszeilen (Statuswechsel) – im Verlauf sichtbar, aber kein „Stand“. */
+export function isStatusNote(note: string): boolean {
+  return /^(✓ Erledigt|Wieder geöffnet|Blockiert: |Nicht mehr blockiert|Verantwortlich: )/.test(note);
+}
+
+/** Jüngstes Update je Aufgabe (ohne automatische Statuszeilen). */
 export function latestUpdates(updates: TaskFollowup[]): Map<Id, TaskFollowup> {
   const m = new Map<Id, TaskFollowup>();
   for (const u of updates) {
-    if (u.deleted_at !== null) continue;
+    if (u.deleted_at !== null || isStatusNote(u.note)) continue;
     const cur = m.get(u.task_id);
     if (!cur || u.date > cur.date || (u.date === cur.date && u.created_at > cur.created_at)) m.set(u.task_id, u);
   }
@@ -104,7 +129,7 @@ export function latestUpdates(updates: TaskFollowup[]): Map<Id, TaskFollowup> {
 
 /** Tage seit dem letzten Update – ohne Update seit dem Anlegen. */
 export function daysSinceUpdate(t: Pick<Task, "created_at">, last: Pick<TaskFollowup, "date"> | undefined, today: IsoDate): number {
-  const since = last?.date ?? t.created_at.slice(0, 10);
+  const since = last?.date ?? localDate(t.created_at);
   return Math.max(0, Math.round((Date.parse(today) - Date.parse(since)) / 86_400_000));
 }
 

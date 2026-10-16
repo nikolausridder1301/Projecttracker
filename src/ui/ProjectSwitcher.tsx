@@ -41,6 +41,18 @@ export function ProjectSwitcher() {
   const active = projects.filter((p) => !p.archived);
   const archived = projects.filter((p) => p.archived);
 
+  // Nur ein Projekt: einfach den Namen zeigen – „Neues Projekt“ gibt es in den Einstellungen
+  if (projects.length <= 1) {
+    return (
+      <div className="project-switcher">
+        <div className="project-current static" title={project?.name}>
+          {project ? <ProjectBadge color={project.color} short={project.short} /> : null}
+          <span className="project-name">{project?.name ?? "Kein Projekt"}</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="project-switcher" ref={ref}>
       <button className="project-current" onClick={() => setOpen(!open)} aria-expanded={open} aria-haspopup="menu">
@@ -89,7 +101,7 @@ export function ProjectSwitcher() {
   );
 }
 
-function NewProjectDialog({ onClose }: { onClose: () => void }) {
+export function NewProjectDialog({ onClose }: { onClose: () => void }) {
   const { allDb, project, projects, insert, update, setProject, toast } = useStore();
   const navigate = useNavigate();
   const [name, setName] = useState("");

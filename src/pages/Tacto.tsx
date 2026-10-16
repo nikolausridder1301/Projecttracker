@@ -208,7 +208,7 @@ function VendorPage({ vendorName }: { vendorName: string }) {
 // ---------------------------------------------------------------------------
 
 function VendorPanel({ item, vendorName, onClose }: { item: VendorItem; vendorName: string; onClose: () => void }) {
-  const { update, insert, trash, toast } = useStore();
+  const { db, update, insert, trash, toast } = useStore();
   const { companies } = useLookups();
   const [title, setTitle] = useState(item.title);
   const [body, setBody] = useState(item.body);
@@ -238,6 +238,8 @@ function VendorPanel({ item, vendorName, onClose }: { item: VendorItem; vendorNa
   const showContact = more || item.contact_person_ids.length > 0;
 
   const toBestPractice = async () => {
+    const exists = db.vendor_items.some((i) => i.deleted_at === null && i.category === "best_practice" && i.title === item.title);
+    if (exists) return toast("Schon als Best Practice übernommen");
     await insert("vendor_items", [
       {
         ...newVendorItem("best_practice", item.title, item.company_ids),
