@@ -8,7 +8,7 @@ import { isActive, isOpen } from "../logic/tasks";
 import { CompanyLogo, Empty, TrafficDot, usePersisted } from "../ui/common";
 import { CompanyPeople } from "./Contact";
 
-// „Firmen & Personen“: Firmen-Karten mit ihren Personen. Ein Klick auf Firma
+// „Kontakte“ (Firmen & Personen): Firmen-Karten mit ihren Personen. Ein Klick auf Firma
 // oder Person öffnet dieselbe Detailansicht (siehe Contact.tsx).
 
 const norm = (t: string) => t.toLocaleLowerCase("de").normalize("NFKD").replace(/[̀-ͯ]/g, "");
@@ -55,7 +55,7 @@ export function CompaniesPage() {
   return (
     <div className="page">
       <div className="page-head">
-        <h1>Firmen &amp; Personen</h1>
+        <h1>Kontakte</h1>
         <span className="spacer" />
         <label className="inline">
           <input type="checkbox" className="check" checked={view.inactive} onChange={(e) => setView({ inactive: e.target.checked })} /> Inaktive zeigen
