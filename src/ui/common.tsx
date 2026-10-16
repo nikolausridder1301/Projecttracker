@@ -1,4 +1,4 @@
-import { Check, ChevronDown, ChevronRight } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, Flag } from "lucide-react";
 import { createPortal } from "react-dom";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import allmineral from "../assets/logos/allmineral.png";
@@ -493,6 +493,82 @@ export function Empty({ children }: { children: ReactNode }) {
 // ---------------------------------------------------------------------------
 // Auswahlfelder
 // ---------------------------------------------------------------------------
+
+/** Auswahl in Filterleisten – wie ChipSelect, aber als Button in Filterhöhe. */
+export function FilterSelect({
+  value,
+  options,
+  onChange,
+  title,
+}: {
+  value: string;
+  options: ChipOption[];
+  onChange: (v: string) => void;
+  title: string;
+}) {
+  const current = options.find((o) => o.value === value) ?? options[0];
+  return (
+    <Dropdown value={current?.value ?? ""} options={options} onChange={onChange} title={title}>
+      {(props) => (
+        <button type="button" {...props} className={`btn filter-select${value ? " active-filter" : ""}`} title={title}>
+          <span className="grow">{current?.label}</span>
+          <ChevronDown size={15} className="chip-caret" aria-hidden />
+        </button>
+      )}
+    </Dropdown>
+  );
+}
+
+/** Firmenfilter mit Mehrfachauswahl; leer = alle Firmen. */
+export function CompanyFilter({ value, onChange }: { value: Id[]; onChange: (v: Id[]) => void }) {
+  const { companies, companyById } = useLookups();
+  const ALL = "__all__";
+  const valid = value.filter((id) => companyById.has(id));
+  const label =
+    valid.length === 0
+      ? "Alle Firmen"
+      : valid.length === 1
+        ? (companyById.get(valid[0])?.name ?? "")
+        : valid.length <= 3
+          ? valid.map((id) => companyById.get(id)?.short).join(", ")
+          : `${valid.length} Firmen`;
+  const toggle = (v: string) => {
+    if (v === ALL) return onChange([]);
+    onChange(valid.includes(v) ? valid.filter((x) => x !== v) : [...valid, v]);
+  };
+  return (
+    <Dropdown
+      value=""
+      selected={valid.length === 0 ? [ALL] : valid}
+      options={[{ value: ALL, label: "Alle Firmen" }, ...companies.map((c) => ({ value: c.id, label: c.name }))]}
+      onChange={toggle}
+      title="Firmen filtern"
+    >
+      {(props) => (
+        <button type="button" {...props} className={`btn filter-select${valid.length ? " active-filter" : ""}`} title="Firmen filtern">
+          <span className="grow">{label}</span>
+          <ChevronDown size={15} className="chip-caret" aria-hidden />
+        </button>
+      )}
+    </Dropdown>
+  );
+}
+
+/** Fahne „Wichtig“ als Ein/Aus-Chip statt dreistufiger Priorität. */
+export function ImportantChip({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      className={`chip${value ? " tone-red" : " chip-empty"}`}
+      aria-pressed={value}
+      title={value ? "Als normal markieren" : "Als wichtig markieren"}
+      onClick={() => onChange(!value)}
+    >
+      <Flag size={14} />
+      <span className="chip-text">Wichtig</span>
+    </button>
+  );
+}
 
 export function CompanySelect({
   value,

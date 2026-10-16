@@ -17,8 +17,9 @@ interface InProject {
 }
 
 export type TrafficLight = "green" | "yellow" | "red";
-export type TaskStatus = "open" | "in_progress" | "blocked" | "done";
-export type Priority = "high" | "medium" | "low";
+export type TaskStatus = "open" | "blocked" | "done";
+/** "high" = als wichtig markiert (Fahne), sonst "medium" */
+export type Priority = "high" | "medium";
 export type NoteKind = "note" | "meeting" | "decision";
 
 export interface Project extends Base {
@@ -228,15 +229,13 @@ export type Patch<K extends TableName> = Partial<Omit<Tables[K], "id" | "created
 
 export const STATUS_LABEL: Record<TaskStatus, string> = {
   open: "Offen",
-  in_progress: "In Arbeit",
   blocked: "Blockiert",
   done: "Erledigt",
 };
 
 export const PRIORITY_LABEL: Record<Priority, string> = {
-  high: "Hoch",
-  medium: "Mittel",
-  low: "Niedrig",
+  high: "Wichtig",
+  medium: "Normal",
 };
 
 export const NOTE_KIND_LABEL: Record<NoteKind, string> = {

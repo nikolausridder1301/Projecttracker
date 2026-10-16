@@ -102,7 +102,7 @@ describe("tasks", () => {
     expect(validateTask({ title: " ", status: "open", blocked_reason: "" })).toMatch(/Titel/);
   });
   it("sortiert nach Fälligkeit, dann Priorität", () => {
-    const l = [T({ title: "c" }), T({ title: "b", due_date: "2026-01-02", priority: "low" }), T({ title: "a", due_date: "2026-01-02", priority: "high" })];
+    const l = [T({ title: "c" }), T({ title: "b", due_date: "2026-01-02", priority: "medium" }), T({ title: "a", due_date: "2026-01-02", priority: "high" })];
     expect(l.sort(compareTasks).map((t) => t.title)).toEqual(["a", "b", "c"]);
   });
   it("URL-Prüfung", () => {

@@ -82,11 +82,11 @@ function CompanyView({ company }: { company: Company }) {
   const [tab, setTab] = useState<Tab>("tasks");
   const [trafficOpen, setTrafficOpen] = useState(false);
   const [f, setF] = useState<TaskFilter>({
-    company: company.id,
+    companies: [company.id],
     topic: "",
     assignee: "",
     status: "",
-    priority: "",
+    important: false,
     due: "",
     showDone: false,
     groupBy: "",
@@ -165,7 +165,7 @@ function CompanyView({ company }: { company: Company }) {
 
       {tab === "tasks" && (
         <>
-          <TaskFilterBar f={f} set={(p) => setF({ ...f, ...p })} reset={() => setF({ ...f, topic: "", assignee: "", status: "", priority: "", due: "", showDone: false })} hideCompany />
+          <TaskFilterBar f={f} set={(p) => setF({ ...f, ...p })} reset={() => setF({ ...f, topic: "", assignee: "", status: "", important: false, due: "", showDone: false })} hideCompany />
           {tasks.length === 0 ? <Empty>Keine Aufgaben.</Empty> : <TaskSections tasks={tasks} groupBy={f.groupBy} showCompany={false} />}
         </>
       )}

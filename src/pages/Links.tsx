@@ -3,11 +3,12 @@ import { useLookups, useStore } from "../data/store";
 import type { Id, Link } from "../data/types";
 import { isActive, isValidUrl } from "../logic/tasks";
 import { LinkRow } from "../ui/links";
-import { CompanySelect, Empty, usePersisted } from "../ui/common";
+import { CompanyFilter, CompanySelect, Empty, FilterSelect, usePersisted } from "../ui/common";
 import { useCaptureContext, useUi } from "../ui/uiState";
 
 interface LinkFilter {
-  company: Id | "";
+  /** leer = alle Firmen */
+  companies: Id[];
   topic: Id | "";
   category: Id | "";
   q: string;
@@ -17,8 +18,9 @@ export function LinksPage() {
   const { db } = useStore();
   const { categories } = useLookups();
   const { openCapture } = useUi();
-  const [f, setF] = usePersisted<LinkFilter>("links", { company: "", topic: "", category: "", q: "" });
-  useCaptureContext(f.company || undefined);
+  const [stored, setF] = usePersisted<LinkFilter>("links", { companies: [], topic: "", category: "", q: "" });
+  const f = { ...stored, companies: Array.isArray(stored.companies) ? stored.companies : [] };
+  useCaptureContext(f.companies.length === 1 ? f.companies[0] : undefined);
   const set = (p: Partial<LinkFilter>) => setF({ ...f, ...p });
   const [editing, setEditing] = useState<Id | null>(null);
 
@@ -26,11 +28,12 @@ export function LinksPage() {
     const q = f.q.toLowerCase();
     return db.links
       .filter(isActive)
-      .filter((l) => !f.company || l.company_id === f.company)
+      .filter((l) => f.companies.length === 0 || f.companies.includes(l.company_id))
       .filter((l) => !f.category || l.category_id === f.category)
       .filter((l) => !q || `${l.title} ${l.url} ${l.description}`.toLowerCase().includes(q))
       .sort((a, b) => a.title.localeCompare(b.title, "de"));
-  }, [db.links, f]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [db.links, stored]);
 
   return (
     <div className="page">
@@ -43,15 +46,13 @@ export function LinksPage() {
         </button>
       </div>
       <div className="filters">
-        <CompanySelect value={f.company} onChange={(v) => set({ company: v })} allowAll="Alle Firmen" />
-        <select value={f.category} onChange={(e) => set({ category: e.target.value })}>
-          <option value="">Alle Kategorien</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
+        <CompanyFilter value={f.companies} onChange={(v) => set({ companies: v })} />
+        <FilterSelect
+          title="Kategorie"
+          value={f.category}
+          options={[{ value: "", label: "Alle Kategorien" }, ...categories.map((c) => ({ value: c.id, label: c.name }))]}
+          onChange={(v) => set({ category: v })}
+        />
         <input placeholder="Text filtern…" value={f.q} onChange={(e) => set({ q: e.target.value })} />
       </div>
       {links.length === 0 ? (

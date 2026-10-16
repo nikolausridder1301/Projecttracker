@@ -1,11 +1,10 @@
-import { Flag } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLookups, useStore } from "../data/store";
-import { NOTE_KIND_LABEL, PRIORITY_LABEL, type Id, type NoteKind, type Priority } from "../data/types";
+import { NOTE_KIND_LABEL, type Id, type NoteKind, type Priority } from "../data/types";
 import { addWorkdays, relativeLabel, todayIso } from "../logic/dates";
 import { isValidUrl, overarchingCompany } from "../logic/tasks";
-import { ChipDate, ChipMulti, ChipSelect, useDraft } from "./common";
+import { ChipDate, ChipMulti, ChipSelect, ImportantChip, useDraft } from "./common";
 import { useUi, type CaptureType } from "./uiState";
 
 // Schnellerfassung (SPEC 6.5): Titel + Enter genügt, alles andere optional.
@@ -174,19 +173,7 @@ function CaptureDialog({
                 onChange={setAssignee}
               />
               <ChipDate title="Fällig" value={due || null} onChange={(v) => setDue(v ?? "")} placeholder="Fällig" format={(v) => `fällig ${relativeLabel(v, todayIso())}`} />
-              <ChipSelect
-                title="Priorität"
-                icon={<Flag size={14} />}
-                tone={priority === "high" ? "red" : undefined}
-                value={priority === "medium" ? "" : priority}
-                placeholder="Priorität"
-                options={[
-                  { value: "", label: "Mittel" },
-                  { value: "high", label: PRIORITY_LABEL.high },
-                  { value: "low", label: PRIORITY_LABEL.low },
-                ]}
-                onChange={(v) => setPriority((v || "medium") as Priority)}
-              />
+              <ImportantChip value={priority === "high"} onChange={(v) => setPriority(v ? "high" : "medium")} />
             </>
           )}
           {type === "note" && (
