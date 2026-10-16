@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { useLookups, useStore } from "../data/store";
 import type { Id, NoteKind, Priority } from "../data/types";
-import { relativeLabel, todayIso } from "../logic/dates";
+import { formatDate, relativeLabel, todayIso } from "../logic/dates";
 import { isValidUrl, overarchingCompany } from "../logic/tasks";
 import { ChipDate, ChipMulti, ChipSelect, ImportantChip, useDraft } from "./common";
 import { useUi, type CaptureType } from "./uiState";
+import { freshNotes } from "../pages/Notes";
 
 // Schnellerfassung (SPEC 6.5): Titel + Enter genügt, alles andere optional.
 
@@ -15,6 +16,8 @@ const TYPES: [CaptureType, string][] = [
   ["decision", "Entscheidung"],
   ["link", "Link"],
 ];
+
+const DEFAULT_TITLE: Record<NoteKind, string> = { note: "Notiz", meeting: "Meeting", decision: "Entscheidung" };
 
 const PLACEHOLDER: Record<CaptureType, string> = {
   task: "Was ist zu tun?",
@@ -62,6 +65,38 @@ function CaptureDialog({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
+
+  /**
+   * Notiz, Protokoll, Entscheidung: sofort anlegen und im Pop-up öffnen –
+   * dort wird geschrieben. Bleibt sie unverändert, verschwindet sie beim Schließen wieder.
+   */
+  const createNote = async (kind: NoteKind) => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const typed = title.trim();
+      const [n] = await insert("notes", [
+        {
+          title: typed || `${DEFAULT_TITLE[kind]} – ${formatDate(todayIso())}`,
+          body: "",
+          kind,
+          company_id: companyId,
+          topic_id: null,
+          meeting_date: kind === "note" ? null : todayIso(),
+          participant_ids: [],
+          participants_text: "",
+        },
+      ]);
+      if (!typed) freshNotes.add(n.id);
+      clearTitle();
+      onClose();
+      openNote(n.id);
+    } catch {
+      /* Fehler wurde gemeldet */
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const submit = async () => {
     if (!title.trim()) return toast("Bitte einen Titel eingeben.", "error");
@@ -151,7 +186,12 @@ function CaptureDialog({
       >
         <div className="seg-group">
           {TYPES.map(([t, label]) => (
-            <button type="button" key={t} className={`seg${type === t ? " active" : ""}`} onClick={() => setType(t)}>
+            <button
+              type="button"
+              key={t}
+              className={`seg${type === t ? " active" : ""}`}
+              onClick={() => (t === "note" || t === "meeting" || t === "decision" ? void createNote(t) : setType(t))}
+            >
               {label}
             </button>
           ))}

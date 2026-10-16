@@ -99,44 +99,97 @@ export function NoteDetailPage() {
   return null;
 }
 
+/**
+ * Gerade über „+ Neu“ angelegte Notizen: Wird so eine Notiz unverändert
+ * wieder geschlossen, verschwindet sie – es bleiben keine leeren Einträge.
+ */
+export const freshNotes = new Set<Id>();
+
 /** Notiz, Protokoll oder Entscheidung als Pop-up-Panel – gleich wie bei Aufgaben. */
 export function NotePanel() {
   const { openNoteId, openNote, openTaskId, capture } = useUi();
   const { db } = useStore();
   const note = db.notes.find((n) => n.id === openNoteId && n.deleted_at === null);
+  // Der Editor hängt hier ein, was beim Schließen noch zu tun ist (Ungespeichertes sichern)
+  const beforeClose = useRef<(() => void) | null>(null);
+  const close = useRef(() => {});
+  close.current = () => {
+    beforeClose.current?.();
+    beforeClose.current = null;
+    openNote(null);
+  };
 
   useEffect(() => {
     if (!openNoteId) return;
     // Esc schließt zuerst Erfassung bzw. eine darüber geöffnete Aufgabe
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && !openTaskId && !capture && openNote(null);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && !openTaskId && !capture && close.current();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [openNoteId, openNote, openTaskId, capture]);
+  }, [openNoteId, openTaskId, capture]);
 
   if (!note) return null;
   return (
     <>
-      <div className="panel-backdrop" onClick={() => openNote(null)} />
+      <div className="panel-backdrop" onClick={() => close.current()} />
       <aside className="panel wide" aria-label="Notiz">
-        <NoteEditor key={note.id} note={note} onClose={() => openNote(null)} />
+        <NoteEditor key={note.id} note={note} onClose={() => close.current()} beforeClose={beforeClose} />
       </aside>
     </>
   );
 }
 
-function NoteEditor({ note, onClose }: { note: Note; onClose: () => void }) {
-  const { db, update, trash } = useStore();
+function NoteEditor({
+  note,
+  onClose,
+  beforeClose,
+}: {
+  note: Note;
+  onClose: () => void;
+  beforeClose: React.MutableRefObject<(() => void) | null>;
+}) {
+  const { db, update, trash, purge } = useStore();
   const { people, companies } = useLookups();
   const { openCapture } = useUi();
   const [title, setTitle] = useState(note.title);
   const [body, setBody] = useState(note.body);
   const [participantsText, setParticipantsText] = useState(note.participants_text);
   const textRef = useRef<HTMLTextAreaElement>(null);
+  const titleRef = useRef<HTMLTextAreaElement>(null);
+  const fresh = freshNotes.has(note.id);
 
   const save = (patch: Parameters<typeof update<"notes">>[2]) => void update("notes", note.id, patch).catch(() => {});
 
   const derived = db.tasks.filter((t) => isActive(t) && t.source_note_id === note.id);
   const attachedCount = db.attachments.filter((a) => a.deleted_at === null && a.note_id === note.id).length;
+
+  // Neu angelegt: Titel markiert – einfach lostippen, Tab springt in den Text
+  useEffect(() => {
+    if (!fresh) return;
+    titleRef.current?.focus();
+    titleRef.current?.select();
+  }, [fresh]);
+
+  // Beim Schließen: unverändert neue Notiz verwerfen, sonst noch nicht Gespeichertes sichern
+  beforeClose.current = () => {
+    const untouched =
+      fresh &&
+      !body.trim() &&
+      title.trim() === note.title &&
+      !participantsText.trim() &&
+      note.participant_ids.length === 0 &&
+      derived.length === 0 &&
+      attachedCount === 0;
+    freshNotes.delete(note.id);
+    if (untouched) {
+      void purge("notes", note.id).catch(() => {});
+      return;
+    }
+    const patch: Parameters<typeof update<"notes">>[2] = {};
+    if (title.trim() && title.trim() !== note.title) patch.title = title.trim();
+    if (body !== note.body) patch.body = body;
+    if (participantsText !== note.participants_text) patch.participants_text = participantsText;
+    if (Object.keys(patch).length > 0) save(patch);
+  };
 
   const taskFromSelection = () => {
     const el = textRef.current;
@@ -160,7 +213,15 @@ function NoteEditor({ note, onClose }: { note: Note; onClose: () => void }) {
     <div className="editor">
       <div className="panel-head">
         <span className="spacer" />
-        <button className="icon-btn" title="In den Papierkorb" onClick={() => void trash("notes", note.id, note.title).then(onClose)}>
+        <button
+          className="icon-btn"
+          title="In den Papierkorb"
+          onClick={() => {
+            beforeClose.current = null;
+            freshNotes.delete(note.id);
+            void trash("notes", note.id, note.title).then(onClose);
+          }}
+        >
           <Trash2 size={16} />
         </button>
         <button className="icon-btn" onClick={onClose} aria-label="Schließen" title="Schließen (Esc)">
@@ -169,6 +230,7 @@ function NoteEditor({ note, onClose }: { note: Note; onClose: () => void }) {
       </div>
         <div className="title-field">
           <AutoText
+            textRef={titleRef}
             value={title}
             onChange={(v) => setTitle(v.replace(/\n/g, " "))}
             onBlur={() => (title.trim() ? title !== note.title && save({ title: title.trim() }) : setTitle(note.title))}
