@@ -1,56 +1,64 @@
-import { Search } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useLookups, useStore } from "../data/store";
-import { TRAFFIC_LABEL, type Person } from "../data/types";
+import { TRAFFIC_LABEL, type Id } from "../data/types";
 import { todayIso } from "../logic/dates";
 import { isActive, isOpen } from "../logic/tasks";
-import { CompanyLogo, Empty, TrafficDot, usePersisted } from "../ui/common";
-import { CompanyPeople } from "./Contact";
+import { Avatar, CompanyBadge, CompanyLogo, CompanySelect, Empty, TrafficDot, usePersisted } from "../ui/common";
+import { openPerPerson } from "./Contact";
 
-// „Kontakte“ (Firmen & Personen): Firmen-Karten mit ihren Personen. Ein Klick auf Firma
-// oder Person öffnet dieselbe Detailansicht (siehe Contact.tsx).
+// „Kontakte“: oben die Firmen, darunter die Personen – jeweils gleich aufgebaute
+// Karten. Ein Klick öffnet dieselbe Detailansicht (siehe Contact.tsx).
 
 const norm = (t: string) => t.toLocaleLowerCase("de").normalize("NFKD").replace(/[̀-ͯ]/g, "");
+const tasksLabel = (n: number) => (n === 1 ? "1 Aufgabe offen" : `${n} Aufgaben offen`);
 
 export function CompaniesPage() {
-  const { db } = useStore();
-  const { companies, people } = useLookups();
+  const { db, insert } = useStore();
+  const { companies, people, companyById } = useLookups();
   const today = todayIso();
   const [q, setQ] = useState("");
   const [view, setView] = usePersisted<{ inactive: boolean }>("companies", { inactive: false });
+  const [adding, setAdding] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newCompany, setNewCompany] = useState<Id | "">("");
 
-  const stats = useMemo(() => {
-    const m = new Map<string, { open: number; overdue: number; blocked: number }>();
+  // Firma: Aufgaben, die die Firma betreffen
+  const companyStats = useMemo(() => {
+    const m = new Map<string, { open: number; overdue: number }>();
     for (const t of db.tasks) {
       if (!isActive(t) || !isOpen(t)) continue;
       for (const cid of t.company_ids) {
-        const s = m.get(cid) ?? { open: 0, overdue: 0, blocked: 0 };
+        const s = m.get(cid) ?? { open: 0, overdue: 0 };
         s.open++;
         if (t.due_date && t.due_date < today) s.overdue++;
-        if (t.status === "blocked") s.blocked++;
         m.set(cid, s);
       }
     }
     return m;
   }, [db.tasks, today]);
+  // Person: Aufgaben, für die sie verantwortlich ist oder einen offenen Schritt hat
+  const personOpen = useMemo(() => openPerPerson(db.tasks), [db.tasks]);
 
   const query = norm(q.trim());
-  const visiblePeople = people
+  const shownCompanies = companies.filter((c) => !query || norm(`${c.name} ${c.short}`).includes(query));
+  const shownPeople = people
     .filter((p) => view.inactive || p.active)
-    .sort((a, b) => a.name.localeCompare(b.name, "de"));
-  const peopleOf = (companyId: string | null) => visiblePeople.filter((p) => p.company_id === companyId);
-  const personHit = (p: Person) => !query || norm(`${p.name} ${p.role}`).includes(query);
+    .filter((p) => !query || norm(`${p.name} ${p.role} ${companyById.get(p.company_id ?? "")?.name ?? ""}`).includes(query))
+    .sort(
+      (a, b) =>
+        (companyById.get(a.company_id ?? "")?.sort ?? 99) - (companyById.get(b.company_id ?? "")?.sort ?? 99) ||
+        a.name.localeCompare(b.name, "de"),
+    );
+  const peopleCount = (cid: Id) => people.filter((p) => p.active && p.company_id === cid).length;
 
-  const cards = companies
-    .map((c) => {
-      const all = peopleOf(c.id);
-      const companyHit = !query || norm(`${c.name} ${c.short}`).includes(query);
-      const persons = companyHit ? all : all.filter(personHit);
-      return { c, persons, show: companyHit || persons.length > 0 };
-    })
-    .filter((x) => x.show);
-  const withoutCompany = peopleOf(null).filter(personHit);
+  const addPerson = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newName.trim()) return;
+    await insert("people", [{ name: newName.trim(), company_id: newCompany || null, role: "", email: "", phone: "", active: true }]).catch(() => {});
+    setNewName("");
+  };
 
   return (
     <div className="page">
@@ -67,42 +75,84 @@ export function CompaniesPage() {
           <input placeholder="Firma oder Person suchen…" value={q} onChange={(e) => setQ(e.target.value)} />
         </label>
       </div>
-      {cards.length === 0 && withoutCompany.length === 0 ? (
-        <Empty>Nichts gefunden.</Empty>
-      ) : (
-        <div className="company-grid">
-          {cards.map(({ c, persons }) => {
-            const s = stats.get(c.id) ?? { open: 0, overdue: 0, blocked: 0 };
-            return (
-              <div key={c.id} className="card company-card">
-                <Link to={`/firmen/${c.id}`} className="company-card-head">
-                  <CompanyLogo company={c} size={44} />
-                  <div>
-                    <div className="task-title">{c.name}</div>
-                    <div className="row tight">
-                      <TrafficDot light={c.traffic_light} /> <span className="muted small">{TRAFFIC_LABEL[c.traffic_light]}</span>
+
+      {shownCompanies.length + shownPeople.length === 0 && <Empty>Nichts gefunden.</Empty>}
+
+      {shownCompanies.length > 0 && (
+        <>
+          <div className="section-divider first">
+            <span>Firmen</span>
+            <span className="muted">{shownCompanies.length}</span>
+          </div>
+          <div className="contact-grid">
+            {shownCompanies.map((c) => {
+              const s = companyStats.get(c.id) ?? { open: 0, overdue: 0 };
+              const n = peopleCount(c.id);
+              return (
+                <Link key={c.id} to={`/firmen/${c.id}`} className="card contact-card">
+                  <div className="contact-card-head">
+                    <CompanyLogo company={c} size={40} />
+                    <div className="contact-card-title">
+                      <div className="task-title">{c.name}</div>
+                      <div className="row tight muted small">
+                        <TrafficDot light={c.traffic_light} /> {TRAFFIC_LABEL[c.traffic_light]}
+                      </div>
                     </div>
                   </div>
+                  <p className="contact-card-note muted small">{c.traffic_comment}</p>
+                  <div className="contact-card-foot">
+                    <span>{n === 0 ? "Noch keine Personen" : n === 1 ? "1 Person" : `${n} Personen`}</span>
+                    {s.open > 0 && <span className="foot-strong">{tasksLabel(s.open)}</span>}
+                    {s.overdue > 0 && <span className="overdue">{s.overdue} überfällig</span>}
+                  </div>
                 </Link>
-                {c.traffic_comment && <p className="muted small">{c.traffic_comment}</p>}
-                <div className="company-stats">
-                  <span>{s.open} offen</span>
-                  {s.overdue > 0 && <span className="overdue">{s.overdue} überfällig</span>}
-                  {s.blocked > 0 && <span className="blocked-reason">{s.blocked} blockiert</span>}
-                </div>
-                <CompanyPeople companyId={c.id} people={persons} compact />
-              </div>
-            );
-          })}
-          {withoutCompany.length > 0 && (
-            <div className="card company-card">
-              <div className="company-card-head">
-                <div className="task-title">Ohne Firma</div>
-              </div>
-              <CompanyPeople companyId={null} people={withoutCompany} compact />
-            </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {(shownPeople.length > 0 || !query) && (
+        <>
+          <div className="section-divider">
+            <span>Personen</span>
+            <span className="muted">{shownPeople.length}</span>
+            <button className="btn ghost small section-action" onClick={() => setAdding(!adding)}>
+              <Plus size={14} /> Person
+            </button>
+          </div>
+          {adding && (
+            <form className="card row person-new" onSubmit={(e) => void addPerson(e)}>
+              <input autoFocus placeholder="Name der neuen Person" value={newName} onChange={(e) => setNewName(e.target.value)} />
+              <CompanySelect value={newCompany} onChange={setNewCompany} allowAll="Firma?" />
+              <button className="btn primary" type="submit">
+                Anlegen
+              </button>
+            </form>
           )}
-        </div>
+          <div className="contact-grid">
+            {shownPeople.map((p) => {
+              const open = personOpen.get(p.id) ?? 0;
+              return (
+                <Link key={p.id} to={`/personen/${p.id}`} className={`card contact-card${p.active ? "" : " inactive"}`}>
+                  <div className="contact-card-head">
+                    <span className="contact-card-avatar">
+                      <Avatar name={p.name} />
+                    </span>
+                    <div className="contact-card-title">
+                      <div className="task-title">{p.name}</div>
+                      <div className="muted small">{p.role || (p.active ? " " : "inaktiv")}</div>
+                    </div>
+                  </div>
+                  <div className="contact-card-foot">
+                    {p.company_id ? <CompanyBadge id={p.company_id} /> : <span>ohne Firma</span>}
+                    {open > 0 && <span className="foot-strong">{tasksLabel(open)}</span>}
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </>
       )}
     </div>
   );
