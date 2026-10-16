@@ -180,7 +180,7 @@ Arten **Notiz · Meeting-Protokoll · Entscheidung** (Entscheidungen bewusst get
 
 ### 6.11 Schnellerfassung
 
-Taste **N** oder „+ Neu“: Typ **Aufgabe · Notiz · Protokoll · Entscheidung · Link**, Titel, Enter. **Danach öffnet sich das Neue sofort** im Pop-up (Aufgabe bzw. Notiz) – immer derselbe Ablauf. Ausnahme: „Aufgabe daraus“ im Protokoll bleibt im Protokoll (die Aufgabe erscheint dort unter „Aufgaben“). Links werden nur gespeichert. Chips für Firma (aus dem Kontext vorbelegt; bei Aufgaben Mehrfachauswahl), Verantwortlich, Fällig, Wichtig bzw. Kategorie. Entwürfe bleiben erhalten.
+Taste **N** oder „+ Neu“: Typ **Aufgabe · Notiz · Protokoll · Entscheidung · Link**. **Notiz, Protokoll und Entscheidung öffnen sich mit einem Klick direkt im Pop-up** (Titel „Meeting – TT.MM.JJJJ“ o. ä. vorbelegt und markiert, Datum heute, ggf. schon getippter Titel übernommen); wird so ein Eintrag unverändert geschlossen, verschwindet er wieder. Aufgaben und Links: Titel, Enter – Aufgaben öffnen sich danach ebenfalls im Pop-up. Ausnahme: „Aufgabe daraus“ im Protokoll bleibt im Protokoll (die Aufgabe erscheint dort unter „Aufgaben“). Links werden nur gespeichert. Chips für Firma (aus dem Kontext vorbelegt; bei Aufgaben Mehrfachauswahl), Verantwortlich, Fällig, Wichtig bzw. Kategorie. Entwürfe bleiben erhalten.
 
 ### 6.12 Suche
 
@@ -262,4 +262,5 @@ Seitenleiste als Menü; Heute, Abhaken, Schnellerfassung, Updates und alle Dialo
 | Priorität | Nur noch Fahne „Wichtig“ (an/aus); „Niedrig“ entfällt |
 | Status | Offen · Blockiert · Erledigt; „In Arbeit“ entfällt |
 | Neu anlegen | Nur über „+ Neu“ mit allen Arten; das Neue öffnet sich danach im Pop-up; Notizen als Pop-up-Panel statt eigener Seite |
+| Protokoll anlegen | Klick auf Protokoll/Notiz/Entscheidung öffnet sofort die volle Ansicht (kein Zwischendialog); leere neue Einträge werden beim Schließen verworfen; Ungespeichertes wird beim Schließen gesichert |
 | Notiz-Arten | Bleiben drei: Entscheidungen werden bewusst getrennt von Protokollen festgehalten, weil sie auch außerhalb von Meetings fallen |
