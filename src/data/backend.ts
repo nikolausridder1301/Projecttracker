@@ -90,6 +90,11 @@ function demoBackend(): Backend {
   }
   // Ältere Demo-Stände um neu hinzugekommene Tabellen ergänzen
   for (const t of TABLE_NAMES) (db as Record<string, unknown[]>)[t] ??= [];
+  // Früher eine Person je Aufgabe, jetzt mehrere
+  for (const t of db.tasks as (Db["tasks"][number] & { assignee_person_id?: string | null })[]) {
+    t.assignee_person_ids ??= t.assignee_person_id ? [t.assignee_person_id] : [];
+    delete t.assignee_person_id;
+  }
   const save = () => {
     try {
       localStorage.setItem(DEMO_KEY, JSON.stringify(db));

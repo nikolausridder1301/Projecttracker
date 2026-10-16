@@ -18,7 +18,7 @@ export function PeoplePage() {
 
   const openCount = useMemo(() => {
     const m = new Map<Id, number>();
-    for (const t of db.tasks) if (isActive(t) && isOpen(t) && t.assignee_person_id) m.set(t.assignee_person_id, (m.get(t.assignee_person_id) ?? 0) + 1);
+    for (const t of db.tasks) if (isActive(t) && isOpen(t)) for (const id of t.assignee_person_ids) m.set(id, (m.get(id) ?? 0) + 1);
     return m;
   }, [db.tasks]);
 
@@ -113,7 +113,7 @@ function PersonEditor({ person }: { person: Person }) {
     if (v[k] !== person[k]) save({ [k]: v[k].trim() });
   };
 
-  const tasks = db.tasks.filter((t) => isActive(t) && t.assignee_person_id === person.id).sort(compareTasks);
+  const tasks = db.tasks.filter((t) => isActive(t) && t.assignee_person_ids.includes(person.id)).sort(compareTasks);
   const open = tasks.filter(isOpen);
   const meetings = db.notes.filter((n) => isActive(n) && n.participant_ids.includes(person.id));
 

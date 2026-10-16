@@ -1,11 +1,11 @@
-import { Flag, MessageSquarePlus, Trash2, X } from "lucide-react";
+import { ChevronDown, Flag, MessageSquarePlus, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useLookups, useStore } from "../data/store";
 import { STATUS_LABEL, type Task, type TaskStatus } from "../data/types";
 import { formatDate, relativeLabel, todayIso } from "../logic/dates";
 import { checklistProgress, latestUpdates, standText, validateTask } from "../logic/tasks";
 import { AttachedLinks } from "./links";
-import { AutoText, Avatar, ChipDate, ChipSelect, CompanyBadge, Disclosure, ImportantChip } from "./common";
+import { AutoText, Avatar, ChipDate, ChipSelect, CompanyBadge, Disclosure, Dropdown, ImportantChip } from "./common";
 import { ProjectBadge } from "./ProjectSwitcher";
 import { NoteLink, useUi } from "./uiState";
 
@@ -67,7 +67,7 @@ export function TaskRow({
   const latest = useLatestUpdates();
   const today = todayIso();
   const cl = checklistProgress(task);
-  const person = task.assignee_person_id ? personById.get(task.assignee_person_id) : undefined;
+  const persons = task.assignee_person_ids.map((id) => personById.get(id)).filter((p) => p !== undefined);
   const done = task.status === "done";
   const overdue = !done && task.due_date !== null && task.due_date < today;
 
@@ -105,7 +105,14 @@ export function TaskRow({
         {extra}
         {showProject && taskProject && <ProjectBadge color={taskProject.color} short={taskProject.short} />}
         {showCompany && <CompanyBadge id={task.company_id} />}
-        {person && <Avatar name={person.name} title={`Delegiert an ${person.name}`} />}
+        {persons.length > 0 && (
+          <span className="avatars" title={`Delegiert an ${persons.map((p) => p.name).join(", ")}`}>
+            {persons.slice(0, 3).map((p) => (
+              <Avatar key={p.id} name={p.name} />
+            ))}
+            {persons.length > 3 && <span className="avatar-more">+{persons.length - 3}</span>}
+          </span>
+        )}
         {rightLabel ?? (
           <span className={`due${overdue ? " overdue" : ""}`} title={task.due_date ? `Fällig ${formatDate(task.due_date)}` : undefined}>
             {task.due_date ? relativeLabel(task.due_date, today) : ""}
@@ -113,6 +120,47 @@ export function TaskRow({
         )}
       </span>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Verantwortlich: „Ich“ oder eine bzw. mehrere Personen
+// ---------------------------------------------------------------------------
+
+export function AssigneeChip({ value, onChange }: { value: string[]; onChange: (ids: string[]) => void }) {
+  const { people, personById } = useLookups();
+  const ME = "__me__";
+  const names = value.map((id) => personById.get(id)?.name ?? "?");
+  const label =
+    names.length === 0
+      ? "Ich"
+      : names.length === 1
+        ? names[0]
+        : names.length === 2
+          ? names.map((n) => n.split(" ")[0]).join(", ")
+          : `${names.length} Personen`;
+  const toggle = (v: string) => {
+    if (v === ME) return onChange([]);
+    onChange(value.includes(v) ? value.filter((x) => x !== v) : [...value, v]);
+  };
+  return (
+    <Dropdown
+      value=""
+      selected={value.length === 0 ? [ME] : value}
+      options={[
+        { value: ME, label: "Ich" },
+        ...people.filter((p) => p.active || value.includes(p.id)).map((p) => ({ value: p.id, label: p.name })),
+      ]}
+      onChange={toggle}
+      title="Verantwortlich – mehrere möglich"
+    >
+      {(props) => (
+        <button type="button" {...props} className="chip" title={names.length > 0 ? `Verantwortlich: ${names.join(", ")}` : "Verantwortlich"}>
+          <span className="chip-text">{label}</span>
+          <ChevronDown size={14} className="chip-caret" aria-hidden />
+        </button>
+      )}
+    </Dropdown>
   );
 }
 
@@ -221,7 +269,7 @@ export function TaskPanel() {
 
 function TaskEditor({ task, onClose }: { task: Task; onClose: () => void }) {
   const { db, update, trash, toast } = useStore();
-  const { companies, people, noteById } = useLookups();
+  const { companies, noteById } = useLookups();
   const { setDone } = useTaskActions();
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description);
@@ -300,15 +348,7 @@ function TaskEditor({ task, onClose }: { task: Task; onClose: () => void }) {
           options={companies.map((c) => ({ value: c.id, label: c.short }))}
           onChange={(v) => save({ company_id: v })}
         />
-        <ChipSelect
-          title="Verantwortlich"
-          value={task.assignee_person_id ?? ""}
-          options={[
-            { value: "", label: "Ich" },
-            ...people.filter((p) => p.active || p.id === task.assignee_person_id).map((p) => ({ value: p.id, label: p.name })),
-          ]}
-          onChange={(v) => save({ assignee_person_id: v || null })}
-        />
+        <AssigneeChip value={task.assignee_person_ids} onChange={(ids) => save({ assignee_person_ids: ids })} />
         <ChipDate
           title="Fällig"
           value={task.due_date}

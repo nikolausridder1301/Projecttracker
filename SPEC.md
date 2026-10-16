@@ -94,7 +94,7 @@ Alle Tabellen: `id`, `created_at`, `updated_at`, `deleted_at` (Papierkorb). Proj
 | `topics` | **Meilensteine** (Name, Sortierung, archiviert) |
 | `milestone_status` | Stand je Meilenstein und Firma: Status, Zieldatum, Kommentar (eindeutig je Paar) |
 | `people` | Personen je Projekt |
-| `tasks` | Titel, Firma, Verantwortlich (`null` = ich), Status (offen/blockiert/erledigt), Grund bei „Blockiert“, Wichtig-Fahne (`priority` high/medium), fällig, Checkliste, Gruppe (Mehrfirmen), Herkunfts-Protokoll; Beschreibung nur noch für Altbestand |
+| `tasks` | Titel, Firma, Verantwortliche Personen (`assignee_person_ids`, leer = ich; mehrere möglich), Status (offen/blockiert/erledigt), Grund bei „Blockiert“, Wichtig-Fahne (`priority` high/medium), fällig, Checkliste, Gruppe (Mehrfirmen), Herkunfts-Protokoll; Beschreibung nur noch für Altbestand |
 | `task_followups` | **Verlauf** je Aufgabe: Datum, Text (ein Update je Eintrag; frühere Nachfragen sind die ersten Einträge). Die Spalte `tasks.follow_up_date` wird nicht mehr genutzt. |
 | `notes` | Notiz / Meeting-Protokoll / Entscheidung, Firma, Datum, Teilnehmer, Text |
 | `links`, `link_categories`, `attachments` | Link-Sammlung; Anhänge an Notizen (an Aufgaben nur Altbestand) |
@@ -148,7 +148,7 @@ Kopfzeile: globale Suche (Strg+K), Backup-Icon, „+ Neu“ (Taste N). **Alles N
 - **Verlauf statt Nachhaken:** Jede Aufgabe hat im Panel den Bereich **„Verlauf“** – ein Feld „Update hinzufügen…“, Enter speichert den Satz mit heutigem Datum. Darunter alle Updates als Zeitleiste, neueste oben, einzeln löschbar. Kein Nachhak-Datum, keine Nachfrage-Box, kein Mail-Button.
 - **Letzter Stand in allen Listen:** unter dem Titel offener Aufgaben steht gekürzt „Stand 12.10.: …“.
 - Menüpunkt **„Delegiert“** (früher „Wartet auf…“): offene Delegationen nach Person, **am längsten ohne Update zuerst**; rechts „seit 23 T. kein Update“ (rot ab 14 Tagen), ohne Update zählt das Anlagedatum. Ersetzt die Erinnerung, ohne Datumspflege.
-- Delegieren bleibt einfach der Chip **„Verantwortlich“**.
+- Delegieren bleibt einfach der Chip **„Verantwortlich“** – Mehrfachauswahl wie bei Firmen: „Ich“ oder eine bzw. mehrere Personen (eine Aufgabe, mehrere Verantwortliche). Eine Aufgabe mit mehreren Personen steht unter „Delegiert“ bei jeder von ihnen und im Meeting-Briefing jeder Person.
 
 ### 6.7 Meeting-Vorbereitung
 
@@ -258,6 +258,7 @@ Seitenleiste als Menü; Heute, Abhaken, Schnellerfassung, Updates und alle Dialo
 | Meeting-Seite | Ohne Kopfkarte und „Erledigt“-Bereich; neuer Leer-Zustand mit „Aufgabe anlegen“ |
 | Mehrere Firmen | Kein „x/y Firmen“-Zähler mehr; Fortschritt nur über Checklisten-Punkte |
 | Firmenauswahl | Ein Mehrfach-Dropdown statt Firma + „Mehrere Firmen“ |
+| Verantwortlich | Mehrfachauswahl: mehrere Personen je Aufgabe (eine Aufgabe, keine Kopien); „Ich“ = niemand sonst |
 | Filterleisten | Firmenfilter als Mehrfach-Dropdown auf Aufgaben, Notizen, Links, Tacto; keine Browser-Auswahlfelder mehr in Filtern |
 | Priorität | Nur noch Fahne „Wichtig“ (an/aus); „Niedrig“ entfällt |
 | Status | Offen · Blockiert · Erledigt; „In Arbeit“ entfällt |

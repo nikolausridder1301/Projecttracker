@@ -108,7 +108,7 @@ create table tasks (
   description text not null default '',
   company_id uuid not null references companies (id),
   topic_id uuid references topics (id),
-  assignee_person_id uuid references people (id),
+  assignee_person_ids uuid[] not null default '{}', -- leer = ich selbst
   status text not null default 'open' check (status in ('open', 'blocked', 'done')),
   blocked_reason text not null default '',
   priority text not null default 'medium' check (priority in ('high', 'medium')),
@@ -235,7 +235,7 @@ create index on tasks (project_id);
 create index on links (project_id);
 create index on vendor_items (project_id);
 create index on tasks (company_id);
-create index on tasks (assignee_person_id);
+create index on tasks using gin (assignee_person_ids);
 create index on tasks (group_id);
 create index on notes (company_id);
 create index on links (company_id);

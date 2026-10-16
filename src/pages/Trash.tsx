@@ -40,7 +40,7 @@ export function TrashPage() {
 
   const purgeItem = async (it: Item) => {
     if (!window.confirm(`„${it.title}“ endgültig löschen? Das kann nicht rückgängig gemacht werden.`)) return;
-    if (it.table === "people" && db.tasks.some((t) => t.assignee_person_id === it.id)) {
+    if (it.table === "people" && db.tasks.some((t) => t.assignee_person_ids.includes(it.id))) {
       toast("Diese Person ist noch Aufgaben zugeordnet und kann nicht endgültig gelöscht werden.", "error");
       return;
     }

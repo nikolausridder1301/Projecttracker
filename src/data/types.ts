@@ -77,7 +77,8 @@ export interface Task extends Base, InProject {
   company_id: Id;
   topic_id: Id | null;
   /** null = "Ich", sonst Delegation */
-  assignee_person_id: Id | null;
+  /** Verantwortliche Personen; leer = ich selbst */
+  assignee_person_ids: Id[];
   status: TaskStatus;
   blocked_reason: string;
   priority: Priority;

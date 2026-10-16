@@ -39,11 +39,11 @@ export function buildBriefing(db: Db, target: MeetingTarget, today: IsoDate, top
   const tasks = db.tasks.filter(isActive);
   const open = tasks.filter((t) => t.status !== "done");
 
-  const delegatedToPerson = person ? open.filter((t) => t.assignee_person_id === person.id) : [];
+  const delegatedToPerson = person ? open.filter((t) => t.assignee_person_ids.includes(person.id)) : [];
   const delegatedIds = new Set(delegatedToPerson.map((t) => t.id));
-  const myTasks = companyId ? open.filter((t) => t.company_id === companyId && t.assignee_person_id === null) : [];
+  const myTasks = companyId ? open.filter((t) => t.company_id === companyId && t.assignee_person_ids.length === 0) : [];
   const otherTasks = companyId
-    ? open.filter((t) => t.company_id === companyId && t.assignee_person_id !== null && !delegatedIds.has(t.id))
+    ? open.filter((t) => t.company_id === companyId && t.assignee_person_ids.length > 0 && !delegatedIds.has(t.id))
     : [];
 
   const vendorItems = companyId
@@ -58,7 +58,7 @@ export function buildBriefing(db: Db, target: MeetingTarget, today: IsoDate, top
   const lastMeeting = meetings.find((n) => noteDate(n) <= today);
   const doneSinceDate = lastMeeting ? noteDate(lastMeeting) : addDays(today, -14);
 
-  const relevant = (t: Task) => (person && t.assignee_person_id === person.id) || (companyId !== null && t.company_id === companyId);
+  const relevant = (t: Task) => (person && t.assignee_person_ids.includes(person.id)) || (companyId !== null && t.company_id === companyId);
   const doneSince = tasks
     .filter((t) => t.status === "done" && relevant(t) && (t.done_at ?? t.updated_at).slice(0, 10) >= doneSinceDate)
     .sort((a, b) => ((a.done_at ?? "") < (b.done_at ?? "") ? 1 : -1));
@@ -96,12 +96,15 @@ export function buildBriefing(db: Db, target: MeetingTarget, today: IsoDate, top
 const noteDate = (n: Note) => n.meeting_date ?? n.created_at.slice(0, 10);
 
 /** Agenda als Markdown-Checkliste – für „Protokoll starten“ und „Agenda kopieren“. */
-export function agendaText(b: Briefing, personName: (id: Id | null) => string): string {
+export function agendaText(b: Briefing, personName: (id: Id) => string): string {
   const line = (t: Task) => {
     const extra = [
       t.status === "blocked" ? `blockiert: ${t.blocked_reason}` : "",
       t.due_date ? `fällig ${formatDate(t.due_date)}` : "",
-      t.assignee_person_id && t.assignee_person_id !== b.person?.id ? personName(t.assignee_person_id) : "",
+      t.assignee_person_ids
+        .filter((id) => id !== b.person?.id)
+        .map(personName)
+        .join(", "),
     ].filter(Boolean);
     const stand = b.lastUpdate.get(t.id);
     return `- [ ] ${t.title}${extra.length ? ` (${extra.join(", ")})` : ""}${stand ? `\n  ${standText(stand)}` : ""}`;
