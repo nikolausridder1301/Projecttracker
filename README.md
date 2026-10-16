@@ -1,6 +1,6 @@
 # Projecttracker
 
-Persönliches Projektleiter-Cockpit für den Tacto-Rollout in der SK Group: eigene Aufgaben, Delegationen mit Nachhaken, Notizen/Protokolle/Entscheidungen, Links und Firmen-Ampeln.
+Persönliches Projektleiter-Cockpit für den Tacto-Rollout in der SK Group: eigene Aufgaben, Delegationen mit Verlauf (datierte Updates je Aufgabe), Notizen/Protokolle/Entscheidungen, Links und Firmen-Ampeln.
 
 - Spezifikation: [SPEC.md](SPEC.md)
 - Einrichtung (Supabase, GitHub Pages): [ANLEITUNG.md](ANLEITUNG.md)

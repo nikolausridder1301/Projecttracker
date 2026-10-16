@@ -1,4 +1,4 @@
-import type { Company, Id, IsoDate, Priority, Task } from "../data/types";
+import type { Company, Id, IsoDate, Priority, Task, TaskFollowup } from "../data/types";
 import { endOfWeek } from "./dates";
 
 const PRIO_RANK: Record<Priority, number> = { high: 0, medium: 1 };
@@ -20,45 +20,25 @@ export interface TodayView {
   overdue: Task[];
   today: Task[];
   week: Task[];
-  followUp: Task[];
   blocked: Task[];
 }
 
-/** Startseite "Heute" (SPEC 6.2). */
+/** Startseite "Heute": Fälliges (eigene und delegierte) und Blockiertes. */
 export function todayView(tasks: Task[], today: IsoDate): TodayView {
   const open = tasks.filter((t) => isActive(t) && isOpen(t));
   const weekEnd = endOfWeek(today);
-  const mine = open.filter((t) => !isDelegated(t) && t.status !== "blocked" && t.due_date);
-  const followUp = open
-    .filter(
-      (t) =>
-        isDelegated(t) &&
-        t.status !== "blocked" &&
-        ((t.follow_up_date !== null && t.follow_up_date <= today) || (t.due_date !== null && t.due_date < today)),
-    )
-    .sort((a, b) => {
-      const ka = minDate(a.follow_up_date, a.due_date);
-      const kb = minDate(b.follow_up_date, b.due_date);
-      return ka === kb ? compareTasks(a, b) : ka < kb ? -1 : 1;
-    });
+  const due = open.filter((t) => t.status !== "blocked" && t.due_date);
   return {
-    overdue: mine.filter((t) => t.due_date! < today).sort(compareTasks),
-    today: mine.filter((t) => t.due_date === today).sort(compareTasks),
-    week: mine.filter((t) => t.due_date! > today && t.due_date! <= weekEnd).sort(compareTasks),
-    followUp,
+    overdue: due.filter((t) => t.due_date! < today).sort(compareTasks),
+    today: due.filter((t) => t.due_date === today).sort(compareTasks),
+    week: due.filter((t) => t.due_date! > today && t.due_date! <= weekEnd).sort(compareTasks),
     blocked: open.filter((t) => t.status === "blocked").sort(compareTasks),
   };
 }
 
-function minDate(a: IsoDate | null, b: IsoDate | null): IsoDate {
-  if (!a) return b ?? "9999-99-99";
-  if (!b) return a;
-  return a < b ? a : b;
-}
-
-/** Anzahl für den Tab-Titel: eigene fällige (überfällig + heute) + Nachhaken. */
+/** Anzahl für den Tab-Titel: überfällig + heute fällig. */
 export function todayCount(v: TodayView): number {
-  return v.overdue.length + v.today.length + v.followUp.length;
+  return v.overdue.length + v.today.length;
 }
 
 export interface GroupProgress {
@@ -102,28 +82,42 @@ export function isValidUrl(url: string): boolean {
   }
 }
 
-export interface FollowUpReason {
-  label: string;
-  /** rot hervorheben */
-  urgent: boolean;
+// ---------------------------------------------------------------------------
+// Verlauf: datierte Updates je Aufgabe (Tabelle task_followups)
+// ---------------------------------------------------------------------------
+
+/** Jüngstes Update je Aufgabe. */
+export function latestUpdates(updates: TaskFollowup[]): Map<Id, TaskFollowup> {
+  const m = new Map<Id, TaskFollowup>();
+  for (const u of updates) {
+    if (u.deleted_at !== null) continue;
+    const cur = m.get(u.task_id);
+    if (!cur || u.date > cur.date || (u.date === cur.date && u.created_at > cur.created_at)) m.set(u.task_id, u);
+  }
+  return m;
 }
 
-/**
- * Warum steht eine delegierte Aufgabe unter „Heute nachhaken“?
- * Überschrittene Frist hat Vorrang vor dem geplanten Nachhak-Datum.
- */
-export function followUpReason(t: Pick<Task, "due_date" | "follow_up_date">, today: IsoDate): FollowUpReason | null {
-  if (t.due_date && t.due_date < today) {
-    const days = Math.round((Date.parse(today) - Date.parse(t.due_date)) / 86_400_000);
-    return { label: days === 1 ? "Frist seit gestern überschritten" : `Frist seit ${days} T. überschritten`, urgent: true };
-  }
-  if (t.follow_up_date && t.follow_up_date < today) {
-    const days = Math.round((Date.parse(today) - Date.parse(t.follow_up_date)) / 86_400_000);
-    return { label: days === 1 ? "Nachhaken seit gestern fällig" : `Nachhaken seit ${days} T. fällig`, urgent: true };
-  }
-  if (t.follow_up_date === today) return { label: "Heute nachhaken", urgent: false };
-  if (t.due_date === today) return { label: "Frist endet heute", urgent: false };
-  return null;
+/** Tage seit dem letzten Update – ohne Update seit dem Anlegen. */
+export function daysSinceUpdate(t: Pick<Task, "created_at">, last: Pick<TaskFollowup, "date"> | undefined, today: IsoDate): number {
+  const since = last?.date ?? t.created_at.slice(0, 10);
+  return Math.max(0, Math.round((Date.parse(today) - Date.parse(since)) / 86_400_000));
+}
+
+/** „Update heute“, „Update gestern“, „seit 23 T. kein Update“ */
+export function staleLabel(days: number, hasUpdate: boolean): string {
+  if (!hasUpdate) return days === 0 ? "noch kein Update" : `seit ${days} T. kein Update`;
+  if (days === 0) return "Update heute";
+  if (days === 1) return "Update gestern";
+  return `seit ${days} T. kein Update`;
+}
+
+/** Ab so vielen Tagen ohne Update wird es rot markiert. */
+export const STALE_DAYS = 14;
+
+/** „Stand 12.10.: …“ für Listen und Agenda. */
+export function standText(u: Pick<TaskFollowup, "date" | "note">): string {
+  const [, m, d] = u.date.split("-");
+  return `Stand ${d}.${m}.: ${u.note}`;
 }
 
 /** Offene und erledigte Aufgaben trennen; Erledigte nach Erledigt-Datum, neueste zuerst. */

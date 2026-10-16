@@ -3,11 +3,11 @@ import { useMemo, useState } from "react";
 import { useLookups, useStore } from "../data/store";
 import { TRAFFIC_LABEL, type Company } from "../data/types";
 import { todayIso } from "../logic/dates";
-import { followUpReason, todayView } from "../logic/tasks";
+import { todayView } from "../logic/tasks";
 import { sinceLabel } from "../logic/traffic";
 import { TrafficDialog } from "../ui/traffic";
 import { CompanyLogo, TrafficDot, usePersisted } from "../ui/common";
-import { FollowUpForm, TaskList, TaskRow, shortDay } from "../ui/tasks";
+import { TaskList } from "../ui/tasks";
 
 export function TodayPage() {
   const { db, allDb, projects } = useStore();
@@ -23,7 +23,7 @@ export function TodayPage() {
   }, [all, db.tasks, allDb.tasks, projects]);
   const v = useMemo(() => todayView(tasks, today), [tasks, today]);
   const mine = v.overdue.length + v.today.length + v.week.length;
-  const allClear = mine + v.followUp.length + v.blocked.length === 0;
+  const allClear = mine + v.blocked.length === 0;
   const weekday = new Date().toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" });
 
   return (
@@ -48,14 +48,14 @@ export function TodayPage() {
 
       {allClear ? (
         <div className="all-clear">
-          <CheckCircle2 size={18} /> Alles erledigt für heute – nichts fällig, niemand zum Nachhaken, nichts blockiert.
+          <CheckCircle2 size={18} /> Alles erledigt für heute – nichts fällig, nichts blockiert.
         </div>
       ) : (
         <div className="today-grid">
           {mine > 0 && (
             <section className="card">
               <h2 className="group-title">
-                Meine Fälligen <span className="muted">{mine}</span>
+                Fällig <span className="muted">{mine}</span>
               </h2>
               {(
                 [
@@ -75,19 +75,6 @@ export function TodayPage() {
             </section>
           )}
 
-          {v.followUp.length > 0 && (
-            <section className="card">
-              <h2 className="group-title">
-                Heute nachhaken <span className="muted">{v.followUp.length}</span>
-              </h2>
-              <div className="task-list">
-                {v.followUp.map((t) => (
-                  <FollowUpRow key={t.id} taskId={t.id} showProject={all} />
-                ))}
-              </div>
-            </section>
-          )}
-
           {v.blocked.length > 0 && (
             <section className="card">
               <h2 className="group-title">
@@ -98,51 +85,6 @@ export function TodayPage() {
           )}
         </div>
       )}
-    </div>
-  );
-}
-
-/** Delegierte Aufgabe mit direktem "Nachgehakt"/Mail. */
-export function FollowUpRow({ taskId, showProject }: { taskId: string; showProject?: boolean }) {
-  const { allDb: db } = useStore();
-  const [open, setOpen] = useState(false);
-  const task = db.tasks.find((t) => t.id === taskId);
-  if (!task) return null;
-  const today = todayIso();
-  const followups = db.task_followups
-    .filter((f) => f.task_id === task.id && f.deleted_at === null)
-    .sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
-  const last = followups[0];
-  const reason = followUpReason(task, today);
-
-  // Rechts: warum jetzt (Frist/Nachhaken fällig) – sonst wann das nächste Mal
-  const right = reason ? (
-    <span className={`followup-reason${reason.urgent ? " overdue" : ""}`}>{reason.label}</span>
-  ) : (
-    <span className="followup-reason">{task.follow_up_date ? `nachhaken ${shortDay(task.follow_up_date)}` : "kein Termin"}</span>
-  );
-  // Zweite Zeile: Stand der Nachfragen in einem Satz
-  const summary =
-    followups.length === 0
-      ? "noch nicht nachgefragt"
-      : `${followups.length}× nachgefragt · zuletzt ${shortDay(last.date)}${last.note ? `: „${last.note}“` : ""}`;
-
-  return (
-    <div className="followup-wrap">
-      <TaskRow
-        task={task}
-        showProject={showProject}
-        rightLabel={right}
-        subExtra={summary}
-        extra={
-          !open && (
-            <button className="btn small" onClick={() => setOpen(true)}>
-              Nachfrage notieren
-            </button>
-          )
-        }
-      />
-      {open && <FollowUpForm task={task} onDone={() => setOpen(false)} />}
     </div>
   );
 }

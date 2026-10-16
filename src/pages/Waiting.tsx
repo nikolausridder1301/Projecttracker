@@ -2,37 +2,39 @@ import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useLookups, useStore } from "../data/store";
 import type { Task } from "../data/types";
-import { todayIso } from "../logic/dates";
-import { isActive, isDelegated, isOpen } from "../logic/tasks";
+import { formatDate, todayIso } from "../logic/dates";
+import { STALE_DAYS, daysSinceUpdate, isActive, isDelegated, isOpen, staleLabel } from "../logic/tasks";
 import { CompanyBadge, Empty } from "../ui/common";
-import { FollowUpRow } from "./Today";
+import { TaskRow, useLatestUpdates } from "../ui/tasks";
 
-// „Delegiert“ (SPEC 6.4): alle offenen Delegationen nach Person.
+// „Delegiert“: alle offenen Delegationen nach Person – was am längsten ohne Update ist, steht oben.
 
 export function WaitingPage() {
   const { db } = useStore();
   const { personById } = useLookups();
   const today = todayIso();
+  const latest = useLatestUpdates();
+  const stale = (t: Task) => daysSinceUpdate(t, latest.get(t.id), today);
 
   const groups = useMemo(() => {
     const open = db.tasks.filter((t) => isActive(t) && isOpen(t) && isDelegated(t));
     const m = new Map<string, Task[]>();
     for (const t of open) m.set(t.assignee_person_id!, [...(m.get(t.assignee_person_id!) ?? []), t]);
-    const key = (t: Task) => t.follow_up_date ?? t.due_date ?? "9999";
     return [...m.entries()]
-      .map(([pid, tasks]) => ({ pid, tasks: tasks.sort((a, b) => (key(a) < key(b) ? -1 : 1)) }))
-      .sort((a, b) => (key(a.tasks[0]) < key(b.tasks[0]) ? -1 : 1));
-  }, [db.tasks]);
+      .map(([pid, tasks]) => ({ pid, tasks: tasks.sort((a, b) => stale(b) - stale(a)) }))
+      .sort((a, b) => stale(b.tasks[0]) - stale(a.tasks[0]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [db.tasks, latest, today]);
 
   const total = groups.reduce((s, g) => s + g.tasks.length, 0);
-  const dueNow = groups.reduce((s, g) => s + g.tasks.filter((t) => t.follow_up_date && t.follow_up_date <= today).length, 0);
+  const staleCount = groups.reduce((s, g) => s + g.tasks.filter((t) => stale(t) >= STALE_DAYS).length, 0);
 
   return (
     <div className="page">
       <div className="page-head">
         <h1>Delegiert</h1>
         <span className="muted">
-          {total} offen{dueNow > 0 && ` · ${dueNow} heute nachhaken`}
+          {total} offen{staleCount > 0 && ` · ${staleCount} seit über 2 Wochen ohne Update`}
         </span>
       </div>
       {groups.length === 0 ? (
@@ -51,7 +53,14 @@ export function WaitingPage() {
                 </h3>
                 <div className="task-list">
                   {tasks.map((t) => (
-                    <FollowUpRow key={t.id} taskId={t.id} />
+                    <TaskRow
+                      key={t.id}
+                      task={t}
+                      subExtra={t.due_date ? `fällig ${formatDate(t.due_date)}` : undefined}
+                      rightLabel={
+                        <span className={`due${stale(t) >= STALE_DAYS ? " overdue" : ""}`}>{staleLabel(stale(t), latest.has(t.id))}</span>
+                      }
+                    />
                   ))}
                 </div>
               </section>

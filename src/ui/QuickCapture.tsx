@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLookups, useStore } from "../data/store";
 import { NOTE_KIND_LABEL, type Id, type NoteKind, type Priority } from "../data/types";
-import { addWorkdays, relativeLabel, todayIso } from "../logic/dates";
+import { relativeLabel, todayIso } from "../logic/dates";
 import { isValidUrl, overarchingCompany } from "../logic/tasks";
 import { ChipDate, ChipMulti, ChipSelect, ImportantChip, useDraft } from "./common";
 import { useUi, type CaptureType } from "./uiState";
@@ -69,7 +69,7 @@ function CaptureDialog({
             blocked_reason: "",
             priority,
             due_date: due || null,
-            follow_up_date: assignee ? addWorkdays(todayIso(), 3) : null,
+            follow_up_date: null,
             done_at: null,
             checklist: [],
             group_id: groupId,
