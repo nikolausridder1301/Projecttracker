@@ -147,6 +147,7 @@ Kopfzeile: globale Suche (Strg+K), Backup-Icon, „+ Neu“ (Taste N). **Alles N
 - **Meilensteine & Schritte** je Aufgabe (ersetzt den früheren Verlauf): eine Liste mit zwei Ebenen – kein eigenes Objekt, alles in der Aufgabe (`checklist`).
   - **Meilensteine (◆):** die Etappen, auf die hingearbeitet wird; optional **Zieldatum**; per Klick auf ◆ „erreicht“. Als Karte mit Fortschritt („2/3 Schritte“).
   - **Schritte** darunter gehören zum Meilenstein: Text, optional **Wer?** (mehrere) und **Bis?**; Wer/Bis stehen unter dem Text (lange Texte haben die volle Breite), leer erst beim Darüberfahren. Schritte vor dem ersten Meilenstein gehören zu keinem. Texte per Klick bearbeitbar.
+  - **Einfaches Markdown** in Schritten und Meilensteinen: **Enter speichert, Umschalt+Enter = neue Zeile**; „- “/„* “/„1. “ werden Aufzählungen (Enter bzw. Umschalt+Enter setzt den nächsten Punkt, ein leerer Punkt beendet die Liste, Tab/Umschalt+Tab rückt ein); `**fett**`, `*kursiv*`, `` `Code` `` und Links werden dargestellt. In Listen erscheint nur die erste Zeile ohne Zeichen.
   - Bedienung: „+ Schritt“ in jeder Gruppe (Feld bleibt für den nächsten offen), unten „Meilenstein hinzufügen…“ mit Ziel-Datum. Meilenstein entfernen lässt seine Schritte stehen.
 - **In Listen:** unter dem Titel der **aktuelle Meilenstein** („◆ Export-Freigabe · bis 30.10.“, rot wenn überschritten) und der **nächste offene Schritt** („→ … · Arman · 23.10. · 1/3“); lange Texte mit „…“ gekürzt, Person und Datum bleiben sichtbar.
 - **Termine:** Fälligkeit, offene Schritte und Zieldaten offener Meilensteine bilden den **nächsten Termin** (Heute, Sortierung, Zeile rechts, Firmenkarten).
@@ -169,7 +170,7 @@ Kopfzeile: globale Suche (Strg+K), Backup-Icon, „+ Neu“ (Taste N). **Alles N
 
 ### 6.8 Notizen
 
-Arten **Notiz · Meeting-Protokoll · Entscheidung** (Entscheidungen bewusst getrennt). Notizen öffnen sich – wie Aufgaben – als **Pop-up-Panel** über der aktuellen Seite (aus der Liste, der Suche, dem Meeting, der Firmen-/Personenseite); Direktlinks `/notizen/:id` öffnen ebenfalls das Panel. Chips für Art, Firma, Datum; Teilnehmer bei Protokollen; Text als mitwachsendes Feld (keine Markdown-Darstellung). **„Aufgabe daraus“** übernimmt markierten Text als Aufgabe, verknüpft in beide Richtungen; Bereiche klappen auf, sobald sie Inhalt bekommen. **Adressen im Text werden automatisch als klickbare Links** darunter gezeigt; früher angehängte Links bleiben sichtbar, neue Anhänge gibt es nicht mehr.
+Arten **Notiz · Meeting-Protokoll · Entscheidung** (Entscheidungen bewusst getrennt). Notizen öffnen sich – wie Aufgaben – als **Pop-up-Panel** über der aktuellen Seite (aus der Liste, der Suche, dem Meeting, der Firmen-/Personenseite); Direktlinks `/notizen/:id` öffnen ebenfalls das Panel. Chips für Art, Firma, Datum; Teilnehmer bei Protokollen; Text als mitwachsendes Feld (kein Wechsel zwischen Bearbeiten und Vorschau); Aufzählungen mit „- “ setzen sich bei Enter fort, Tab rückt ein. **„Aufgabe daraus“** übernimmt markierten Text als Aufgabe, verknüpft in beide Richtungen; Bereiche klappen auf, sobald sie Inhalt bekommen. **Adressen im Text werden automatisch als klickbare Links** darunter gezeigt; früher angehängte Links bleiben sichtbar, neue Anhänge gibt es nicht mehr.
 
 ### 6.9 Anbieter-Bereich (bei Tacto: „Tacto“)
 

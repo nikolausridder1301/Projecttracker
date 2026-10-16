@@ -5,7 +5,8 @@ import type { ChecklistItem, Task } from "../data/types";
 import { formatDate, localDate, relativeLabel, todayIso } from "../logic/dates";
 import { checklistProgress, currentMilestone, effectiveDue, groupSteps, insertStep, nextStep, stepPersons, validateTask } from "../logic/tasks";
 import { AttachedLinks } from "./links";
-import { AutoText, Avatar, ChipDate, CompaniesChip, CompanyBadges, Disclosure, ImportantChip, PeopleChip } from "./common";
+import { AutoText, Avatar, ChipDate, CompaniesChip, CompanyBadges, Disclosure, ImportantChip, MarkdownText, PeopleChip } from "./common";
+import { firstLine } from "../logic/markdown";
 import { ProjectBadge } from "./ProjectSwitcher";
 import { NoteLink, useUi } from "./uiState";
 
@@ -70,7 +71,7 @@ export function TaskRow({
     const msLate = !!ms.due && ms.due < today;
     sub.push(
       <span key="m" className={`task-next task-ms${msLate ? " tone-red" : ""}`} title={`Meilenstein: ${ms.text}`}>
-        <span className="task-next-text">◆ {ms.text}</span>
+        <span className="task-next-text">◆ {firstLine(ms.text)}</span>
         {ms.due && <span className="task-next-meta">· bis {ddmm(ms.due)}</span>}
       </span>,
     );
@@ -85,7 +86,7 @@ export function TaskRow({
     const meta = [who, next.due ? ddmm(next.due) : "", cl.total > 1 ? `${cl.done}/${cl.total}` : ""].filter(Boolean).join(" · ");
     sub.push(
       <span key="c" className={`task-next${late ? " tone-red" : ""}`} title={`Nächster Schritt: ${next.text}`}>
-        <span className="task-next-text">→ {next.text}</span>
+        <span className="task-next-text">→ {firstLine(next.text)}</span>
         {meta && <span className="task-next-meta">· {meta}</span>}
       </span>,
     );
@@ -201,23 +202,18 @@ function PlanEditor({ task, save }: { task: Task; save: (patch: { checklist: Che
         className="step-edit"
         ariaLabel="Text bearbeiten"
         value={editing.text}
-        onChange={(v) => setEditing({ i, text: v.replace(/\n/g, " ") })}
+        onChange={(v) => setEditing({ i, text: v })}
         onBlur={saveText}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            saveText();
-          }
-          if (e.key === "Escape") {
-            e.stopPropagation();
-            setEditing(null);
-          }
-        }}
+        onSubmit={saveText}
+        onEscape={() => setEditing(null)}
       />
     ) : (
-      <span className={`${className}${list[i].done ? " is-done-text" : ""}`} title="Klicken zum Bearbeiten" onClick={() => setEditing({ i, text: list[i].text })}>
-        {list[i].text}
-      </span>
+      <MarkdownText
+        text={list[i].text}
+        className={`${className}${list[i].done ? " is-done-text" : ""}`}
+        title="Klicken zum Bearbeiten"
+        onClick={() => setEditing({ i, text: list[i].text })}
+      />
     );
 
   return (
@@ -322,14 +318,9 @@ function PlanEditor({ task, save }: { task: Task; save: (patch: { checklist: Che
             className="step-edit"
             ariaLabel="Meilenstein hinzufügen"
             value={msText}
-            onChange={(v) => setMsText(v.replace(/\n/g, " "))}
+            onChange={setMsText}
             placeholder="Meilenstein hinzufügen… (Enter)"
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                addMilestone();
-              }
-            }}
+            onSubmit={addMilestone}
           />
           <ChipDate title="Zieldatum" value={msDue} onChange={setMsDue} placeholder="Ziel?" format={(v) => `Ziel ${ddmm(v)}`} />
         </form>
@@ -364,20 +355,13 @@ function StepAddForm({ onAdd, onClose, autoFocus }: { onAdd: (step: ChecklistIte
         className="step-edit"
         ariaLabel="Schritt hinzufügen"
         value={text}
-        onChange={(v) => setText(v.replace(/\n/g, " "))}
+        onChange={setText}
         onBlur={() => !text.trim() && persons.length === 0 && !due && onClose()}
         placeholder="Schritt hinzufügen… (Enter)"
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            add();
-          }
-          if (e.key === "Escape") {
-            e.stopPropagation();
-            onClose();
-          }
-        }}
+        onSubmit={add}
+        onEscape={onClose}
       />
+      <span className="md-hint">Umschalt+Enter: neue Zeile · „- “ für Aufzählung · **fett**</span>
       <div className="step-meta">
         <PeopleChip title="Wer?" emptyLabel="Wer?" value={persons} onChange={setPersons} />
         <ChipDate title="Bis wann?" value={due} onChange={setDue} placeholder="Bis?" format={(v) => `bis ${ddmm(v)}`} />

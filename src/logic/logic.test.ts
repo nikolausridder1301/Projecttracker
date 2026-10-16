@@ -10,6 +10,7 @@ import { search } from "./search";
 import { sinceLabel, validateTrafficChange } from "./traffic";
 import { affectsCompany, ageLabel, isOpenItem, jourFixeText, newVendorItem, showTicket, statusPatch } from "./vendor";
 import { localDate } from "./dates";
+import { firstLine, listIndent, listNewline, parseBlocks, parseInline } from "./markdown";
 import {
   compareTasks,
   currentMilestone,
@@ -481,5 +482,41 @@ describe("Meilensteine & Schritte", () => {
     expect(currentMilestone(t)?.text).toBe("M2");
     expect(nextStep(t)?.text).toBe("y");
     expect(effectiveDue(t)).toBe("2026-10-20");
+  });
+});
+
+describe("Markdown", () => {
+  it("Absätze und Aufzählungen", () => {
+    expect(parseBlocks("Zeile 1\nZeile 2\n\n- a\n- b\n  - c\n1. x\n2. y")).toEqual([
+      { kind: "para", lines: ["Zeile 1", "Zeile 2"] },
+      { kind: "list", ordered: false, items: [{ text: "a", level: 0 }, { text: "b", level: 0 }, { text: "c", level: 1 }] },
+      { kind: "list", ordered: true, items: [{ text: "x", level: 0 }, { text: "y", level: 0 }] },
+    ]);
+  });
+  it("fett, kursiv, Code, Links", () => {
+    expect(parseInline("**FEE** prüft *bald* `Export` https://x.de/a.")).toEqual([
+      { kind: "bold", text: "FEE" },
+      { kind: "text", text: " prüft " },
+      { kind: "italic", text: "bald" },
+      { kind: "text", text: " " },
+      { kind: "code", text: "Export" },
+      { kind: "text", text: " " },
+      { kind: "link", text: "x.de/a", href: "https://x.de/a" },
+      { kind: "text", text: "." },
+    ]);
+  });
+  it("erste Zeile ohne Zeichen, mit … bei mehr Zeilen", () => {
+    expect(firstLine("- **Freigabe** holen\n- Termin")).toBe("Freigabe holen …");
+    expect(firstLine("Einfach")).toBe("Einfach");
+  });
+  it("Enter in Aufzählung setzt nächsten Punkt, leerer Punkt beendet; Tab rückt ein", () => {
+    expect(listNewline("- a", 3)).toEqual({ value: "- a\n- ", caret: 6 });
+    expect(listNewline("  * a", 5)).toEqual({ value: "  * a\n  * ", caret: 10 });
+    expect(listNewline("1. a", 4)).toEqual({ value: "1. a\n2. ", caret: 8 });
+    expect(listNewline("- a\n- ", 6)).toEqual({ value: "- a\n", caret: 4 });
+    expect(listNewline("Text", 4)).toBeNull();
+    expect(listIndent("- a", 3, false)).toEqual({ value: "  - a", caret: 5 });
+    expect(listIndent("  - a", 5, true)).toEqual({ value: "- a", caret: 3 });
+    expect(listIndent("Text", 2, false)).toBeNull();
   });
 });
