@@ -2,7 +2,7 @@ import { CalendarDays, ExternalLink, Gavel, ListPlus, NotebookPen, Trash2, Users
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useLookups, useStore } from "../data/store";
-import { NOTE_KIND_LABEL, type Id, type Note, type NoteKind } from "../data/types";
+import { NOTE_KIND_LABEL, type Id, type Note, type NoteKind, type Patch } from "../data/types";
 import { buildBriefing, type MeetingTarget } from "../logic/briefing";
 import { formatDate, todayIso } from "../logic/dates";
 import { isActive } from "../logic/tasks";
@@ -138,6 +138,7 @@ export function NotePanel() {
   );
 }
 
+/** Gespeicherte Notiz: Kopfzeile (Papierkorb, Schließen) und das gemeinsame Formular. */
 function NoteEditor({
   note,
   onClose,
@@ -147,38 +148,7 @@ function NoteEditor({
   onClose: () => void;
   beforeClose: React.MutableRefObject<(() => void) | null>;
 }) {
-  const { db, update, trash } = useStore();
-  const { openCapture } = useUi();
-  const { me } = useLookups();
-  const [title, setTitle] = useState(note.title);
-  const [body, setBody] = useState(note.body);
-  const [participantsText, setParticipantsText] = useState(note.participants_text);
-
-  const save = (patch: Parameters<typeof update<"notes">>[2]) => void update("notes", note.id, patch).catch(() => {});
-
-  const derived = db.tasks.filter((t) => isActive(t) && t.source_note_id === note.id);
-  const attachedCount = db.attachments.filter((a) => a.deleted_at === null && a.note_id === note.id).length;
-
-  // Beim Schließen noch nicht Gespeichertes sichern
-  beforeClose.current = () => {
-    const patch: Parameters<typeof update<"notes">>[2] = {};
-    if (title.trim() && title.trim() !== note.title) patch.title = title.trim();
-    if (body !== note.body) patch.body = body;
-    if (participantsText !== note.participants_text) patch.participants_text = participantsText;
-    if (Object.keys(patch).length > 0) save(patch);
-  };
-
-  // Neue Aufgabe zu diesem Eintrag: Firma und (einzige) andere Person vorbelegt
-  const others = note.participant_ids.filter((id) => id !== me?.id);
-  const addTask = () =>
-    openCapture({
-      type: "task",
-      title: "",
-      companyIds: note.company_ids,
-      assigneeIds: others.length === 1 ? others : undefined,
-      sourceNoteId: note.id,
-    });
-
+  const { update, trash } = useStore();
   return (
     <div className="editor">
       <div className="panel-head">
@@ -197,93 +167,173 @@ function NoteEditor({
           <X size={18} />
         </button>
       </div>
-        <div className="title-field">
-          <AutoText
-            value={title}
-            onChange={(v) => setTitle(v.replace(/\n/g, " "))}
-            onBlur={() => (title.trim() ? title !== note.title && save({ title: title.trim() }) : setTitle(note.title))}
-            minRows={1}
-            placeholder="Titel"
-          />
-        </div>
-        <div className="chips">
+      <NoteForm note={note} onPatch={(p) => void update("notes", note.id, p).catch(() => {})} beforeClose={beforeClose} />
+    </div>
+  );
+}
+
+/**
+ * Das Formular für Notiz, Protokoll und Entscheidung – dasselbe beim Anlegen (Entwurf, `draft`)
+ * und beim Ansehen einer gespeicherten Notiz.
+ */
+export function NoteForm({
+  note,
+  onPatch,
+  beforeClose,
+  draft = false,
+  onTitleEnter,
+  onAddTask,
+}: {
+  note: Note;
+  onPatch: (patch: Patch<"notes">) => void;
+  beforeClose?: React.MutableRefObject<(() => void) | null>;
+  draft?: boolean;
+  /** Enter im Titel (beim Anlegen: in den Text springen) */
+  onTitleEnter?: () => void;
+  /** „Aufgabe hinzufügen“ beim Anlegen: erst speichern, dann Aufgabe erfassen */
+  onAddTask?: () => void;
+}) {
+  const { db } = useStore();
+  const { openCapture } = useUi();
+  const { me } = useLookups();
+  const [title, setTitle] = useState(note.title);
+  const [body, setBody] = useState(note.body);
+  const [participantsText, setParticipantsText] = useState(note.participants_text);
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
+
+  const save = onPatch;
+
+  const derived = db.tasks.filter((t) => isActive(t) && t.source_note_id === note.id);
+  const attachedCount = db.attachments.filter((a) => a.deleted_at === null && a.note_id === note.id).length;
+
+  // Beim Schließen noch nicht Gespeichertes sichern
+  if (beforeClose) {
+    beforeClose.current = () => {
+      const patch: Patch<"notes"> = {};
+      if (title.trim() && title.trim() !== note.title) patch.title = title.trim();
+      if (body !== note.body) patch.body = body;
+      if (participantsText !== note.participants_text) patch.participants_text = participantsText;
+      if (Object.keys(patch).length > 0) save(patch);
+    };
+  }
+
+  // Neue Aufgabe zu diesem Eintrag: Firma und (einzige) andere Person vorbelegt
+  const others = note.participant_ids.filter((id) => id !== me?.id);
+  const addTask = () =>
+    draft
+      ? onAddTask?.()
+      : openCapture({
+          type: "task",
+          title: "",
+          companyIds: note.company_ids,
+          assigneeIds: others.length === 1 ? others : undefined,
+          sourceNoteId: note.id,
+        });
+
+  return (
+    <>
+      <div className="title-field">
+        <AutoText
+          autoFocus={draft}
+          value={title}
+          onChange={(v) => {
+            const t = v.replace(/\n/g, " ");
+            setTitle(t);
+            if (draft) save({ title: t });
+          }}
+          onBlur={() => (title.trim() ? title !== note.title && save({ title: title.trim() }) : setTitle(note.title))}
+          onSubmit={draft ? onTitleEnter ?? (() => bodyRef.current?.focus()) : undefined}
+          minRows={1}
+          placeholder={draft ? (note.kind === "meeting" ? "Worum ging es im Meeting? (optional)" : note.kind === "decision" ? "Was wurde entschieden? (optional)" : "Titel der Notiz (optional)") : "Titel"}
+        />
+      </div>
+      <div className="chips">
+        {!draft && (
           <ChipSelect
             title="Art"
             value={note.kind}
             options={(Object.keys(NOTE_KIND_LABEL) as NoteKind[]).map((k) => ({ value: k, label: NOTE_KIND_LABEL[k] }))}
             onChange={(v) => save({ kind: v as NoteKind })}
           />
-          <CompaniesChip value={note.company_ids} onChange={(ids) => save({ company_ids: ids })} />
-          {note.kind === "meeting" && (
-            <PeopleChip
-              title="Teilnehmer"
-              emptyLabel="Teilnehmer"
-              icon={<Users size={14} />}
-              value={note.participant_ids}
-              onChange={(ids) => save({ participant_ids: ids })}
-            />
-          )}
-          <ChipDate
-            icon={<CalendarDays size={14} />}
-            title="Datum"
-            value={note.meeting_date}
-            onChange={(v) => save({ meeting_date: v })}
-            placeholder="Datum"
-            format={formatDate}
-          />
-        </div>
-
-        <AutoText
-          value={body}
-          onChange={setBody}
-          onBlur={() => body !== note.body && save({ body })}
-          minRows={10}
-          placeholder="Schreiben…"
-        />
-
+        )}
+        <CompaniesChip value={note.company_ids} onChange={(ids) => save({ company_ids: ids })} />
         {note.kind === "meeting" && (
-          <input
-            className="plain-input"
-            placeholder="Weitere Teilnehmer (extern)…"
-            value={participantsText}
-            onChange={(e) => setParticipantsText(e.target.value)}
-            onBlur={() => participantsText !== note.participants_text && save({ participants_text: participantsText })}
+          <PeopleChip
+            title="Teilnehmer"
+            emptyLabel="Teilnehmer"
+            icon={<Users size={14} />}
+            value={note.participant_ids}
+            onChange={(ids) => save({ participant_ids: ids })}
           />
         )}
+        <ChipDate
+          icon={<CalendarDays size={14} />}
+          title="Datum"
+          value={note.meeting_date}
+          onChange={(v) => save({ meeting_date: v })}
+          placeholder="Datum"
+          format={formatDate}
+        />
+      </div>
 
-        {/* Im Protokoll stehen die Aufgaben schon unter „Offene Punkte“; bei Notizen nur die daraus entstandenen */}
-        {note.kind === "meeting" ? (
-          <ProtocolOpenItems participantIds={note.participant_ids} companyIds={note.company_ids} />
-        ) : (
-          derived.length > 0 && (
-            <Disclosure title="Aufgaben" meta={derived.length} defaultOpen>
-              <TaskList tasks={derived} />
-            </Disclosure>
-          )
-        )}
+      <AutoText
+        textRef={bodyRef}
+        value={body}
+        onChange={(v) => {
+          setBody(v);
+          if (draft) save({ body: v });
+        }}
+        onBlur={() => body !== note.body && save({ body })}
+        minRows={10}
+        placeholder="Schreiben…"
+      />
 
-        <button type="button" className="link-btn plan-add" onClick={addTask}>
-          <ListPlus size={14} /> Aufgabe hinzufügen
-        </button>
+      {note.kind === "meeting" && (
+        <input
+          className="plain-input"
+          placeholder="Weitere Teilnehmer (extern)…"
+          value={participantsText}
+          onChange={(e) => {
+            setParticipantsText(e.target.value);
+            if (draft) save({ participants_text: e.target.value });
+          }}
+          onBlur={() => participantsText !== note.participants_text && save({ participants_text: participantsText })}
+        />
+      )}
 
-        {/* Adressen im Text werden automatisch zu klickbaren Links – kein eigenes Anhängen nötig */}
-        {urlsIn(body).length > 0 && (
-          <div className="text-links">
-            {urlsIn(body).map((u) => (
-              <a key={u} href={u} target="_blank" rel="noopener noreferrer">
-                <ExternalLink size={13} /> {u.replace(/^https?:\/\//, "").slice(0, 70)}
-              </a>
-            ))}
-          </div>
-        )}
-
-        {/* Früher angehängte Links (Altbestand) weiter anzeigen */}
-        {attachedCount > 0 && (
-          <Disclosure title="Angehängte Links" meta={attachedCount} defaultOpen>
-            <AttachedLinks target={{ noteId: note.id }} />
+      {/* Im Protokoll stehen die Aufgaben schon unter „Offene Punkte“; bei Notizen nur die daraus entstandenen */}
+      {note.kind === "meeting" ? (
+        <ProtocolOpenItems participantIds={note.participant_ids} companyIds={note.company_ids} />
+      ) : (
+        derived.length > 0 && (
+          <Disclosure title="Aufgaben" meta={derived.length} defaultOpen>
+            <TaskList tasks={derived} />
           </Disclosure>
-        )}
-    </div>
+        )
+      )}
+
+      <button type="button" className="link-btn plan-add" onClick={addTask}>
+        <ListPlus size={14} /> Aufgabe hinzufügen
+      </button>
+
+      {/* Adressen im Text werden automatisch zu klickbaren Links – kein eigenes Anhängen nötig */}
+      {urlsIn(body).length > 0 && (
+        <div className="text-links">
+          {urlsIn(body).map((u) => (
+            <a key={u} href={u} target="_blank" rel="noopener noreferrer">
+              <ExternalLink size={13} /> {u.replace(/^https?:\/\//, "").slice(0, 70)}
+            </a>
+          ))}
+        </div>
+      )}
+
+      {/* Früher angehängte Links (Altbestand) weiter anzeigen */}
+      {attachedCount > 0 && (
+        <Disclosure title="Angehängte Links" meta={attachedCount} defaultOpen>
+          <AttachedLinks target={{ noteId: note.id }} />
+        </Disclosure>
+      )}
+    </>
   );
 }
 

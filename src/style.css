@@ -2511,9 +2511,26 @@ section.card h2 + p {
   cursor: default;
 }
 
-/* Schnellerfassung: Notiz, Protokoll, Entscheidung im selben Fenster */
-.modal.capture.wide {
-  width: min(760px, 100%);
+/* „+ Neu“: dasselbe Panel wie beim Öffnen eines Eintrags, mit Reitern und Speichern-Leiste */
+.panel-backdrop.capture-layer {
+  z-index: 36;
+}
+.panel.capture-layer {
+  z-index: 37;
+}
+.panel-head .seg-group {
+  flex-wrap: wrap;
+}
+.capture-foot {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: auto;
+  padding: 12px 0 4px;
+  background: var(--surface);
+  border-top: 1px solid var(--surface-3);
 }
 .modal-backdrop.confirm-layer {
   z-index: 45;
