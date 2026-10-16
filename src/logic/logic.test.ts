@@ -1,11 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { demoSeed } from "../data/seed";
-import type { MilestoneStatus, Task, VendorItem } from "../data/types";
+import type { Task, VendorItem } from "../data/types";
 import { addWorkdays, endOfWeek, formatDate, relativeLabel } from "./dates";
 import { copyProjectMasterData, suggestShort } from "./projects";
 import { moveItem, orderNav } from "./nav";
 import { agendaText, buildBriefing, sectionTitles } from "./briefing";
-import { isOverdue, progress } from "./milestones";
 import { search } from "./search";
 import { affectsCompany, ageLabel, isOpenItem, jourFixeText, newVendorItem, showTicket, statusPatch } from "./vendor";
 import { localDate } from "./dates";
@@ -221,7 +220,6 @@ describe("projects", () => {
     expect(copy.companies.every((c) => c.project_id === "neu")).toBe(true);
     const newCompanyIds = new Set(copy.companies.map((c) => c.id));
     expect(copy.people.every((p) => p.company_id === null || newCompanyIds.has(p.company_id))).toBe(true);
-    expect(copy.topics).toHaveLength(db.topics.length);
     expect(copy.link_categories).toHaveLength(db.link_categories.length);
     // Anbieter (Tacto) zeigt auf die kopierte Firma
     const vendor = copy.companies.find((c) => c.id === copy.vendorCompanyId);
@@ -352,18 +350,6 @@ describe("briefing", () => {
     expect(text).toContain("## Offen bei Anna\n- [ ] Anna blockiert (blockiert: x)");
     expect(text).toContain("- [ ] Max bei HAZ (Max Muster)");
     expect(text).not.toContain("erledigt");
-  });
-});
-
-describe("milestones", () => {
-  const today = "2026-10-15";
-  const C = (status: MilestoneStatus["status"], target_date: string | null = null) => ({ status, target_date });
-  it("Fortschritt ohne „nicht relevant“", () => {
-    expect(progress([C("done"), C("n_a"), C("on_track")], 13)).toEqual({ done: 1, total: 12 });
-  });
-  it("überfällig nur, wenn nicht abgeschlossen", () => {
-    expect(isOverdue(C("on_track", "2026-10-01"), today)).toBe(true);
-    expect(isOverdue(C("done", "2026-10-01"), today)).toBe(false);
   });
 });
 

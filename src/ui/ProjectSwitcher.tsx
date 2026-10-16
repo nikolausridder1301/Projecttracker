@@ -137,7 +137,6 @@ export function NewProjectDialog({ onClose }: { onClose: () => void }) {
         const copy = copyProjectMasterData(allDb, source, p.id);
         if (copy.companies.length) await insert("companies", copy.companies);
         if (copy.people.length) await insert("people", copy.people);
-        if (copy.topics.length) await insert("topics", copy.topics);
         if (copy.link_categories.length) await insert("link_categories", copy.link_categories);
         if (copy.vendorCompanyId) await update("projects", p.id, { vendor_company_id: copy.vendorCompanyId });
       }

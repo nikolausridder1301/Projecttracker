@@ -1,8 +1,8 @@
-import { ArrowDown, ArrowUp, Download, Plus, Trash2 } from "lucide-react";
+import { Download, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { resetDemoData } from "../data/backend";
 import { useLookups, useStore } from "../data/store";
-import type { Company, LinkCategory, Topic } from "../data/types";
+import type { Company, LinkCategory } from "../data/types";
 import { formatDateTime } from "../logic/dates";
 import { suggestShort } from "../logic/projects";
 import { isValidUrl } from "../logic/tasks";
@@ -45,8 +45,6 @@ export function SettingsPage() {
       <NavSettings />
 
       <CompaniesSettings />
-      {/* Fortschritt im externen Reporting → keine Meilensteine im Tool */}
-      {!project?.report_url?.trim() && <TopicsSettings />}
       <CategoriesSettings />
     </div>
   );
@@ -248,53 +246,6 @@ function CompanyRow({ company }: { company: Company }) {
         </button>
       </td>
     </tr>
-  );
-}
-
-function TopicsSettings() {
-  const { db, insert, update } = useStore();
-  const all = db.topics.filter((t) => t.deleted_at === null).sort((a, b) => a.sort - b.sort);
-  const [name, setName] = useState("");
-  const move = (t: Topic, dir: -1 | 1) => {
-    const i = all.findIndex((x) => x.id === t.id);
-    const other = all[i + dir];
-    if (!other) return;
-    void update("topics", t.id, { sort: other.sort });
-    void update("topics", other.id, { sort: t.sort });
-  };
-  return (
-    <section className="card">
-      <h2>Meilensteine</h2>
-      <p className="muted small settings-hint">Meilensteine je Firma (Reiter in der Firmen-Ansicht). Ausgeblendet, sobald ein Reporting-Link gesetzt ist.</p>
-      {all.map((t, i) => (
-        <div key={t.id} className={`row settings-row${t.archived ? " inactive" : ""}`}>
-          <RenameInput value={t.name} onSave={(name) => void update("topics", t.id, { name })} />
-          <button className="btn ghost small" disabled={i === 0} onClick={() => move(t, -1)} aria-label="nach oben">
-            <ArrowUp size={14} />
-          </button>
-          <button className="btn ghost small" disabled={i === all.length - 1} onClick={() => move(t, 1)} aria-label="nach unten">
-            <ArrowDown size={14} />
-          </button>
-          <button className="btn ghost small" onClick={() => void update("topics", t.id, { archived: !t.archived })}>
-            {t.archived ? "Reaktivieren" : "Archivieren"}
-          </button>
-        </div>
-      ))}
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (!name.trim()) return;
-          void insert("topics", [{ name: name.trim(), sort: (all.at(-1)?.sort ?? 0) + 1, archived: false }]).catch(() => {});
-          setName("");
-        }}
-      >
-        <input placeholder="Neuer Meilenstein" value={name} onChange={(e) => setName(e.target.value)} />
-        <button className="btn" type="submit">
-          Hinzufügen
-        </button>
-      </form>
-    </section>
   );
 }
 

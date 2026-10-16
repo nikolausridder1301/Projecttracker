@@ -44,12 +44,6 @@ export interface Company extends Base, InProject {
   sort: number;
 }
 
-export interface Topic extends Base, InProject {
-  name: string;
-  sort: number;
-  archived: boolean;
-}
-
 export interface LinkCategory extends Base, InProject {
   name: string;
   sort: number;
@@ -161,17 +155,6 @@ export interface VendorItem extends Base, InProject {
   status_changed_at: IsoDateTime | null;
 }
 
-export type MilestoneState = "not_started" | "on_track" | "at_risk" | "delayed" | "done" | "n_a";
-
-/** Stand eines Meilensteins (Thema) bei einer Firma. */
-export interface MilestoneStatus extends Base, InProject {
-  topic_id: Id;
-  company_id: Id;
-  status: MilestoneState;
-  target_date: IsoDate | null;
-  comment: string;
-}
-
 export interface AppMeta extends Base {
   last_export_at: IsoDateTime | null;
   /** Reihenfolge der Menüpunkte (Schlüssel aus ui/nav.ts); leer = Standard */
@@ -181,7 +164,6 @@ export interface AppMeta extends Base {
 export interface Tables {
   projects: Project;
   companies: Company;
-  topics: Topic;
   link_categories: LinkCategory;
   people: Person;
   notes: Note;
@@ -191,7 +173,6 @@ export interface Tables {
   attachments: Attachment;
   app_meta: AppMeta;
   vendor_items: VendorItem;
-  milestone_status: MilestoneStatus;
 }
 
 export type TableName = keyof Tables;
@@ -199,7 +180,6 @@ export type TableName = keyof Tables;
 export const TABLE_NAMES: TableName[] = [
   "projects",
   "companies",
-  "topics",
   "link_categories",
   "people",
   "notes",
@@ -209,7 +189,6 @@ export const TABLE_NAMES: TableName[] = [
   "attachments",
   "app_meta",
   "vendor_items",
-  "milestone_status",
 ];
 
 export type Db = { [K in TableName]: Tables[K][] };
@@ -217,14 +196,12 @@ export type Db = { [K in TableName]: Tables[K][] };
 /** Tabellen mit project_id – werden in der App auf das aktuelle Projekt gefiltert. */
 export const PROJECT_TABLES = [
   "companies",
-  "topics",
   "link_categories",
   "people",
   "notes",
   "tasks",
   "links",
   "vendor_items",
-  "milestone_status",
 ] as const satisfies readonly TableName[];
 
 /** Felder, die beim Anlegen vom Backend gesetzt werden. project_id ergänzt der Store. */
