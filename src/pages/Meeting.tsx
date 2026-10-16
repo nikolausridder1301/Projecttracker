@@ -7,7 +7,7 @@ import { Avatar, CompanyLogo, Dropdown, Empty, usePersisted } from "../ui/common
 import { ContactView } from "./Contact";
 
 // Meeting: schnell Person oder Firma wählen – darunter dieselbe Ansicht wie
-// unter „Kontakte“ (offene Punkte mit „Schritt notieren…“, Protokoll starten).
+// unter „Kontakte“ (offene Punkte, Protokoll starten).
 
 const parseTarget = (v: string): MeetingTarget | null =>
   v.startsWith("p:") ? { kind: "person", id: v.slice(2) } : v.startsWith("c:") ? { kind: "company", id: v.slice(2) } : null;
