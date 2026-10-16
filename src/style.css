@@ -2099,46 +2099,6 @@ button.traffic-tile:hover {
   text-align: left;
 }
 
-/* Verlauf (Updates je Aufgabe) */
-.update-input {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  padding: 0 10px;
-}
-.update-input:focus-within {
-  border-color: var(--accent);
-}
-.update-input input {
-  flex: 1;
-  border: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  padding: 0 !important;
-  height: 38px;
-}
-.update-icon {
-  color: var(--text-faint);
-  flex-shrink: 0;
-}
-.update-input.compact {
-  border-color: transparent;
-  background: transparent;
-  margin: -6px 0 6px 34px;
-  padding: 0 6px;
-}
-.update-input.compact input {
-  height: 30px;
-  font-size: var(--fs-sm);
-}
-.update-input.compact:hover,
-.update-input.compact:focus-within {
-  border-color: var(--border);
-  background: var(--surface);
-}
 .task-sub {
   min-width: 0;
 }
@@ -2196,11 +2156,6 @@ button.traffic-tile:hover {
   .steps .step-row .chip-empty {
     opacity: 1;
   }
-}
-.update-input .chip {
-  height: 26px;
-  font-size: var(--fs-sm);
-  flex-shrink: 0;
 }
 
 /* Chips in Schritten nicht strecken (die Liste lässt den Text wachsen) */
@@ -2675,4 +2630,50 @@ button.traffic-tile:hover {
   min-height: 0;
   padding: 0;
   border: 0;
+}
+
+/* Aufgabenkarte: Hinweis zum Aufklappen von Schritten und Meilensteinen */
+.task-expand {
+  flex: 0 0 100%;
+  padding-left: 30px;
+  margin-top: -4px;
+}
+.task-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  border: 0;
+  background: none;
+  padding: 0;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.task-toggle:hover {
+  color: var(--text);
+}
+.task-toggle .chev {
+  transition: transform 0.12s;
+}
+.task-toggle.open .chev {
+  transform: rotate(90deg);
+}
+/* ohne Schritte: nur beim Darüberfahren sichtbar */
+.task-toggle.empty:not(.open) {
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.task-row:hover .task-toggle.empty,
+.task-toggle.empty:focus-visible {
+  opacity: 1;
+}
+@media (hover: none) {
+  .task-toggle.empty:not(.open) {
+    opacity: 1;
+  }
+}
+.task-plan {
+  flex: 0 0 100%;
+  padding: 4px 0 6px 30px;
+  cursor: default;
 }

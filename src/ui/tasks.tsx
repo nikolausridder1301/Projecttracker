@@ -1,4 +1,4 @@
-import { Ban, Diamond, Flag, ListPlus, Trash2, X } from "lucide-react";
+import { Ban, ChevronRight, Diamond, Flag, ListPlus, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useLookups, useStore } from "../data/store";
 import type { ChecklistItem, Task } from "../data/types";
@@ -54,8 +54,11 @@ export function TaskRow({
   const taskProject = projectById.get(task.project_id);
   const { setDone } = useTaskActions();
   const today = todayIso();
+  // Nur ein Hinweis (Zahl der Meilensteine und offenen Schritte); Klick klappt Schritte und Meilensteine auf
+  const [expanded, setExpanded] = useState(false);
   const persons = task.assignee_person_ids.map((id) => personById.get(id)).filter((p) => p !== undefined);
   const done = task.status === "done";
+  const counts = done ? "" : taskCounts(task);
   // Rechts der nächste Termin – Fälligkeit der Aufgabe oder eines offenen Schritts (wie auf „Heute“)
   const due = done ? task.due_date : effectiveDue(task);
   const overdue = !done && due !== null && due < today;
@@ -63,9 +66,6 @@ export function TaskRow({
 
   const sub: React.ReactNode[] = [];
   if (task.status === "blocked") sub.push(<span key="b" className="tone-red">Blockiert: {task.blocked_reason}</span>);
-  // Nur ein Hinweis, keine Details: Zahl der Meilensteine und der offenen Schritte
-  const counts = done ? "" : taskCounts(task);
-  if (counts) sub.push(<span key="n">{counts}</span>);
   if (subExtra) sub.push(<span key="x">{subExtra}</span>);
 
   return (
@@ -111,6 +111,31 @@ export function TaskRow({
           </span>
         )}
       </span>
+      {!done && (
+        <div className="task-expand">
+          <button
+            type="button"
+            className={`task-toggle${counts ? "" : " empty"}${expanded ? " open" : ""}`}
+            onClick={() => setExpanded(!expanded)}
+            aria-expanded={expanded}
+            title={expanded ? "Schritte zuklappen" : "Schritte und Meilensteine aufklappen"}
+          >
+            <ChevronRight size={14} className="chev" aria-hidden />
+            {counts || "Schritt hinzufügen"}
+          </button>
+        </div>
+      )}
+      {expanded && !done && <CardPlan task={task} />}
+    </div>
+  );
+}
+
+/** Schritte und Meilensteine direkt in der Aufgabenkarte – dasselbe wie im Detail-Panel. */
+function CardPlan({ task }: { task: Task }) {
+  const { update } = useStore();
+  return (
+    <div className="task-plan">
+      <PlanEditor bare task={task} save={(patch) => void update("tasks", task.id, patch).catch(() => {})} />
     </div>
   );
 }
@@ -170,7 +195,7 @@ export function shortDay(iso: string): string {
  * Schritte (wer, bis wann) und Meilensteine (◆, nur zur Orientierung) einer Aufgabe –
  * zwei voneinander unabhängige Listen in derselben `checklist`.
  */
-function PlanEditor({ task, save }: { task: Task; save: (patch: { checklist: ChecklistItem[] }) => void }) {
+function PlanEditor({ task, save, bare }: { task: Task; save: (patch: { checklist: ChecklistItem[] }) => void; bare?: boolean }) {
   const today = todayIso();
   const list = task.checklist;
   const [editing, setEditing] = useState<{ i: number; text: string } | null>(null);
@@ -209,8 +234,7 @@ function PlanEditor({ task, save }: { task: Task; save: (patch: { checklist: Che
       />
     );
 
-  return (
-    <Disclosure title="Schritte & Meilensteine" meta={cl.total > 0 ? `${cl.done}/${cl.total}` : undefined} defaultOpen>
+  const body = (
       <div className="plan">
         {steps.length > 0 && (
           <ul className="checklist steps">
@@ -273,6 +297,11 @@ function PlanEditor({ task, save }: { task: Task; save: (patch: { checklist: Che
         )}
         <MilestoneAddForm onAdd={(ms) => save({ checklist: [...list, ms] })} />
       </div>
+  );
+  if (bare) return body;
+  return (
+    <Disclosure title="Schritte & Meilensteine" meta={cl.total > 0 ? `${cl.done}/${cl.total}` : undefined} defaultOpen>
+      {body}
     </Disclosure>
   );
 }
@@ -343,29 +372,6 @@ function MilestoneAddForm({ onAdd }: { onAdd: (ms: ChecklistItem) => void }) {
     setText("");
   };
   return <PlanAddRow icon={<Diamond size={16} />} value={text} onChange={setText} onSubmit={add} placeholder="Meilenstein hinzufügen… (Enter)" ariaLabel="Meilenstein hinzufügen" />;
-}
-
-/** Im Meeting: vereinbarten Schritt direkt notieren – kommt als neuer Schritt in die Aufgabe. */
-export function StepInput({ task }: { task: Task }) {
-  const { update, toast } = useStore();
-  const [text, setText] = useState("");
-  return (
-    <form
-      className="update-input compact"
-      onSubmit={(e) => {
-        e.preventDefault();
-        const t = text.trim();
-        if (!t) return;
-        void update("tasks", task.id, { checklist: [...task.checklist, { text: t, done: false, person_ids: [], due: null }] })
-          .then(() => toast("Schritt notiert"))
-          .catch(() => {});
-        setText("");
-      }}
-    >
-      <ListPlus size={14} className="update-icon" aria-hidden />
-      <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Schritt notieren…" aria-label="Schritt notieren" />
-    </form>
-  );
 }
 
 // ---------------------------------------------------------------------------
