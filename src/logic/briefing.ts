@@ -1,8 +1,8 @@
 // „Was gehört zu X?“ – eine Logik für Firmen, Personen und Meetings:
 // Detailansicht, Meeting-Seite, Agenda und Protokoll nutzen alle buildBriefing.
-import type { Company, Db, Id, IsoDate, Link, Note, Person, Task, TaskFollowup, VendorItem } from "../data/types";
+import type { Company, Db, Id, IsoDate, Link, Note, Person, Task, VendorItem } from "../data/types";
 import { formatDate, localDate } from "./dates";
-import { compareTasks, hasStepFor, isActive, latestUpdates, standText, stepPersons } from "./tasks";
+import { compareTasks, groupSteps, hasStepFor, isActive, stepPersons } from "./tasks";
 import { affectsCompany, isOpenItem, statusDef } from "./vendor";
 
 export type MeetingTarget = { kind: "person"; id: Id } | { kind: "company"; id: Id };
@@ -27,8 +27,6 @@ export interface Briefing {
   contacts: Person[];
   /** heutiges Protokoll mit X – „Protokoll starten“ öffnet dann dieses statt ein zweites */
   todayMeeting?: Note;
-  /** letzter Stand je Aufgabe (Verlauf) */
-  lastUpdate: Map<Id, TaskFollowup>;
 }
 
 /** Überschriften der Bereiche – gleich in Ansicht und Agenda. */
@@ -105,7 +103,6 @@ export function buildBriefing(db: Db, target: MeetingTarget, today: IsoDate): Br
     links: companyId !== null ? db.links.filter((l) => isActive(l) && l.company_ids.includes(companyId)).sort((a, b) => a.title.localeCompare(b.title, "de")) : [],
     contacts: target.kind === "company" ? db.people.filter((p) => isActive(p) && p.company_id === companyId).sort((a, b) => a.name.localeCompare(b.name, "de")) : [],
     todayMeeting,
-    lastUpdate: latestUpdates(db.task_followups),
   };
 }
 
@@ -120,15 +117,22 @@ export function agendaText(b: Briefing, personName: (id: Id) => string, vendorNa
         .map(personName)
         .join(", "),
     ].filter(Boolean);
-    const stand = b.lastUpdate.get(t.id);
-    const steps = t.checklist
-      .filter((c) => !c.done)
-      .map((c) => {
-        const info = [stepPersons(c).map(personName).join(", "), c.due ? `bis ${formatDate(c.due)}` : ""].filter(Boolean);
-        return `\n  - [ ] ${c.text}${info.length ? ` (${info.join(", ")})` : ""}`;
+    // Offene Schritte je Gruppe; nicht erreichte Meilensteine als Überschrift davor
+    const stepLine = (i: number) => {
+      const c = t.checklist[i];
+      const info = [stepPersons(c).map(personName).join(", "), c.due ? `bis ${formatDate(c.due)}` : ""].filter(Boolean);
+      return `\n  - [ ] ${c.text}${info.length ? ` (${info.join(", ")})` : ""}`;
+    };
+    const steps = groupSteps(t.checklist)
+      .map((g) => {
+        const ms = g.milestone !== null ? t.checklist[g.milestone] : undefined;
+        if (ms?.done) return "";
+        const open = g.steps.filter((i) => !t.checklist[i].done).map(stepLine).join("");
+        const head = ms ? `\n  ◆ ${ms.text}${ms.due ? ` (bis ${formatDate(ms.due)})` : ""}` : "";
+        return head + open;
       })
       .join("");
-    return `- [ ] ${t.title}${extra.length ? ` (${extra.join(", ")})` : ""}${stand ? `\n  ${standText(stand)}` : ""}${steps}`;
+    return `- [ ] ${t.title}${extra.length ? ` (${extra.join(", ")})` : ""}${steps}`;
   };
   const titles = sectionTitles(b);
   const parts: string[] = [];

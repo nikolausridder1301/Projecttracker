@@ -38,9 +38,6 @@ export function search(db: Db, query: string, limitPerType = 8): Hit[] {
   const company = (id: Id | null) => db.companies.find((c) => c.id === id)?.short ?? "";
   const companies = (ids: Id[]) => ids.map(company).join(", ");
   const hits: Hit[] = [];
-  // Verlauf je Aufgabe mitsuchen („Was hat Arman zu X gesagt?“)
-  const updatesOf = new Map<Id, string>();
-  for (const f of db.task_followups) if (f.deleted_at === null) updatesOf.set(f.task_id, `${updatesOf.get(f.task_id) ?? ""} ${f.note}`);
   const push = (list: Hit[]) =>
     hits.push(...list.filter((h) => h.score > 0).sort((a, b) => b.score - a.score).slice(0, limitPerType));
 
@@ -50,7 +47,7 @@ export function search(db: Db, query: string, limitPerType = 8): Hit[] {
       id: t.id,
       title: t.title,
       sub: `${companies(t.company_ids)}${t.status === "done" ? " · erledigt" : ""}`,
-      score: score(t.title, `${t.description} ${t.checklist.map((c) => c.text).join(" ")} ${t.blocked_reason} ${updatesOf.get(t.id) ?? ""}`),
+      score: score(t.title, `${t.description} ${t.checklist.map((c) => c.text).join(" ")} ${t.blocked_reason}`),
     })),
   );
   push(

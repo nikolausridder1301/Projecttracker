@@ -99,7 +99,9 @@ export function demoSeed(): Db {
       follow_up_date: addDays(today, 4),
       topic_id: topics[11].id,
       checklist: [
+        { text: "Grundlagen", done: true, milestone: true },
         { text: "Modul 1", done: true },
+        { text: "Vertiefung", done: false, milestone: true, due: addDays(today, 10) },
         { text: "Modul 2", done: false, person_ids: [people[0].id], due: addDays(today, -1) },
       ],
     }),
@@ -157,11 +159,7 @@ export function demoSeed(): Db {
     people,
     notes: [],
     tasks,
-    // Beispiel-Verlauf: Stand der delegierten Aufgaben
-    task_followups: [
-      { ...meta(), task_id: tasks[2].id, date: addDays(today, -9), note: "Max prüft, welche Felder der Export braucht" },
-      { ...meta(), task_id: tasks[2].id, date: addDays(today, -2), note: "Testexport läuft, Freigabe IT steht noch aus" },
-    ],
+    task_followups: [],
     links: [],
     attachments: [],
     app_meta: [{ ...meta(), last_export_at: null, nav_order: [] }],

@@ -10,7 +10,7 @@ import { ageLabel, categoryDef, jourFixeText, statusDef } from "../logic/vendor"
 import { Avatar, CompanyBadge, CompanyLogo, CompanySelect, Empty } from "../ui/common";
 import { LinkRow } from "../ui/links";
 import { CompanyMilestones } from "../ui/milestones";
-import { TaskList, TaskRow, UpdateInput } from "../ui/tasks";
+import { StepInput, TaskList, TaskRow } from "../ui/tasks";
 import { TrafficDialog, TrafficHistoryList, TrafficStatus } from "../ui/traffic";
 import { NoteLink, useCaptureContext, useUi } from "../ui/uiState";
 import { useVendor } from "../ui/vendor";
@@ -236,7 +236,7 @@ export function ContactView({ target }: { target: MeetingTarget }) {
   );
 }
 
-/** Offene Punkte zu X mit Update-Feld je Aufgabe – in der Ansicht und im Protokoll. */
+/** Offene Punkte zu X mit „Schritt notieren…“ je Aufgabe – in der Ansicht und im Protokoll. */
 export function OpenItems({ b, vendorName }: { b: Briefing; vendorName?: string }) {
   const titles = sectionTitles(b);
   const today = todayIso();
@@ -468,14 +468,14 @@ export function openPerPerson(tasks: Task[]): Map<Id, number> {
   return m;
 }
 
-/** Im Gespräch: zu jeder Aufgabe direkt den neuen Stand notieren. */
+/** Im Gespräch: zu jeder Aufgabe direkt einen vereinbarten Schritt notieren. */
 function UpdatableTasks({ tasks }: { tasks: Task[] }) {
   return (
     <div className="task-list">
       {tasks.map((t) => (
         <div key={t.id} className="update-row">
           <TaskRow task={t} />
-          <UpdateInput taskId={t.id} compact />
+          <StepInput task={t} />
         </div>
       ))}
     </div>
