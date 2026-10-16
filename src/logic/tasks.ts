@@ -58,41 +58,9 @@ export function currentMilestone(t: Pick<Task, "checklist">): ChecklistItem | un
   return t.checklist.find((c) => c.milestone && !c.done);
 }
 
-export interface StepGroup {
-  /** Index des Meilensteins in der Liste; null = Schritte ohne Meilenstein */
-  milestone: number | null;
-  /** Indizes der Schritte in der Liste */
-  steps: number[];
-}
-
-/** Liste in Gruppen teilen: Schritte vor dem ersten Meilenstein, dann je Meilenstein seine Schritte. */
-export function groupSteps(list: ChecklistItem[]): StepGroup[] {
-  const groups: StepGroup[] = [{ milestone: null, steps: [] }];
-  list.forEach((c, i) => {
-    if (c.milestone) groups.push({ milestone: i, steps: [] });
-    else groups[groups.length - 1].steps.push(i);
-  });
-  return groups;
-}
-
-/**
- * Neuen Schritt in eine Gruppe einfügen (ans Ende ihrer Schritte).
- * `milestone` = Index des Meilensteins, null = vor dem ersten Meilenstein,
- * "current" = beim aktuellen Meilenstein (sonst ohne Meilenstein).
- */
-export function insertStep(list: ChecklistItem[], step: ChecklistItem, milestone: number | null | "current"): ChecklistItem[] {
-  const target = milestone === "current" ? (list.findIndex((c) => c.milestone && !c.done) === -1 ? null : list.findIndex((c) => c.milestone && !c.done)) : milestone;
-  const groups = groupSteps(list);
-  const g = groups.find((x) => x.milestone === target) ?? groups[0];
-  const after = g.steps.length > 0 ? g.steps[g.steps.length - 1] : (g.milestone ?? -1);
-  const next = [...list];
-  next.splice(after + 1, 0, step);
-  return next;
-}
-
-/** Frühestes Datum aus Aufgabe, offenen Schritten und Zieldaten offener Meilensteine. */
+/** Frühestes Datum aus Aufgabe und offenen Schritten (Meilensteine haben kein Datum). */
 export function effectiveDue(t: Pick<Task, "due_date" | "checklist">): IsoDate | null {
-  const dates = [t.due_date, ...t.checklist.filter((c) => !c.done).map((c) => c.due ?? null)].filter((x): x is IsoDate => !!x);
+  const dates = [t.due_date, ...t.checklist.filter((c) => isStep(c) && !c.done).map((c) => c.due ?? null)].filter((x): x is IsoDate => !!x);
   return dates.length ? dates.sort()[0] : null;
 }
 

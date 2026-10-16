@@ -13,9 +13,8 @@ import { localDate } from "./dates";
 import { firstLine, listIndent, listNewline, parseBlocks, parseInline } from "./markdown";
 import {
   compareTasks,
+  checklistProgress,
   currentMilestone,
-  groupSteps,
-  insertStep,
   personRefs,
   personsOf,
   effectiveDue,
@@ -458,29 +457,17 @@ describe("Überarbeitung: Fälligkeit, Personen, Anbieter-Punkte", () => {
   });
 });
 
-describe("Meilensteine & Schritte", () => {
-  const M = (text: string, done = false, due: string | null = null) => ({ text, done, milestone: true, due });
-  const S = (text: string, done = false) => ({ text, done });
-  it("Gruppen: Schritte ohne Meilenstein, dann je Meilenstein", () => {
-    const list = [S("a"), M("M1"), S("b"), S("c"), M("M2")];
-    expect(groupSteps(list)).toEqual([
-      { milestone: null, steps: [0] },
-      { milestone: 1, steps: [2, 3] },
-      { milestone: 4, steps: [] },
-    ]);
-  });
-  it("Schritt einfügen: in die Gruppe, beim aktuellen Meilenstein oder oben", () => {
-    const list = [S("a"), M("M1", true), S("b"), M("M2"), S("c")];
-    expect(insertStep(list, S("neu"), 1).map((c) => c.text)).toEqual(["a", "M1", "b", "neu", "M2", "c"]);
-    expect(insertStep(list, S("neu"), "current").map((c) => c.text)).toEqual(["a", "M1", "b", "M2", "c", "neu"]);
-    expect(insertStep(list, S("neu"), null).map((c) => c.text)).toEqual(["a", "neu", "M1", "b", "M2", "c"]);
-    expect(insertStep([M("X")], S("neu"), 0).map((c) => c.text)).toEqual(["X", "neu"]);
-    expect(insertStep([], S("neu"), "current").map((c) => c.text)).toEqual(["neu"]);
-  });
-  it("aktueller Meilenstein, Fortschritt nur über Schritte, nächster Schritt kein Meilenstein, Ziel zählt als Termin", () => {
-    const t = T({ checklist: [M("M1", true), S("x", true), M("M2", false, "2026-10-20"), S("y")] });
+describe("Schritte & Meilensteine", () => {
+  const M = (text: string, done = false) => ({ text, done, milestone: true });
+  const S = (text: string, done = false, due: string | null = null) => ({ text, done, due });
+  it("aktueller Meilenstein, Fortschritt und nächster Schritt zählen nur die jeweilige Art", () => {
+    const t = T({ checklist: [M("M1", true), S("x", true), M("M2"), S("y")] });
     expect(currentMilestone(t)?.text).toBe("M2");
     expect(nextStep(t)?.text).toBe("y");
+    expect(checklistProgress(t)).toEqual({ done: 1, total: 2 });
+  });
+  it("nächster Termin: Aufgabe und offene Schritte; Meilensteine haben kein Datum", () => {
+    const t = T({ due_date: "2026-11-01", checklist: [{ ...M("M"), due: "2026-10-01" }, S("a", true, "2026-10-02"), S("b", false, "2026-10-20")] });
     expect(effectiveDue(t)).toBe("2026-10-20");
   });
 });

@@ -101,7 +101,7 @@ export function demoSeed(): Db {
       checklist: [
         { text: "Grundlagen", done: true, milestone: true },
         { text: "Modul 1", done: true },
-        { text: "Vertiefung", done: false, milestone: true, due: addDays(today, 10) },
+        { text: "Vertiefung", done: false, milestone: true },
         { text: "Modul 2", done: false, person_ids: [people[0].id], due: addDays(today, -1) },
       ],
     }),

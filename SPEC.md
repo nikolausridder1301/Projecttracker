@@ -137,21 +137,21 @@ Kopfzeile: globale Suche (Strg+K), Backup-Icon, „+ Neu“ (Taste N). **Alles N
 - **Schlanke Filterleiste:** **Alle | Meine | Delegiert** (Delegiert = Person verantwortlich oder im offenen Schritt), Firmenfilter (Mehrfachauswahl), **Gruppieren** (nach Firma / nach Person / keine) und „Erledigte zeigen“. Kein weiteres Filter-Menü – Fälliges steht auf „Heute“, Delegiertes unter „Delegiert“. Eine Aufgabe steht in jeder ihrer Gruppen (jede Firma bzw. jede Person); ohne Firma in „Ohne Firma“.
 - **Ein Termin überall:** Zeile rechts, Sortierung, Heute und Firmenkarten nutzen den **nächsten Termin** = frühestes Datum aus Fälligkeit und offenen Schritten.
 - **Erledigte getrennt:** offene oben (gruppiert), darunter Trennlinie „Erledigt“ und die erledigten Aufgaben nach Erledigt-Datum, neueste zuerst.
-- **Detail-Panel:** oben Häkchen **„Erledigt?“**, Titel, Chips **Firmen · Verantwortlich · Fällig · Wichtig · Blockiert** – „Wichtig“ und „Blockiert“ sind Schalter (Blockiert fragt jedes Mal einen frischen Grund ab); kein eigener Status-Chip mehr. Darunter **Meilensteine & Schritte** (6.6). Beim Schließen (auch Esc) wird noch nicht Gespeichertes gesichert.
+- **Detail-Panel:** oben Häkchen **„Erledigt?“**, Titel, Chips **Firmen · Verantwortlich · Fällig · Wichtig · Blockiert** – „Wichtig“ und „Blockiert“ sind Schalter (Blockiert fragt jedes Mal einen frischen Grund ab); kein eigener Status-Chip mehr. Darunter **Schritte & Meilensteine** (6.6). Beim Schließen (auch Esc) wird noch nicht Gespeichertes gesichert.
 - **Keine neuen Beschreibungen und Link-Anhänge** mehr – vorhandene werden weiter angezeigt.
 - **Mehrere Firmen:** „Firmen“ ist in Schnellerfassung und Panel dieselbe Mehrfachauswahl. Mehrere Firmen = **eine Aufgabe** (wie bei mehreren Personen), sie erscheint bei jeder ihrer Firmen (Gruppierung, Firmenseite, Meeting, Filter). Was je Firma zu tun ist, steht in den Nächsten Schritten. Mindestens eine Firma bleibt gewählt; Schnellauswahl „Alle Gesellschaften“ (ohne Holding und externe Partner) unten in der Liste.
 - Löschen mit „Rückgängig“ und Papierkorb.
 
-### 6.6 Meilensteine & Schritte, Delegiert
+### 6.6 Schritte & Meilensteine, Delegiert
 
-- **Meilensteine & Schritte** je Aufgabe (ersetzt den früheren Verlauf): eine Liste mit zwei Ebenen – kein eigenes Objekt, alles in der Aufgabe (`checklist`).
-  - **Meilensteine (◆):** die Etappen, auf die hingearbeitet wird; optional **Zieldatum**; per Klick auf ◆ „erreicht“. Als Karte mit Fortschritt („2/3 Schritte“).
-  - **Schritte** darunter gehören zum Meilenstein: Text, optional **Wer?** (mehrere) und **Bis?**; Wer/Bis stehen unter dem Text (lange Texte haben die volle Breite), leer erst beim Darüberfahren. Schritte vor dem ersten Meilenstein gehören zu keinem. Texte per Klick bearbeitbar.
+- **Schritte & Meilensteine** je Aufgabe (ersetzt den früheren Verlauf): zwei voneinander **unabhängige Listen** – kein eigenes Objekt, alles in der Aufgabe (`checklist`).
+  - **Schritte:** Text, optional **Wer?** (mehrere) und **Bis?**; Wer/Bis stehen unter dem Text (lange Texte haben die volle Breite), leer erst beim Darüberfahren. Häkchen = erledigt. Texte per Klick bearbeitbar.
+  - **Meilensteine (◆):** die Etappen, auf die hingearbeitet wird – **nur Text, kein Datum, keine Schritte**; Klick auf ◆ = „erreicht“. Sie dienen der Orientierung und zählen nicht zum Fortschritt oder zu Terminen.
+  - **Hinzufügen:** je Liste eine gleich aufgebaute Eingabezeile mit Enter – „Schritt hinzufügen…“ (Wer?, Bis?) unter den Schritten, „Meilenstein hinzufügen…“ unter den Meilensteinen; das Feld bleibt für den nächsten Eintrag offen. Ältere Aufgaben mit verschachtelten Schritten oder Meilenstein-Daten werden in diese zwei Listen aufgeteilt (alte Meilenstein-Daten bleiben unbenutzt gespeichert).
   - **Einfaches Markdown** in Schritten und Meilensteinen: **Enter speichert, Umschalt+Enter = neue Zeile**; „- “/„* “/„1. “ werden Aufzählungen (Enter bzw. Umschalt+Enter setzt den nächsten Punkt, ein leerer Punkt beendet die Liste, Tab/Umschalt+Tab rückt ein); `**fett**`, `*kursiv*`, `` `Code` `` und Links werden dargestellt. In Listen erscheint nur die erste Zeile ohne Zeichen.
-  - **Hinzufügen – beides jederzeit und unabhängig:** unten stehen immer zwei gleich aufgebaute Eingabezeilen: „Schritt hinzufügen…“ (Wer?, Bis?) und „Meilenstein hinzufügen…“ (Ziel?). Ein Schritt von dort ist zunächst **ohne Meilenstein** (steht oben ohne Karte); ein Meilenstein braucht keine Schritte. Soll ein Schritt in einen Meilenstein, hilft „Schritt in diesem Meilenstein“ in dessen Karte (auch bei erreichten Meilensteinen; das Feld bleibt für den nächsten offen). Meilenstein entfernen lässt seine Schritte stehen.
-- **In Listen:** unter dem Titel der **aktuelle Meilenstein** („◆ Export-Freigabe · bis 30.10.“, rot wenn überschritten) und der **nächste offene Schritt** („→ … · Arman · 23.10. · 1/3“); lange Texte mit „…“ gekürzt, Person und Datum bleiben sichtbar.
-- **Termine:** Fälligkeit, offene Schritte und Zieldaten offener Meilensteine bilden den **nächsten Termin** (Heute, Sortierung, Zeile rechts, Firmenkarten).
-- **Meeting:** unter jeder offenen Aufgabe „Schritt notieren…“ – der vereinbarte Schritt landet beim aktuellen Meilenstein der Aufgabe.
+- **In Listen:** unter dem Titel der **aktuelle Meilenstein** („◆ Export-Freigabe“) und der **nächste offene Schritt** („→ … · Arman · 23.10. · 1/3“); lange Texte mit „…“ gekürzt, Person und Datum bleiben sichtbar.
+- **Termine:** Fälligkeit und offene Schritte bilden den **nächsten Termin** (Heute, Sortierung, Zeile rechts, Firmenkarten).
+- **Meeting:** unter jeder offenen Aufgabe „Schritt notieren…“ – der vereinbarte Schritt kommt als neuer Schritt in die Aufgabe.
 - Menüpunkt **„Delegiert“**: offene Aufgaben nach Person (verantwortlich **oder mit offenem Schritt**), **zuerst fällig oben**; Kopf „x offen · y überfällig“.
 - Delegieren bleibt der Chip **„Verantwortlich“** – Mehrfachauswahl: „Ich“ oder eine bzw. mehrere Personen (eine Aufgabe). Eine Aufgabe mit mehreren Personen steht unter „Delegiert“ bei jeder von ihnen und im Meeting jeder Person.
 - **Kein Verlauf mehr:** keine Update-Zeitleiste, keine „Stand“-Zeile, keine automatischen Statuszeilen. Frühere Updates bleiben in der Datenbank, werden aber nicht angezeigt.
@@ -164,7 +164,7 @@ Kopfzeile: globale Suche (Strg+K), Backup-Icon, „+ Neu“ (Taste N). **Alles N
   - **Offen:** bei Personen „Offen bei …“ (verantwortlich oder offener Schritt), dazu meine und weitere offene Punkte ihrer Firma; bei Firmen alles, was die Firma betrifft. Blockiertes zuerst, unter jeder Aufgabe ein dezentes **„Schritt notieren…“**. Nichts offen: Karte mit „Aufgabe anlegen“. Erledigte auf Wunsch („x erledigte anzeigen“).
 - **Meeting** bleibt im Menü für den schnellen Zugriff: oben Person oder Firma wählen (Suche, letzte Auswahl bleibt), darunter genau diese Ansicht.
 - **„Protokoll starten“** öffnet das **heutige Protokoll** mit dieser Person/Firma oder legt es an (Teilnehmer, Firma, Datum). Im Protokoll stehen die **offenen Punkte als Liste mit „Schritt notieren…“** – was vereinbart wird, landet direkt als Schritt in der Aufgabe; der Text bleibt für freie Notizen (keine kopierte Agenda mehr).
-- **„Agenda kopieren“** in die Zwischenablage (mit aktuellen Meilensteinen und offenen Schritten); für die Anbieter-Firma selbst der Jour-fixe-Text.
+- **„Agenda kopieren“** in die Zwischenablage (mit offenen Schritten); für die Anbieter-Firma selbst der Jour-fixe-Text.
 - **Anbieter-Punkte:** Firma → was sie betrifft (inkl. „Alle Firmen“); Anbieter-Firma und ihre Leute → alle offenen; Person einer Gesellschaft → wo sie Ansprechpartner ist oder ihre Firma ausdrücklich genannt ist. Bei Personen stehen sie im Reiter „Offen“.
 - **„Aufgabe anlegen“ / „+ Neu“ in einer Personen-Ansicht** belegt diese Person als Verantwortliche vor (ebenso „Aufgabe daraus“ bei genau einem Teilnehmer).
 
@@ -193,7 +193,7 @@ Taste **N** oder „+ Neu“: Typ **Aufgabe · Notiz · Protokoll · Entscheidun
 
 ### 6.12 Suche
 
-**Strg+K** über Aufgaben (inkl. Meilensteine und Schritte), Notizen, Anbieter-Punkte, Links, Personen und Firmen des aktuellen Projekts.
+**Strg+K** über Aufgaben (inkl. Schritte und Meilensteine), Notizen, Anbieter-Punkte, Links, Personen und Firmen des aktuellen Projekts.
 
 ### 6.13 Papierkorb
 
@@ -232,7 +232,7 @@ Seitenleiste als Menü; Heute, Abhaken, Schnellerfassung, Schritte und alle Dial
 - Projekt anlegen mit Kopie; Daten strikt je Projekt getrennt; „Alle Projekte“ auf Heute.
 - Ampel ändert sich nicht per Einzelklick; Gelb/Rot nur mit Begründung; Verlauf mit von/nach.
 - Meilensteine je Firma: Status setzen/ändern ohne Duplikate; überschrittene Ziele markiert; Ampel-Vorschlag passend.
-- Meilensteine & Schritte je Aufgabe; aktueller Meilenstein und nächster Schritt in der Zeile; „Delegiert“ sortiert nach nächstem Termin.
+- Schritte und Meilensteine je Aufgabe unabhängig voneinander (Meilensteine ohne Datum und Schritte); aktueller Meilenstein und nächster Schritt in der Zeile; „Delegiert“ sortiert nach nächstem Termin.
 - Meeting-Briefing zeigt nur die gewählte Person/Firma; Protokoll mit Agenda und Teilnehmer.
 - Erledigte Aufgaben unter Trennlinie nach Datum.
 - Menü per Ziehen sortierbar, ohne versehentlichen Seitenwechsel.
@@ -268,7 +268,8 @@ Seitenleiste als Menü; Heute, Abhaken, Schnellerfassung, Schritte und alle Dial
 | Mehrere Firmen | Kein „x/y Firmen“-Zähler mehr; Fortschritt nur über Nächste Schritte |
 | Nächste Schritte | Checkliste wird zu „Nächste Schritte“ mit optional Person und Datum (Unteraufgabe ohne eigenes Objekt); fällige Schritte auf Heute und im Meeting; Abhaken schreibt in den Verlauf; Verlauf-Datum änderbar |
 | Firmenauswahl | Ein Mehrfach-Dropdown statt Firma + „Mehrere Firmen“ |
-| Meilensteine statt Verlauf | Verlauf entfällt (doppelte Einträge, wenig Nutzen); stattdessen **Meilensteine & Schritte** je Aufgabe; Listen zeigen aktuellen Meilenstein; Meeting legt Schritte an; Delegiert nach nächstem Termin |
+| Meilensteine statt Verlauf | Verlauf entfällt (doppelte Einträge, wenig Nutzen); stattdessen **Schritte & Meilensteine** je Aufgabe; Listen zeigen aktuellen Meilenstein; Meeting legt Schritte an; Delegiert nach nächstem Termin |
+| Meilensteine einfach | Meilensteine ohne Datum und ohne eigene Schritte – nur Orientierung; Schritte und Meilensteine sind zwei unabhängige Listen mit gleicher Eingabe |
 | Review mit Subagenten (16.10.2026) | 10 Fehler behoben (u. a. ein Termin überall, Delegiert inkl. Schritt-Personen, Gruppen je Person, Vorbelegung der Person, Speichern bei Esc, gleichzeitige Änderungen, Datum um Mitternacht, Ampel „seit“, Agenda-Anbieterpunkte, Verlauf löschen mit Rückgängig); Vereinfachungen: Blockiert-Schalter statt Status-Chip, schlanke Filterleiste, Schritte vor Verlauf, automatische Statuszeilen, Protokoll mit Live-Liste, Meilensteine ausgeblendet bei Reporting-Link, schlichter Projekt-Umschalter, Firmen per Eingabezeile, Links im Text statt Anhänge, toter Code entfernt; Ergänzungen: Schritt bearbeiten, Protokoll wiederverwenden, Suche über Verlauf und Firmen, Jour-fixe als Agenda der Anbieter-Firma |
 | Fortschritt | Menüpunkt „Fortschritt“ entfällt; stattdessen Link „Reporting“ zum Tacto Reporting (Projekteinstellung `report_url`) |
 | Kontakte-Übersicht | Firmen und Personen getrennt (Firmen oben, Personen darunter), einheitliche Karten mit Fußzeile auf gleicher Höhe, klare Zahlen statt „0 offen“ |

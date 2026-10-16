@@ -2,7 +2,7 @@
 // Detailansicht, Meeting-Seite, Agenda und Protokoll nutzen alle buildBriefing.
 import type { Company, Db, Id, IsoDate, Link, Note, Person, Task, VendorItem } from "../data/types";
 import { formatDate, localDate } from "./dates";
-import { compareTasks, groupSteps, hasStepFor, isActive, stepPersons } from "./tasks";
+import { compareTasks, hasStepFor, isActive, isStep, stepPersons } from "./tasks";
 import { affectsCompany, isOpenItem, statusDef } from "./vendor";
 
 export type MeetingTarget = { kind: "person"; id: Id } | { kind: "company"; id: Id };
@@ -117,19 +117,12 @@ export function agendaText(b: Briefing, personName: (id: Id) => string, vendorNa
         .map(personName)
         .join(", "),
     ].filter(Boolean);
-    // Offene Schritte je Gruppe; nicht erreichte Meilensteine als Überschrift davor
-    const stepLine = (i: number) => {
-      const c = t.checklist[i];
-      const info = [stepPersons(c).map(personName).join(", "), c.due ? `bis ${formatDate(c.due)}` : ""].filter(Boolean);
-      return `\n  - [ ] ${c.text.replace(/\n/g, "\n      ")}${info.length ? ` (${info.join(", ")})` : ""}`;
-    };
-    const steps = groupSteps(t.checklist)
-      .map((g) => {
-        const ms = g.milestone !== null ? t.checklist[g.milestone] : undefined;
-        if (ms?.done) return "";
-        const open = g.steps.filter((i) => !t.checklist[i].done).map(stepLine).join("");
-        const head = ms ? `\n  ◆ ${ms.text}${ms.due ? ` (bis ${formatDate(ms.due)})` : ""}` : "";
-        return head + open;
+    // offene Schritte (Meilensteine sind nur zur Orientierung)
+    const steps = t.checklist
+      .filter((c) => isStep(c) && !c.done)
+      .map((c) => {
+        const info = [stepPersons(c).map(personName).join(", "), c.due ? `bis ${formatDate(c.due)}` : ""].filter(Boolean);
+        return `\n  - [ ] ${c.text.replace(/\n/g, "\n      ")}${info.length ? ` (${info.join(", ")})` : ""}`;
       })
       .join("");
     return `- [ ] ${t.title}${extra.length ? ` (${extra.join(", ")})` : ""}${steps}`;
