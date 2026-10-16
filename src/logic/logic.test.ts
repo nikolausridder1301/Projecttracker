@@ -385,11 +385,17 @@ describe("briefing", () => {
     expect(b.myTasks.map((t) => t.title)).toEqual(["Meins HAZ"]);
     expect(b.otherTasks.map((t) => t.title)).toEqual(["Max bei HAZ"]);
   });
-  it("ohne früheres Treffen: erledigt der letzten 14 Tage", () => {
-    const { db, anna } = setup();
-    const b = buildBriefing(db, { kind: "person", id: anna.id }, today);
+  it("ohne früheres Treffen: erledigt der letzten 14 Tage (Firma)", () => {
+    const { db, haz } = setup();
+    const b = buildBriefing(db, { kind: "company", id: haz.id }, today);
     expect(b.doneSinceDate).toBe("2026-10-01");
     expect(b.doneSince.map((t) => t.title)).toEqual(["Erledigt neu"]);
+    expect(b.doneTasks.map((t) => t.title)).toEqual(["Erledigt neu", "Erledigt alt"]);
+  });
+  it("Person: Erledigte nur ihre eigenen, Kontakte nur bei Firmen", () => {
+    const { db, anna, haz } = setup();
+    expect(buildBriefing(db, { kind: "person", id: anna.id }, today).doneTasks).toEqual([]);
+    expect(buildBriefing(db, { kind: "company", id: haz.id }, today).contacts.map((p) => p.name)).toEqual(["Anna Beispiel"]);
   });
   it("Firma: alle Delegierten unter „weitere“", () => {
     const { db, haz } = setup();

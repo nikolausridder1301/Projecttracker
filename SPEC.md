@@ -116,7 +116,7 @@ Die Spalten `topic_id` an Aufgaben, Notizen, Links und Anbieter-Punkten bestehen
 ### 6.2 Navigation
 
 Seitenleiste (Reihenfolge per **Drag-and-Drop** änderbar, gilt für alle Projekte und Geräte; zurücksetzbar in den Einstellungen):
-**Heute · Fortschritt · Aufgaben · Delegiert · Meeting · Notizen · {Anbieter, z. B. Tacto} · Links · Personen · Firmen** – unten Papierkorb, Einstellungen, Abmelden.
+**Heute · Fortschritt · Aufgaben · Delegiert · Meeting · Notizen · {Anbieter, z. B. Tacto} · Links · Firmen & Personen** – unten Papierkorb, Einstellungen, Abmelden.
 Kopfzeile: globale Suche (Strg+K), Backup-Icon, „+ Neu“ (Taste N). **Alles Neue entsteht nur über „+ Neu“** – Seiten haben keine eigenen Neu-Buttons.
 
 ### 6.3 Heute
@@ -155,13 +155,14 @@ Kopfzeile: globale Suche (Strg+K), Backup-Icon, „+ Neu“ (Taste N). **Alles N
 - Menüpunkt **„Delegiert“** (früher „Wartet auf…“): offene Delegationen nach Person, **am längsten ohne Update zuerst**; rechts „seit 23 T. kein Update“ (rot ab 14 Tagen), ohne Update zählt das Anlagedatum. Ersetzt die Erinnerung, ohne Datumspflege.
 - Delegieren bleibt einfach der Chip **„Verantwortlich“** – Mehrfachauswahl wie bei Firmen: „Ich“ oder eine bzw. mehrere Personen (eine Aufgabe, mehrere Verantwortliche). Eine Aufgabe mit mehreren Personen steht unter „Delegiert“ bei jeder von ihnen und im Meeting-Briefing jeder Person.
 
-### 6.7 Meeting-Vorbereitung
+### 6.7 Meeting und Firmen & Personen – eine Ansicht
 
-- Person oder ganze Firma wählen (Suche; letzte Auswahl bleibt), auch per „Meeting vorbereiten“ auf Personen-/Firmenseiten.
-- **Briefing:** **Offen bei der Person**, **meine offenen Punkte**, **weitere Offene der Firma**, rechts **Anbieter-Punkte** der Firma und **letzte Notizen** – Blockiertes zuerst. Leere Bereiche entfallen; ohne rechte Inhalte nutzt die Liste die volle Breite. Kein Kopfbereich und kein „Erledigt“-Rückblick (kein Mehrwert).
-- Unter jeder offenen Aufgabe ein dezentes Feld **„Update notieren…“** – was im Gespräch besprochen wird, landet direkt im Verlauf.
-- **Nichts offen:** schlichte Karte „Mit … ist gerade nichts offen“ mit Button **„Aufgabe anlegen“** (Firma vorbelegt).
-- **„Protokoll starten“** legt ein Meeting-Protokoll mit Teilnehmer, Firma, Datum und Agenda-Checkliste (inkl. letztem Stand je Aufgabe) an; **„Agenda kopieren“** in die Zwischenablage.
+- **Eine Detailansicht für Firmen und Personen**, auch auf der Meeting-Seite. Dahinter steht **eine gemeinsame Logik „was gehört zu X“** (`buildBriefing`); Detailansicht, Agenda und Protokoll nutzen sie alle.
+  - **Kopf:** Logo bzw. Initialen, Name; bei Firmen Ampel mit „Ampel ändern“ und darunter ihre Personen (mit „+ Person“); bei Personen Firma, Rolle, E-Mail, Telefon und „Bearbeiten“ (Name, Firma, Rolle, Kontakt, aktiv, löschen). Rechts **„Agenda kopieren“** und **„Protokoll starten“**.
+  - **Reiter:** **Offen · Notizen · Links**, bei Firmen zusätzlich **Meilensteine · {Anbieter} · Ampel-Verlauf**.
+  - **Offen:** bei Personen „Offen bei …“ (verantwortlich oder offener Schritt), dazu meine und weitere offene Punkte ihrer Firma; bei Firmen alles, was die Firma betrifft. Blockiertes zuerst, unter jeder Aufgabe ein dezentes **„Update notieren…“**. Nichts offen: Karte mit „Aufgabe anlegen“. Erledigte auf Wunsch („x erledigte anzeigen“).
+- **Meeting** bleibt im Menü für den schnellen Zugriff: oben Person oder Firma wählen (Suche, letzte Auswahl bleibt), darunter genau diese Ansicht.
+- **„Protokoll starten“** legt ein Meeting-Protokoll mit Teilnehmer, Firma, Datum und Agenda-Checkliste (inkl. letztem Stand und offenen Schritten) an und öffnet es; **„Agenda kopieren“** in die Zwischenablage.
 
 ### 6.8 Notizen
 
@@ -179,8 +180,7 @@ Arten **Notiz · Meeting-Protokoll · Entscheidung** (Entscheidungen bewusst get
 ### 6.10 Firmen, Ampel, Personen, Links
 
 - **Ampel ändern nur im Dialog:** Grün/Gelb/Rot, **Begründung Pflicht bei Gelb und Rot**, jede Änderung im **Ampel-Verlauf**. Der Dialog zeigt einen **Vorschlag aus den Meilensteinen** (verzögert/überfällig → Rot, kritisch → Gelb) mit „Übernehmen“ – die Entscheidung bleibt manuell.
-- **Firmenseite:** Logo, Ampel, Ansprechpartner, „Meeting vorbereiten“; Reiter Meilensteine · Aufgaben · Notizen · Links · Anbieter · Ampel-Verlauf.
-- **Personen:** Liste und Detail (delegierte Aufgaben, Teilnahmen), „Meeting vorbereiten“.
+- **Firmen & Personen** (ein Menüpunkt statt zwei): Firmen-Karten mit Logo, Ampel und offenen Aufgaben, darunter **die Personen der Firma** (mit Zahl offener Punkte) und **„+ Person“** zum direkten Anlegen. Personen ohne Firma in einer eigenen Karte; Suche nach Firma oder Person; „Inaktive zeigen“. Klick auf Firma oder Person öffnet die gemeinsame Detailansicht (6.7).
 - **Links:** zentrale Sammlung mit Firma und Kategorie, URL-Prüfung (nur `http(s)`).
 
 ### 6.11 Schnellerfassung
@@ -264,6 +264,7 @@ Seitenleiste als Menü; Heute, Abhaken, Schnellerfassung, Updates und alle Dialo
 | Mehrere Firmen | Kein „x/y Firmen“-Zähler mehr; Fortschritt nur über Nächste Schritte |
 | Nächste Schritte | Checkliste wird zu „Nächste Schritte“ mit optional Person und Datum (Unteraufgabe ohne eigenes Objekt); fällige Schritte auf Heute und im Meeting; Abhaken schreibt in den Verlauf; Verlauf-Datum änderbar |
 | Firmenauswahl | Ein Mehrfach-Dropdown statt Firma + „Mehrere Firmen“ |
+| Firmen & Personen | Ein Bereich statt zwei Seiten; gemeinsame Detailansicht und Logik für Firma, Person und Meeting; Meeting bleibt als Menüpunkt für den schnellen Zugriff |
 | Mehrfachauswahl überall | Firmen und Personen überall Mehrfachauswahl in derselben Liste; mehrere Firmen = eine Aufgabe (keine Kopien mehr); auch Notizen, Links, Teilnehmer, Schritte, Tacto-Ansprechpartner |
 | Verantwortlich | Mehrfachauswahl: mehrere Personen je Aufgabe (eine Aufgabe, keine Kopien); „Ich“ = niemand sonst |
 | Filterleisten | Firmenfilter als Mehrfach-Dropdown auf Aufgaben, Notizen, Links, Tacto; keine Browser-Auswahlfelder mehr in Filtern |

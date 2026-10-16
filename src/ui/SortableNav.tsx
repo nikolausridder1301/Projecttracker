@@ -21,7 +21,6 @@ import {
   NotebookPen,
   Sparkles,
   Sun,
-  Users,
   type LucideIcon,
 } from "lucide-react";
 import { useRef } from "react";
@@ -53,8 +52,8 @@ function allNavItems(vendorName: string | null): NavItem[] {
     { key: "notes", to: "/notizen", label: "Notizen", icon: NotebookPen },
     { key: "vendor", to: "/anbieter", label: vendorName ?? "Anbieter", icon: Sparkles },
     { key: "links", to: "/links", label: "Links", icon: Link2 },
-    { key: "people", to: "/personen", label: "Personen", icon: Users },
-    { key: "companies", to: "/firmen", label: "Firmen", icon: Building2 },
+    // Firmen und Personen in einem Bereich (früher zwei Menüpunkte)
+    { key: "companies", to: "/firmen", label: "Firmen & Personen", icon: Building2 },
   ];
 }
 

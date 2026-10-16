@@ -1,5 +1,6 @@
-// Meeting-Briefing: alles Relevante für ein Gespräch mit einer Person bzw. Firma.
-import type { Company, Db, Id, IsoDate, Note, Person, Task, TaskFollowup, VendorItem } from "../data/types";
+// „Was gehört zu X?“ – eine Logik für Firmen, Personen und Meetings:
+// Detailansicht, Meeting-Seite, Agenda und Protokoll nutzen alle buildBriefing.
+import type { Company, Db, Id, IsoDate, Link, Note, Person, Task, TaskFollowup, VendorItem } from "../data/types";
 import { addDays, formatDate } from "./dates";
 import { compareTasks, hasStepFor, isActive, latestUpdates, standText, stepPersons } from "./tasks";
 import { affectsCompany, isOpenItem, statusDef } from "./vendor";
@@ -19,7 +20,13 @@ export interface Briefing {
   /** seit dem letzten Treffen (bzw. 14 Tagen) erledigt */
   doneSince: Task[];
   doneSinceDate: IsoDate;
+  /** alle erledigten Aufgaben zu X, neueste zuerst */
+  doneTasks: Task[];
+  /** Notizen, Protokolle, Entscheidungen zu X, neueste zuerst */
   notes: Note[];
+  links: Link[];
+  /** Personen der Firma (bei Firmen) */
+  contacts: Person[];
   lastMeeting?: Note;
   topics: { id: Id; name: string; count: number }[];
   /** letzter Stand je Aufgabe (Verlauf) */
@@ -59,7 +66,12 @@ export function buildBriefing(db: Db, target: MeetingTarget, today: IsoDate, top
   const lastMeeting = meetings.find((n) => noteDate(n) <= today);
   const doneSinceDate = lastMeeting ? noteDate(lastMeeting) : addDays(today, -14);
 
-  const relevant = (t: Task) => (person && t.assignee_person_ids.includes(person.id)) || (companyId !== null && t.company_ids.includes(companyId));
+  // Person: verantwortlich oder mit Schritt; Firma: betroffen
+  const relevant = (t: Task) =>
+    person
+      ? t.assignee_person_ids.includes(person.id) || t.checklist.some((c) => stepPersons(c).includes(person.id))
+      : companyId !== null && t.company_ids.includes(companyId);
+  const doneTasks = tasks.filter((t) => t.status === "done" && relevant(t)).sort((a, b) => ((a.done_at ?? "") < (b.done_at ?? "") ? 1 : -1));
   const doneSince = tasks
     .filter((t) => t.status === "done" && relevant(t) && (t.done_at ?? t.updated_at).slice(0, 10) >= doneSinceDate)
     .sort((a, b) => ((a.done_at ?? "") < (b.done_at ?? "") ? 1 : -1));
@@ -87,7 +99,10 @@ export function buildBriefing(db: Db, target: MeetingTarget, today: IsoDate, top
     vendorItems: vendorItems.filter(topicOk),
     doneSince: doneSince.filter(topicOk),
     doneSinceDate,
-    notes: notes.filter(topicOk).slice(0, 6),
+    doneTasks: doneTasks.filter(topicOk),
+    notes: notes.filter(topicOk),
+    links: companyId !== null ? db.links.filter((l) => isActive(l) && l.company_ids.includes(companyId)).sort((a, b) => a.title.localeCompare(b.title, "de")) : [],
+    contacts: target.kind === "company" ? db.people.filter((p) => isActive(p) && p.company_id === companyId).sort((a, b) => a.name.localeCompare(b.name, "de")) : [],
     lastMeeting,
     topics,
     lastUpdate: latestUpdates(db.task_followups),
