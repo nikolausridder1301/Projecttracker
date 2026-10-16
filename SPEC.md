@@ -116,7 +116,7 @@ Die Spalten `topic_id` an Aufgaben, Notizen, Links und Anbieter-Punkten bestehen
 ### 6.2 Navigation
 
 Seitenleiste (Reihenfolge per **Drag-and-Drop** änderbar, gilt für alle Projekte und Geräte; zurücksetzbar in den Einstellungen):
-**Heute · Fortschritt · Aufgaben · Delegiert · Meeting · Notizen · {Anbieter, z. B. Tacto} · Links · Firmen & Personen** – unten Papierkorb, Einstellungen, Abmelden.
+**Heute · Fortschritt · Aufgaben · Delegiert · Meeting · Notizen · {Anbieter, z. B. Tacto} · Links · Kontakte** (Firmen & Personen) – unten Papierkorb, Einstellungen, Abmelden.
 Kopfzeile: globale Suche (Strg+K), Backup-Icon, „+ Neu“ (Taste N). **Alles Neue entsteht nur über „+ Neu“** – Seiten haben keine eigenen Neu-Buttons.
 
 ### 6.3 Heute
@@ -155,7 +155,7 @@ Kopfzeile: globale Suche (Strg+K), Backup-Icon, „+ Neu“ (Taste N). **Alles N
 - Menüpunkt **„Delegiert“** (früher „Wartet auf…“): offene Delegationen nach Person, **am längsten ohne Update zuerst**; rechts „seit 23 T. kein Update“ (rot ab 14 Tagen), ohne Update zählt das Anlagedatum. Ersetzt die Erinnerung, ohne Datumspflege.
 - Delegieren bleibt einfach der Chip **„Verantwortlich“** – Mehrfachauswahl wie bei Firmen: „Ich“ oder eine bzw. mehrere Personen (eine Aufgabe, mehrere Verantwortliche). Eine Aufgabe mit mehreren Personen steht unter „Delegiert“ bei jeder von ihnen und im Meeting-Briefing jeder Person.
 
-### 6.7 Meeting und Firmen & Personen – eine Ansicht
+### 6.7 Meeting und Kontakte – eine Ansicht
 
 - **Eine Detailansicht für Firmen und Personen**, auch auf der Meeting-Seite. Dahinter steht **eine gemeinsame Logik „was gehört zu X“** (`buildBriefing`); Detailansicht, Agenda und Protokoll nutzen sie alle.
   - **Kopf:** Logo bzw. Initialen, Name; bei Firmen Ampel mit „Ampel ändern“ und darunter ihre Personen (mit „+ Person“); bei Personen Firma, Rolle, E-Mail, Telefon und „Bearbeiten“ (Name, Firma, Rolle, Kontakt, aktiv, löschen). Rechts **„Agenda kopieren“** und **„Protokoll starten“**.
@@ -180,7 +180,7 @@ Arten **Notiz · Meeting-Protokoll · Entscheidung** (Entscheidungen bewusst get
 ### 6.10 Firmen, Ampel, Personen, Links
 
 - **Ampel ändern nur im Dialog:** Grün/Gelb/Rot, **Begründung Pflicht bei Gelb und Rot**, jede Änderung im **Ampel-Verlauf**. Der Dialog zeigt einen **Vorschlag aus den Meilensteinen** (verzögert/überfällig → Rot, kritisch → Gelb) mit „Übernehmen“ – die Entscheidung bleibt manuell.
-- **Firmen & Personen** (ein Menüpunkt statt zwei): Firmen-Karten mit Logo, Ampel und offenen Aufgaben, darunter **die Personen der Firma** (mit Zahl offener Punkte) und **„+ Person“** zum direkten Anlegen. Personen ohne Firma in einer eigenen Karte; Suche nach Firma oder Person; „Inaktive zeigen“. Klick auf Firma oder Person öffnet die gemeinsame Detailansicht (6.7).
+- **Kontakte** (Firmen & Personen, ein Menüpunkt statt zwei): Firmen-Karten mit Logo, Ampel und offenen Aufgaben, darunter **die Personen der Firma** (mit Zahl offener Punkte) und **„+ Person“** zum direkten Anlegen. Personen ohne Firma in einer eigenen Karte; Suche nach Firma oder Person; „Inaktive zeigen“. Klick auf Firma oder Person öffnet die gemeinsame Detailansicht (6.7).
 - **Links:** zentrale Sammlung mit Firma und Kategorie, URL-Prüfung (nur `http(s)`).
 
 ### 6.11 Schnellerfassung
@@ -264,7 +264,7 @@ Seitenleiste als Menü; Heute, Abhaken, Schnellerfassung, Updates und alle Dialo
 | Mehrere Firmen | Kein „x/y Firmen“-Zähler mehr; Fortschritt nur über Nächste Schritte |
 | Nächste Schritte | Checkliste wird zu „Nächste Schritte“ mit optional Person und Datum (Unteraufgabe ohne eigenes Objekt); fällige Schritte auf Heute und im Meeting; Abhaken schreibt in den Verlauf; Verlauf-Datum änderbar |
 | Firmenauswahl | Ein Mehrfach-Dropdown statt Firma + „Mehrere Firmen“ |
-| Firmen & Personen | Ein Bereich statt zwei Seiten; gemeinsame Detailansicht und Logik für Firma, Person und Meeting; Meeting bleibt als Menüpunkt für den schnellen Zugriff |
+| Kontakte | Menüpunkt „Kontakte“ (kurz, passt in eine Zeile) für Firmen & Personen; ein Bereich statt zwei Seiten; gemeinsame Detailansicht und Logik für Firma, Person und Meeting; Meeting bleibt als Menüpunkt für den schnellen Zugriff |
 | Mehrfachauswahl überall | Firmen und Personen überall Mehrfachauswahl in derselben Liste; mehrere Firmen = eine Aufgabe (keine Kopien mehr); auch Notizen, Links, Teilnehmer, Schritte, Tacto-Ansprechpartner |
 | Verantwortlich | Mehrfachauswahl: mehrere Personen je Aufgabe (eine Aufgabe, keine Kopien); „Ich“ = niemand sonst |
 | Filterleisten | Firmenfilter als Mehrfach-Dropdown auf Aufgaben, Notizen, Links, Tacto; keine Browser-Auswahlfelder mehr in Filtern |

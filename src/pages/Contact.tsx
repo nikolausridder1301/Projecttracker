@@ -43,7 +43,7 @@ function DetailPage({ target }: { target: MeetingTarget }) {
     <div className="page">
       <div className="page-head">
         <Link to="/firmen" className="back-link">
-          <ArrowLeft size={16} /> Firmen &amp; Personen
+          <ArrowLeft size={16} /> Kontakte
         </Link>
       </div>
       <ContactView target={target} />

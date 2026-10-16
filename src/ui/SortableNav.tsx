@@ -53,7 +53,7 @@ function allNavItems(vendorName: string | null): NavItem[] {
     { key: "vendor", to: "/anbieter", label: vendorName ?? "Anbieter", icon: Sparkles },
     { key: "links", to: "/links", label: "Links", icon: Link2 },
     // Firmen und Personen in einem Bereich (früher zwei Menüpunkte)
-    { key: "companies", to: "/firmen", label: "Firmen & Personen", icon: Building2 },
+    { key: "companies", to: "/firmen", label: "Kontakte", icon: Building2 },
   ];
 }
 
