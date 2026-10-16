@@ -1,7 +1,7 @@
-import { CalendarDays, CheckSquare, ExternalLink, Gavel, NotebookPen, Trash2, Users, X, type LucideIcon } from "lucide-react";
+import { CalendarDays, ExternalLink, Gavel, ListPlus, NotebookPen, Trash2, Users, X, type LucideIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useStore } from "../data/store";
+import { useLookups, useStore } from "../data/store";
 import { NOTE_KIND_LABEL, type Id, type Note, type NoteKind } from "../data/types";
 import { buildBriefing, type MeetingTarget } from "../logic/briefing";
 import { formatDate, todayIso } from "../logic/dates";
@@ -151,10 +151,10 @@ function NoteEditor({
 }) {
   const { db, update, trash, purge } = useStore();
   const { openCapture } = useUi();
+  const { me } = useLookups();
   const [title, setTitle] = useState(note.title);
   const [body, setBody] = useState(note.body);
   const [participantsText, setParticipantsText] = useState(note.participants_text);
-  const textRef = useRef<HTMLTextAreaElement>(null);
   const titleRef = useRef<HTMLTextAreaElement>(null);
   const fresh = freshNotes.has(note.id);
 
@@ -193,17 +193,16 @@ function NoteEditor({
     if (Object.keys(patch).length > 0) save(patch);
   };
 
-  const taskFromSelection = () => {
-    const el = textRef.current;
-    const sel = el ? el.value.slice(el.selectionStart, el.selectionEnd).trim() : "";
+  // Neue Aufgabe zu diesem Eintrag: Firma und (einzige) andere Person vorbelegt
+  const others = note.participant_ids.filter((id) => id !== me?.id);
+  const addTask = () =>
     openCapture({
       type: "task",
-      title: sel.replace(/^[-*]\s*(\[ \]\s*)?/, "").split("\n")[0],
+      title: "",
       companyIds: note.company_ids,
-      assigneeIds: note.participant_ids.length === 1 ? note.participant_ids : undefined,
+      assigneeIds: others.length === 1 ? others : undefined,
       sourceNoteId: note.id,
     });
-  };
 
   return (
     <div className="editor">
@@ -259,21 +258,14 @@ function NoteEditor({
             placeholder="Datum"
             format={formatDate}
           />
-          <button className="chip" onClick={taskFromSelection} title="Markierten Text als Aufgabe übernehmen" onMouseDown={(e) => e.preventDefault()}>
-            <CheckSquare size={14} />
-            <span className="chip-text">Aufgabe daraus</span>
-          </button>
         </div>
 
-        {note.kind === "meeting" && <ProtocolOpenItems note={note} />}
-
         <AutoText
-          textRef={textRef}
           value={body}
           onChange={setBody}
           onBlur={() => body !== note.body && save({ body })}
           minRows={10}
-          placeholder={"Schreiben…\n\nTipp: Zeile markieren und „Aufgabe daraus“ klicken."}
+          placeholder="Schreiben…"
         />
 
         {note.kind === "meeting" && (
@@ -286,9 +278,20 @@ function NoteEditor({
           />
         )}
 
-        <Disclosure title="Aufgaben" meta={derived.length > 0 ? derived.length : undefined} defaultOpen={derived.length > 0}>
-          <TaskList tasks={derived} empty="Noch keine. Text markieren und „Aufgabe daraus“ klicken." />
-        </Disclosure>
+        {/* Im Protokoll stehen die Aufgaben schon unter „Offene Punkte“; bei Notizen nur die daraus entstandenen */}
+        {note.kind === "meeting" ? (
+          <ProtocolOpenItems note={note} />
+        ) : (
+          derived.length > 0 && (
+            <Disclosure title="Aufgaben" meta={derived.length} defaultOpen>
+              <TaskList tasks={derived} />
+            </Disclosure>
+          )
+        )}
+
+        <button type="button" className="link-btn plan-add" onClick={addTask}>
+          <ListPlus size={14} /> Aufgabe hinzufügen
+        </button>
 
         {/* Adressen im Text werden automatisch zu klickbaren Links – kein eigenes Anhängen nötig */}
         {urlsIn(body).length > 0 && (
@@ -323,11 +326,14 @@ function urlsIn(text: string): string[] {
  */
 function ProtocolOpenItems({ note }: { note: Note }) {
   const { db } = useStore();
+  const { me } = useLookups();
   const vendor = useVendor();
   const today = todayIso();
+  // Gegenüber: die einzige andere Person; sonst die Firma des Protokolls
+  const others = note.participant_ids.filter((id) => id !== me?.id);
   const target: MeetingTarget | null =
-    note.participant_ids.length === 1
-      ? { kind: "person", id: note.participant_ids[0] }
+    others.length === 1
+      ? { kind: "person", id: others[0] }
       : note.company_ids[0]
         ? { kind: "company", id: note.company_ids[0] }
         : null;

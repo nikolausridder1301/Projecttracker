@@ -5,7 +5,7 @@ import { useLookups, useStore } from "../data/store";
 import { NOTE_KIND_LABEL, type Id, type Person, type Task } from "../data/types";
 import { agendaText, buildBriefing, sectionTitles, type Briefing, type MeetingTarget } from "../logic/briefing";
 import { formatDate, todayIso } from "../logic/dates";
-import { isOpen, personRefs, stepPersons } from "../logic/tasks";
+import { isMine, isOpen, personRefs, stepPersons } from "../logic/tasks";
 import { ageLabel, categoryDef, jourFixeText, statusDef } from "../logic/vendor";
 import { Avatar, CompanyBadge, CompanyLogo, CompanySelect, Empty } from "../ui/common";
 import { LinkRow } from "../ui/links";
@@ -52,7 +52,7 @@ function DetailPage({ target }: { target: MeetingTarget }) {
 
 export function ContactView({ target }: { target: MeetingTarget }) {
   const { db, insert, toast, project } = useStore();
-  const { companies, people, personById } = useLookups();
+  const { companies, people, personById, me } = useLookups();
   const { openNote } = useUi();
   const vendor = useVendor();
   const today = todayIso();
@@ -98,7 +98,8 @@ export function ContactView({ target }: { target: MeetingTarget }) {
           company_ids: [companyId],
           topic_id: null,
           meeting_date: today,
-          participant_ids: b.person ? [b.person.id] : [],
+          // ich bin immer dabei
+          participant_ids: [...new Set([me?.id, b.person?.id].filter((x): x is Id => !!x))],
           participants_text: "",
         },
       ]);
@@ -400,14 +401,15 @@ function PersonHead({ person }: { person: Person }) {
 /** Personen einer Firma als kleine Einträge; „+ Person“ legt direkt hier an. */
 export function CompanyPeople({ companyId, people, compact = false }: { companyId: Id | null; people: Person[]; compact?: boolean }) {
   const { db, insert } = useStore();
+  const { me } = useLookups();
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState("");
-  const open = useMemo(() => openPerPerson(db.tasks), [db.tasks]);
+  const open = useMemo(() => openPerPerson(db.tasks, me?.id), [db.tasks, me?.id]);
 
   const add = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    await insert("people", [{ name: name.trim(), company_id: companyId, role: "", email: "", phone: "", active: true }]).catch(() => {});
+    await insert("people", [{ name: name.trim(), company_id: companyId, role: "", email: "", phone: "", active: true, is_me: false }]).catch(() => {});
     setName("");
   };
 
@@ -442,11 +444,12 @@ export function CompanyPeople({ companyId, people, compact = false }: { companyI
 }
 
 /** Offene Aufgaben je Person (verantwortlich oder mit offenem Schritt). */
-export function openPerPerson(tasks: Task[]): Map<Id, number> {
+export function openPerPerson(tasks: Task[], meId?: Id): Map<Id, number> {
   const m = new Map<Id, number>();
   for (const t of tasks) {
     if (t.deleted_at !== null || !isOpen(t)) continue;
     const ids = new Set([...t.assignee_person_ids, ...t.checklist.filter((c) => !c.done).flatMap(stepPersons)]);
+    if (meId && isMine(t)) ids.add(meId);
     for (const id of ids) m.set(id, (m.get(id) ?? 0) + 1);
   }
   return m;

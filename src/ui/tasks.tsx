@@ -153,24 +153,26 @@ export interface Assignees {
 const ME = "__me__";
 
 export function AssigneeChip({ value, onChange }: { value: Assignees; onChange: (v: Assignees) => void }) {
-  const { people, personById, companyById } = useLookups();
-  const me = value.ids.length === 0 || value.me;
+  const { people, me, personById, companyById } = useLookups();
+  const meName = me?.name ?? "Ich";
+  const isMe = value.ids.length === 0 || value.me;
   const names = value.ids.map((id) => personById.get(id)?.name ?? "?");
-  const parts = [...(me ? ["Ich"] : []), ...names];
+  const parts = [...(isMe ? [meName] : []), ...names];
   const label = parts.length === 1 ? parts[0] : parts.length === 2 ? parts.map((n) => n.split(" ")[0]).join(", ") : `${parts.length} Personen`;
-  const list = people.filter((p) => p.active || value.ids.includes(p.id));
+  const list = people.filter((p) => p.id !== me?.id && (p.active || value.ids.includes(p.id)));
+  const meCompany = me?.company_id ? companyById.get(me.company_id)?.short : undefined;
   return (
     <ChipMulti
       title={`Verantwortlich – ${parts.join(", ")}`}
       label={label}
       options={[
-        { value: ME, label: "Ich" },
+        { value: ME, label: `${meName}${meCompany ? ` · ${meCompany}` : ""}` },
         ...list.map((p) => ({ value: p.id, label: `${p.name}${p.company_id ? ` · ${companyById.get(p.company_id)?.short ?? ""}` : ""}` })),
       ]}
-      selected={[...(me ? [ME] : []), ...value.ids]}
+      selected={[...(isMe ? [ME] : []), ...value.ids]}
       onChange={(sel) => {
         const ids = sel.filter((x) => x !== ME);
-        // Ohne Person bin immer ich verantwortlich
+        // Ohne weitere Person bin immer ich verantwortlich
         onChange({ ids, me: ids.length === 0 ? true : sel.includes(ME) });
       }}
     />

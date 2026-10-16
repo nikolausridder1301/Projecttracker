@@ -128,7 +128,7 @@ export function TaskSections({ tasks, groupBy, showCompany = true }: { tasks: Ta
 }
 
 export function GroupedTasks({ tasks, groupBy, showCompany = true }: { tasks: Task[]; groupBy: TaskFilter["groupBy"]; showCompany?: boolean }) {
-  const { companyById, personById, companies } = useLookups();
+  const { companyById, personById, companies, me } = useLookups();
   if (!groupBy) {
     return (
       <div className="card">
@@ -139,11 +139,12 @@ export function GroupedTasks({ tasks, groupBy, showCompany = true }: { tasks: Ta
   // Eine Aufgabe steht in jeder ihrer Gruppen: bei jeder Firma bzw. jeder Person
   // (verantwortlich oder im offenen Schritt); ohne Firma/Person in einer eigenen Gruppe.
   const keysOf = (t: Task): string[] => {
-    const keys = groupBy === "company" ? t.company_ids : personsOf(t);
+    // die eigene Person steht in der Gruppe „ich“ (leerer Schlüssel)
+    const keys = groupBy === "company" ? t.company_ids : [...new Set(personsOf(t).map((id) => (id === me?.id ? "" : id)))];
     return keys.length > 0 ? keys : [""];
   };
   const labelOf = (k: string): string =>
-    groupBy === "company" ? (k ? (companyById.get(k)?.name ?? "?") : "Ohne Firma") : k ? (personById.get(k)?.name ?? "?") : "Ich";
+    groupBy === "company" ? (k ? (companyById.get(k)?.name ?? "?") : "Ohne Firma") : k ? (personById.get(k)?.name ?? "?") : (me?.name ?? "Ich");
   const order = (k: string): number =>
     groupBy === "company" ? (k ? companies.findIndex((c) => c.id === k) : 999) : k ? 1 : 0;
 

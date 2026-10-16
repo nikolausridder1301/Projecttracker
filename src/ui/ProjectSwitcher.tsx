@@ -141,6 +141,11 @@ export function NewProjectDialog({ onClose }: { onClose: () => void }) {
         if (copy.link_categories.length) await insert("link_categories", copy.link_categories);
         if (copy.vendorCompanyId) await update("projects", p.id, { vendor_company_id: copy.vendorCompanyId });
       }
+      // Die eigene Person gehört in jedes Projekt – auch ohne Kopie der Stammdaten
+      const me = allDb.people.find((x) => x.is_me && x.deleted_at === null);
+      if (me && !(source && allDb.people.some((x) => x.project_id === source && x.is_me && x.deleted_at === null && x.active))) {
+        await insert("people", [{ project_id: p.id, name: me.name, company_id: null, role: me.role, email: me.email, phone: me.phone, active: true, is_me: true }]);
+      }
       setProject(p.id);
       toast(`Projekt „${p.name}“ angelegt`);
       onClose();

@@ -55,8 +55,9 @@ export function demoSeed(): Db {
 
   const [sk, haz, alm, , , fest] = companies;
   const people = [
-    { ...base(), name: "Anna Beispiel", company_id: haz.id, role: "Key-User Einkauf", email: "anna@example.com", phone: "", active: true },
-    { ...base(), name: "Max Muster", company_id: fest.id, role: "IT / ERP", email: "max@example.com", phone: "", active: true },
+    { ...base(), name: "Anna Beispiel", company_id: haz.id, role: "Key-User Einkauf", email: "anna@example.com", phone: "", active: true, is_me: false },
+    { ...base(), name: "Max Muster", company_id: fest.id, role: "IT / ERP", email: "max@example.com", phone: "", active: true, is_me: false },
+    { ...base(), name: "Nikolaus Ridder", company_id: sk.id, role: "", email: "", phone: "", active: true, is_me: true },
   ];
 
   const task = (o: Partial<Db["tasks"][number]>) => ({

@@ -99,6 +99,7 @@ function demoBackend(): Backend {
     delete t.assignee_person_id;
     delete t.company_id;
   }
+  for (const p of db.people) p.is_me ??= false;
   for (const r of [...db.notes, ...db.links] as ((Db["notes"][number] | Db["links"][number]) & Legacy)[]) {
     r.company_ids ??= r.company_id ? [r.company_id] : [];
     delete r.company_id;

@@ -53,7 +53,9 @@ export function buildBriefing(db: Db, target: MeetingTarget, today: IsoDate): Br
   const open = tasks.filter((t) => t.status !== "done");
 
   // Bei der Person offen: ihr zugeordnet oder sie hat einen offenen nächsten Schritt
-  const delegatedToPerson = person ? open.filter((t) => t.assignee_person_ids.includes(person.id) || hasStepFor(t, person.id)) : [];
+  // (die eigene Person: alles, wofür ich verantwortlich bin)
+  const assignedTo = (t: Task, p: Person) => (p.is_me ? isMine(t) : t.assignee_person_ids.includes(p.id));
+  const delegatedToPerson = person ? open.filter((t) => assignedTo(t, person) || hasStepFor(t, person.id)) : [];
   const delegatedIds = new Set(delegatedToPerson.map((t) => t.id));
   const myTasks = companyId ? open.filter((t) => t.company_ids.includes(companyId) && isMine(t) && !delegatedIds.has(t.id)) : [];
   const otherTasks = companyId
@@ -75,7 +77,7 @@ export function buildBriefing(db: Db, target: MeetingTarget, today: IsoDate): Br
   // Person: verantwortlich oder mit Schritt; Firma: betroffen
   const relevant = (t: Task) =>
     person
-      ? t.assignee_person_ids.includes(person.id) || t.checklist.some((c) => stepPersons(c).includes(person.id))
+      ? assignedTo(t, person) || t.checklist.some((c) => stepPersons(c).includes(person.id))
       : companyId !== null && t.company_ids.includes(companyId);
   const doneTasks = tasks.filter((t) => t.status === "done" && relevant(t)).sort((a, b) => ((a.done_at ?? "") < (b.done_at ?? "") ? 1 : -1));
 
