@@ -35,10 +35,6 @@ export function copyProjectMasterData(
       logo_key: c.logo_key,
       is_overarching: c.is_overarching,
       is_external: c.is_external,
-      // Ampel startet im neuen Projekt neutral
-      traffic_light: "green" as const,
-      traffic_comment: "",
-      traffic_changed_at: null,
       sort: c.sort,
     };
   });

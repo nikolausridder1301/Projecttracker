@@ -198,9 +198,6 @@ function CompaniesSettings() {
               logo_key: null,
               is_overarching: false,
               is_external: false,
-              traffic_light: "green",
-              traffic_comment: "",
-              traffic_changed_at: null,
               sort: companies.length,
             },
           ]).catch(() => {});
@@ -268,7 +265,7 @@ function TopicsSettings() {
   return (
     <section className="card">
       <h2>Meilensteine</h2>
-      <p className="muted small settings-hint">Meilensteine je Firma (Reiter in der Firmen-Ansicht) – Grundlage für den Ampel-Vorschlag. Ausgeblendet, sobald ein Reporting-Link gesetzt ist.</p>
+      <p className="muted small settings-hint">Meilensteine je Firma (Reiter in der Firmen-Ansicht). Ausgeblendet, sobald ein Reporting-Link gesetzt ist.</p>
       {all.map((t, i) => (
         <div key={t.id} className={`row settings-row${t.archived ? " inactive" : ""}`}>
           <RenameInput value={t.name} onSave={(name) => void update("topics", t.id, { name })} />
