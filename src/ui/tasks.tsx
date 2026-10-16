@@ -1,11 +1,11 @@
 import { CalendarClock, Flag, Mail, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLookups, useStore } from "../data/store";
-import { PRIORITY_LABEL, STATUS_LABEL, type Priority, type Task, type TaskStatus } from "../data/types";
+import { STATUS_LABEL, type Task, type TaskStatus } from "../data/types";
 import { addWorkdays, formatDate, relativeLabel, todayIso } from "../logic/dates";
 import { checklistProgress, validateTask } from "../logic/tasks";
 import { AttachedLinks } from "./links";
-import { AutoText, Avatar, ChipDate, ChipSelect, CompanyBadge, Disclosure } from "./common";
+import { AutoText, Avatar, ChipDate, ChipSelect, CompanyBadge, Disclosure, ImportantChip } from "./common";
 import { ProjectBadge } from "./ProjectSwitcher";
 import { useUi } from "./uiState";
 
@@ -84,7 +84,6 @@ export function TaskRow({
 
   const sub: React.ReactNode[] = [];
   if (task.status === "blocked") sub.push(<span key="b" className="tone-red">Blockiert: {task.blocked_reason}</span>);
-  if (task.status === "in_progress") sub.push(<span key="i" className="tone-blue">In Arbeit</span>);
   if (cl.total > 0) sub.push(<span key="c">{cl.done}/{cl.total} Punkte</span>);
   if (subExtra) sub.push(<span key="x">{subExtra}</span>);
 
@@ -106,7 +105,7 @@ export function TaskRow({
         }}
       >
         <span className="task-title">
-          {task.priority === "high" && !done && <Flag size={14} className="tone-red flag" aria-label="Hohe Priorität" />}
+          {task.priority === "high" && !done && <Flag size={14} className="tone-red flag" aria-label="Wichtig" />}
           {task.title}
         </span>
         {sub.length > 0 && <span className="task-sub">{sub}</span>}
@@ -330,7 +329,7 @@ function TaskEditor({ task, onClose }: { task: Task; onClose: () => void }) {
     setPendingBlocked(false);
   };
 
-  const statusTone: Record<TaskStatus, string | undefined> = { open: undefined, in_progress: "blue", blocked: "red", done: "green" };
+  const statusTone: Record<TaskStatus, string | undefined> = { open: undefined, blocked: "red", done: "green" };
 
   return (
     <div className="editor">
@@ -391,19 +390,7 @@ function TaskEditor({ task, onClose }: { task: Task; onClose: () => void }) {
           format={(v) => `fällig ${relativeLabel(v, today)}`}
           tone={task.due_date && task.due_date < today && task.status !== "done" ? "red" : undefined}
         />
-        <ChipSelect
-          title="Priorität"
-          icon={<Flag size={14} />}
-          tone={task.priority === "high" ? "red" : undefined}
-          value={task.priority === "medium" ? "" : task.priority}
-          placeholder="Priorität"
-          options={[
-            { value: "", label: "Mittel" },
-            { value: "high", label: PRIORITY_LABEL.high },
-            { value: "low", label: PRIORITY_LABEL.low },
-          ]}
-          onChange={(v) => save({ priority: (v || "medium") as Priority })}
-        />
+        <ImportantChip value={task.priority === "high"} onChange={(v) => save({ priority: v ? "high" : "medium" })} />
       </div>
 
       {(task.status === "blocked" || pendingBlocked) && (

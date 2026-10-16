@@ -94,11 +94,11 @@ Alle Tabellen: `id`, `created_at`, `updated_at`, `deleted_at` (Papierkorb). Proj
 | `topics` | **Meilensteine** (Name, Sortierung, archiviert) |
 | `milestone_status` | Stand je Meilenstein und Firma: Status, Zieldatum, Kommentar (eindeutig je Paar) |
 | `people` | Personen je Projekt |
-| `tasks` | Titel, Firma, Verantwortlich (`null` = ich), Status, Grund bei „Blockiert“, Priorität, fällig, nächstes Nachhaken, Checkliste, Gruppe (Mehrfirmen), Herkunfts-Protokoll; Beschreibung nur noch für Altbestand |
+| `tasks` | Titel, Firma, Verantwortlich (`null` = ich), Status (offen/blockiert/erledigt), Grund bei „Blockiert“, Wichtig-Fahne (`priority` high/medium), fällig, nächstes Nachhaken, Checkliste, Gruppe (Mehrfirmen), Herkunfts-Protokoll; Beschreibung nur noch für Altbestand |
 | `task_followups` | Nachfragen: Datum, Notiz |
 | `notes` | Notiz / Meeting-Protokoll / Entscheidung, Firma, Datum, Teilnehmer, Text |
 | `links`, `link_categories`, `attachments` | Link-Sammlung; Anhänge an Notizen (an Aufgaben nur Altbestand) |
-| `vendor_items` | Anbieter-Punkte: Kategorie, Status, betroffene Firmen (leer = alle), Priorität, Ansprechpartner, Ticket, Antwort, Versprochen/Tatsächlich/Beleg, Meldedatum |
+| `vendor_items` | Anbieter-Punkte: Kategorie, Status, betroffene Firmen (leer = alle), Wichtig-Fahne, Ansprechpartner, Ticket, Antwort, Versprochen/Tatsächlich/Beleg, Meldedatum |
 | `app_meta` | letzter Export, **Menü-Reihenfolge** (`nav_order`) |
 | `allowed_users` | Freigabeliste (keine API-Rechte) |
 
@@ -136,9 +136,9 @@ Kopfzeile: globale Suche (Strg+K), Backup-Icon, „+ Neu“ (Taste N).
 
 ### 6.5 Aufgaben
 
-- Liste mit Schnellfilter **Alle | Meine | Delegiert**, Firma und „Filter“-Knopf (Person, Status, Priorität, Fälligkeit, Gruppierung nach Firma/Person/Status, Erledigte zeigen).
+- Liste mit Schnellfilter **Alle | Meine | Delegiert**, Firmenfilter (Mehrfachauswahl, leer = alle) und „Filter“-Knopf (Person, Status, Fälligkeit, Gruppierung nach Firma/Person/Status, Nur wichtige, Erledigte zeigen).
 - **Erledigte getrennt:** offene oben (gruppiert), darunter Trennlinie „Erledigt“ und die erledigten Aufgaben nach Erledigt-Datum, neueste zuerst.
-- **Detail-Panel:** Titel, Chips **Status · Firma · Verantwortlich · Fällig · Priorität**; „Blockiert“ nur mit Grund; Delegations-Box (6.6); Checkliste (eingeklappt, bis Punkte existieren).
+- **Detail-Panel:** Titel, Chips **Status · Firma · Verantwortlich · Fällig · Wichtig**; Status nur **Offen · Blockiert · Erledigt** („Blockiert“ nur mit Grund); Priorität ist eine Fahne zum An-/Ausschalten statt Hoch/Mittel/Niedrig; Delegations-Box (6.6); Checkliste (eingeklappt, bis Punkte existieren).
 - **Keine neuen Beschreibungen und Link-Anhänge** mehr – vorhandene werden weiter angezeigt.
 - **Mehrere Firmen:** In der Schnellerfassung ist „Firma“ eine Mehrfachauswahl. Eine Firma = eine Aufgabe, mehrere Firmen = je Firma eine eigene Aufgabe (ohne Firmen-Zähler); in der Zeile steht nur „x/y Punkte“, wenn die Aufgabe eine Checkliste hat; Schnellauswahl „Alle Gesellschaften“ (ohne Holding und externe Partner) unten in der Liste. Im Aufgaben-Panel bleibt die Firma eine Einzelauswahl, weil jede Aufgabe zu genau einer Firma gehört.
 - Löschen mit „Rückgängig“ und Papierkorb.
@@ -168,7 +168,7 @@ Arten **Notiz · Meeting-Protokoll · Entscheidung**; Chips für Art, Firma, Dat
 - Reiter **Features · Fragen · Bugs · Best Practices · Claims** mit Zahl der offenen Punkte; Firmenfilter; Erledigte über „X erledigte anzeigen“.
 - **Erfassen per Zeile** oben in der Liste (Titel + Enter, kein Platzhalter-Eintrag).
 - Status je Kategorie; beim ersten Weg zum Anbieter wird das Meldedatum gesetzt („seit 23 T. bei Tacto“).
-- Detail: Chips Status · Firmen (Mehrfachauswahl, leer = alle) · Priorität; Ansprechpartner und Kategorie hinter „Mehr…“; Ticketfeld erst ab Meldung; Fragen mit Antwort (setzt „Beantwortet“, „Als Best Practice übernehmen“); Claims mit Versprochen/Tatsächlich/Beleg.
+- Detail: Chips Status · Firmen (Mehrfachauswahl, leer = alle) · Wichtig; Ansprechpartner und Kategorie hinter „Mehr…“; Ticketfeld erst ab Meldung; Fragen mit Antwort (setzt „Beantwortet“, „Als Best Practice übernehmen“); Claims mit Versprochen/Tatsächlich/Beleg.
 - **„Für Jour fixe kopieren“**: offene Punkte nach Kategorie als Text.
 
 ### 6.10 Firmen, Ampel, Personen, Links
@@ -180,7 +180,7 @@ Arten **Notiz · Meeting-Protokoll · Entscheidung**; Chips für Art, Firma, Dat
 
 ### 6.11 Schnellerfassung
 
-Taste **N** oder „+ Neu“: Typ (Aufgabe/Notiz/Link), Titel, Enter. Chips für Firma (aus dem Kontext vorbelegt; bei Aufgaben Mehrfachauswahl), Verantwortlich, Fällig, Priorität bzw. Art/Kategorie. Entwürfe bleiben erhalten.
+Taste **N** oder „+ Neu“: Typ (Aufgabe/Notiz/Link), Titel, Enter. Chips für Firma (aus dem Kontext vorbelegt; bei Aufgaben Mehrfachauswahl), Verantwortlich, Fällig, Wichtig bzw. Art/Kategorie. Entwürfe bleiben erhalten.
 
 ### 6.12 Suche
 
@@ -233,7 +233,6 @@ Seitenleiste als Menü; Heute, Abhaken, Schnellerfassung, Nachfrage notieren und
 ## 10. Offene Punkte
 
 - Interne Freigabe zur Speicherung von Projektnotizen und Kontaktdaten bei Supabase (EU) – liegt bei Nikolaus.
-- Auswahlfelder in den Filterleisten öffnen noch das Browser-Menü (Chips bereits angeglichen).
 - Ziehen im Menü per Touch auf einem echten Handy noch nicht getestet; Kopieren in die Zwischenablage nur mit echtem Browser prüfbar.
 - Optional: Live-Synchronisierung zwischen Geräten.
 
@@ -259,3 +258,7 @@ Seitenleiste als Menü; Heute, Abhaken, Schnellerfassung, Nachfrage notieren und
 | Meeting-Seite | Ohne Kopfkarte und „Erledigt“-Bereich; neuer Leer-Zustand mit „Aufgabe anlegen“ |
 | Mehrere Firmen | Kein „x/y Firmen“-Zähler mehr; Fortschritt nur über Checklisten-Punkte |
 | Firmenauswahl | Ein Mehrfach-Dropdown statt Firma + „Mehrere Firmen“ |
+| Filterleisten | Firmenfilter als Mehrfach-Dropdown auf Aufgaben, Notizen, Links, Tacto; keine Browser-Auswahlfelder mehr in Filtern |
+| Priorität | Nur noch Fahne „Wichtig“ (an/aus); „Niedrig“ entfällt |
+| Status | Offen · Blockiert · Erledigt; „In Arbeit“ entfällt |
+| Notiz-Arten | Bleiben drei: Entscheidungen werden bewusst getrennt von Protokollen festgehalten, weil sie auch außerhalb von Meetings fallen |

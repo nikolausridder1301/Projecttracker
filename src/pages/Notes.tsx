@@ -6,13 +6,14 @@ import { NOTE_KIND_LABEL, type Id, type Note, type NoteKind } from "../data/type
 import { formatDate } from "../logic/dates";
 import { isActive } from "../logic/tasks";
 import { AttachedLinks } from "../ui/links";
-import { AutoText, ChipDate, ChipSelect, CompanyBadge, CompanySelect, Disclosure, Empty, usePersisted } from "../ui/common";
+import { AutoText, ChipDate, ChipSelect, CompanyBadge, CompanyFilter, Disclosure, Empty, usePersisted } from "../ui/common";
 import { TaskList } from "../ui/tasks";
 import { useCaptureContext, useUi } from "../ui/uiState";
 
 interface NoteFilter {
   kind: NoteKind | "";
-  company: Id | "";
+  /** leer = alle Firmen */
+  companies: Id[];
   topic: Id | "";
   q: string;
 }
@@ -22,8 +23,9 @@ export const KIND_ICON: Record<NoteKind, LucideIcon> = { note: NotebookPen, meet
 export function NotesPage() {
   const { db } = useStore();
   const { openCapture } = useUi();
-  const [f, setF] = usePersisted<NoteFilter>("notes", { kind: "", company: "", topic: "", q: "" });
-  useCaptureContext(f.company || undefined);
+  const [stored, setF] = usePersisted<NoteFilter>("notes", { kind: "", companies: [], topic: "", q: "" });
+  const f = { ...stored, companies: Array.isArray(stored.companies) ? stored.companies : [] };
+  useCaptureContext(f.companies.length === 1 ? f.companies[0] : undefined);
   const set = (p: Partial<NoteFilter>) => setF({ ...f, ...p });
 
   const notes = useMemo(() => {
@@ -31,10 +33,11 @@ export function NotesPage() {
     return db.notes
       .filter(isActive)
       .filter((n) => !f.kind || n.kind === f.kind)
-      .filter((n) => !f.company || n.company_id === f.company)
+      .filter((n) => f.companies.length === 0 || f.companies.includes(n.company_id))
       .filter((n) => !q || n.title.toLowerCase().includes(q) || n.body.toLowerCase().includes(q))
       .sort((a, b) => noteDate(b).localeCompare(noteDate(a)));
-  }, [db.notes, f]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [db.notes, stored]);
 
   return (
     <div className="page">
@@ -57,7 +60,7 @@ export function NotesPage() {
             </button>
           ))}
         </div>
-        <CompanySelect className="compact" value={f.company} onChange={(v) => set({ company: v })} allowAll="Alle Firmen" />
+        <CompanyFilter value={f.companies} onChange={(v) => set({ companies: v })} />
         <input className="compact" placeholder="Filtern…" value={f.q} onChange={(e) => set({ q: e.target.value })} />
       </div>
       {notes.length === 0 ? (

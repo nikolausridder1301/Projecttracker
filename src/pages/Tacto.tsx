@@ -16,7 +16,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useLookups, useStore } from "../data/store";
-import { PRIORITY_LABEL, type Id, type Priority, type VendorCategory, type VendorItem } from "../data/types";
+import { type Id, type VendorCategory, type VendorItem } from "../data/types";
 import { formatDate, todayIso } from "../logic/dates";
 import { isActive, isValidUrl } from "../logic/tasks";
 import {
@@ -33,7 +33,7 @@ import {
   statusDef,
   statusPatch,
 } from "../logic/vendor";
-import { AutoText, ChipMulti, ChipSelect, CompanySelect, Empty, usePersisted } from "../ui/common";
+import { AutoText, ChipMulti, ChipSelect, CompanyFilter, Empty, ImportantChip, usePersisted } from "../ui/common";
 import { useVendor } from "../ui/vendor";
 
 export const CATEGORY_ICON: Record<VendorCategory, LucideIcon> = {
@@ -47,7 +47,8 @@ export const CATEGORY_ICON: Record<VendorCategory, LucideIcon> = {
 interface Filter {
   category: VendorCategory;
   showDone: boolean;
-  company: Id | "";
+  /** leer = alle Firmen */
+  companies: Id[];
 }
 
 export function TactoPage() {
@@ -68,7 +69,8 @@ export function TactoPage() {
 function VendorPage({ vendorName }: { vendorName: string }) {
   const { db, insert, toast } = useStore();
   const { companies, people } = useLookups();
-  const [f, setF] = usePersisted<Filter>("tacto", { category: "feature", showDone: false, company: "" });
+  const [f, setF] = usePersisted<Filter>("tacto", { category: "feature", showDone: false, companies: [] });
+  const companyFilter = Array.isArray(f.companies) ? f.companies : [];
   const set = (p: Partial<Filter>) => setF({ ...f, ...p });
   const [params, setParams] = useSearchParams();
   const openId = params.get("id");
@@ -90,8 +92,9 @@ function VendorPage({ vendorName }: { vendorName: string }) {
   const cat = categoryDef(f.category);
   const hasStatus = cat.statuses.length > 0;
   const inCategory = useMemo(
-    () => alive.filter((i) => i.category === f.category && (!f.company || affectsCompany(i, f.company))),
-    [alive, f.category, f.company],
+    () => alive.filter((i) => i.category === f.category && (companyFilter.length === 0 || companyFilter.some((c) => affectsCompany(i, c)))),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [alive, f.category, companyFilter.join()],
   );
   const doneCount = hasStatus ? inCategory.filter((i) => !isOpenItem(i)).length : 0;
   const items = useMemo(
@@ -112,7 +115,7 @@ function VendorPage({ vendorName }: { vendorName: string }) {
     e.preventDefault();
     const title = newTitle.trim();
     if (!title) return;
-    await insert("vendor_items", [newVendorItem(f.category, title, f.company ? [f.company] : [])]);
+    await insert("vendor_items", [newVendorItem(f.category, title, companyFilter)]);
     setNewTitle("");
   };
 
@@ -153,7 +156,7 @@ function VendorPage({ vendorName }: { vendorName: string }) {
             </button>
           ))}
         </div>
-        <CompanySelect className="compact" value={f.company} onChange={(v) => set({ company: v })} allowAll="Alle Firmen" />
+        <CompanyFilter value={companyFilter} onChange={(v) => set({ companies: v })} />
       </div>
 
       <div className="card list-card">
@@ -174,7 +177,7 @@ function VendorPage({ vendorName }: { vendorName: string }) {
               <Icon size={18} className="row-icon" />
               <span className="note-main">
                 <span className="task-title">
-                  {i.priority === "high" && isOpenItem(i) && <Flag size={14} className="tone-red" aria-label="Hohe Priorität" />}
+                  {i.priority === "high" && isOpenItem(i) && <Flag size={14} className="tone-red" aria-label="Wichtig" />}
                   {i.title}
                 </span>
                 <span className="task-sub">
@@ -298,19 +301,7 @@ function VendorPanel({ item, vendorName, onClose }: { item: VendorItem; vendorNa
               selected={item.company_ids}
               onChange={(ids) => save({ company_ids: ids })}
             />
-            <ChipSelect
-              title="Priorität"
-              icon={<Flag size={14} />}
-              tone={item.priority === "high" ? "red" : undefined}
-              value={item.priority === "medium" ? "" : item.priority}
-              placeholder="Priorität"
-              options={[
-                { value: "", label: "Mittel" },
-                { value: "high", label: PRIORITY_LABEL.high },
-                { value: "low", label: PRIORITY_LABEL.low },
-              ]}
-              onChange={(v) => save({ priority: (v || "medium") as Priority })}
-            />
+            <ImportantChip value={item.priority === "high"} onChange={(v) => save({ priority: v ? "high" : "medium" })} />
             {showContact && (
               <ChipSelect
                 title="Ansprechpartner"

@@ -2369,3 +2369,20 @@ button.traffic-tile:hover {
   margin-top: 4px;
   padding: 6px 10px 2px;
 }
+
+.filter-select {
+  min-width: 150px;
+  max-width: 260px;
+  justify-content: space-between;
+  font-weight: 500;
+}
+.filter-select .grow {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+.popover .filter-select {
+  width: 100%;
+  max-width: none;
+}

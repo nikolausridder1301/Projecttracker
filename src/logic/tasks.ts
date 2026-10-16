@@ -1,7 +1,7 @@
 import type { Company, Id, IsoDate, Priority, Task } from "../data/types";
 import { endOfWeek } from "./dates";
 
-const PRIO_RANK: Record<Priority, number> = { high: 0, medium: 1, low: 2 };
+const PRIO_RANK: Record<Priority, number> = { high: 0, medium: 1 };
 
 export const isActive = <T extends { deleted_at: string | null }>(r: T) => r.deleted_at === null;
 export const isDelegated = (t: Task) => t.assignee_person_id !== null;

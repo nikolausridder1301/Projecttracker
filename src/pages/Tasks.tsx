@@ -1,31 +1,33 @@
 import { SlidersHorizontal } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLookups, useStore } from "../data/store";
-import { PRIORITY_LABEL, STATUS_LABEL, type Id, type Priority, type Task, type TaskStatus } from "../data/types";
+import { STATUS_LABEL, type Id, type Task, type TaskStatus } from "../data/types";
 import { endOfWeek, formatDate, todayIso } from "../logic/dates";
 import { compareTasks, isActive, splitDone } from "../logic/tasks";
-import { CompanySelect, Empty, usePersisted } from "../ui/common";
+import { CompanyFilter, Empty, FilterSelect, usePersisted } from "../ui/common";
 import { TaskList, TaskRow } from "../ui/tasks";
 import { useCaptureContext } from "../ui/uiState";
 
 export interface TaskFilter {
-  company: Id | "";
+  /** leer = alle Firmen */
+  companies: Id[];
   topic: Id | "";
   /** "" alle, "me" ich, "delegated" alle Delegierten, sonst Personen-ID */
   assignee: string;
   status: TaskStatus | "" | "active";
-  priority: Priority | "";
+  /** nur als wichtig markierte */
+  important: boolean;
   due: "" | "overdue" | "week" | "none";
   showDone: boolean;
   groupBy: "" | "company" | "topic" | "person" | "status";
 }
 
 const INITIAL: TaskFilter = {
-  company: "",
+  companies: [],
   topic: "",
   assignee: "",
   status: "",
-  priority: "",
+  important: false,
   due: "",
   showDone: false,
   groupBy: "company",
@@ -36,7 +38,7 @@ export function applyFilter(tasks: Task[], f: TaskFilter, today = todayIso()): T
   return tasks
     .filter(isActive)
     .filter((t) => f.showDone || f.status === "done" || t.status !== "done")
-    .filter((t) => !f.company || t.company_id === f.company)
+    .filter((t) => f.companies.length === 0 || f.companies.includes(t.company_id))
     .filter((t) => !f.topic || t.topic_id === f.topic)
     .filter((t) =>
       !f.assignee
@@ -48,7 +50,7 @@ export function applyFilter(tasks: Task[], f: TaskFilter, today = todayIso()): T
             : t.assignee_person_id === f.assignee,
     )
     .filter((t) => !f.status || f.status === "active" || t.status === f.status)
-    .filter((t) => !f.priority || t.priority === f.priority)
+    .filter((t) => !f.important || t.priority === "high")
     .filter((t) =>
       f.due === "overdue"
         ? t.due_date !== null && t.due_date < today && t.status !== "done"
@@ -63,8 +65,14 @@ export function applyFilter(tasks: Task[], f: TaskFilter, today = todayIso()): T
 
 export function TasksPage() {
   const { db } = useStore();
-  const [f, setF] = usePersisted<TaskFilter>("tasks", INITIAL);
-  useCaptureContext(f.company || undefined);
+  const [stored, setF] = usePersisted<TaskFilter>("tasks", INITIAL);
+  // Ältere gespeicherte Filter (eine Firma, Status „In Arbeit“) still bereinigen
+  const f: TaskFilter = {
+    ...stored,
+    companies: Array.isArray(stored.companies) ? stored.companies : [],
+    status: (["", "active", "open", "blocked", "done"] as string[]).includes(stored.status) ? stored.status : "",
+  };
+  useCaptureContext(f.companies.length === 1 ? f.companies[0] : undefined);
   const tasks = useMemo(() => applyFilter(db.tasks, f), [db.tasks, f]);
   // Früher gespeicherte Gruppierung „nach Thema“ gibt es nicht mehr
   const groupBy = f.groupBy === "topic" ? "company" : f.groupBy;
@@ -99,14 +107,16 @@ export function TaskFilterBar({
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
-    const onDown = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
+    // Auswahllisten liegen außerhalb (Portal) – Klicks darin schließen das Filtermenü nicht
+    const onDown = (e: MouseEvent) =>
+      !ref.current?.contains(e.target as Node) && !(e.target as HTMLElement).closest?.(".dropdown-menu") && setOpen(false);
     window.addEventListener("mousedown", onDown);
     return () => window.removeEventListener("mousedown", onDown);
   }, [open]);
 
   // Zahl der "versteckten" Filter, damit sichtbar ist, dass etwas aktiv ist
   const personFilter = f.assignee !== "" && f.assignee !== "me" && f.assignee !== "delegated";
-  const advanced = [personFilter ? "x" : "", f.status, f.priority, f.due, f.showDone ? "x" : ""].filter(Boolean).length;
+  const advanced = [personFilter ? "x" : "", f.status, f.important ? "x" : "", f.due, f.showDone ? "x" : ""].filter(Boolean).length;
 
   return (
     <div className="filters">
@@ -123,7 +133,7 @@ export function TaskFilterBar({
           </button>
         ))}
       </div>
-      {!hideCompany && <CompanySelect className="compact" value={f.company} onChange={(v) => set({ company: v })} allowAll="Alle Firmen" />}
+      {!hideCompany && <CompanyFilter value={f.companies} onChange={(v) => set({ companies: v })} />}
       <div className="popover-anchor" ref={ref}>
         <button className={`btn${advanced > 0 ? " active-filter" : ""}`} onClick={() => setOpen(!open)} aria-expanded={open}>
           <SlidersHorizontal size={15} /> Filter{advanced > 0 && <span className="count">{advanced}</span>}
@@ -132,54 +142,52 @@ export function TaskFilterBar({
           <div className="popover">
             <label>
               Person
-              <select value={personFilter ? f.assignee : ""} onChange={(e) => set({ assignee: e.target.value })}>
-                <option value="">Alle</option>
-                {people.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
+              <FilterSelect
+                title="Person"
+                value={personFilter ? f.assignee : ""}
+                options={[{ value: "", label: "Alle" }, ...people.map((p) => ({ value: p.id, label: p.name }))]}
+                onChange={(v) => set({ assignee: v })}
+              />
             </label>
             <label>
               Status
-              <select value={f.status} onChange={(e) => set({ status: e.target.value as TaskFilter["status"] })}>
-                <option value="">Alle</option>
-                {(Object.keys(STATUS_LABEL) as TaskStatus[]).map((s) => (
-                  <option key={s} value={s}>
-                    {STATUS_LABEL[s]}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Priorität
-              <select value={f.priority} onChange={(e) => set({ priority: e.target.value as Priority | "" })}>
-                <option value="">Alle</option>
-                {(Object.keys(PRIORITY_LABEL) as Priority[]).map((p) => (
-                  <option key={p} value={p}>
-                    {PRIORITY_LABEL[p]}
-                  </option>
-                ))}
-              </select>
+              <FilterSelect
+                title="Status"
+                value={f.status}
+                options={[{ value: "", label: "Alle" }, ...(Object.keys(STATUS_LABEL) as TaskStatus[]).map((st) => ({ value: st, label: STATUS_LABEL[st] }))]}
+                onChange={(v) => set({ status: v as TaskFilter["status"] })}
+              />
             </label>
             <label>
               Fällig
-              <select value={f.due} onChange={(e) => set({ due: e.target.value as TaskFilter["due"] })}>
-                <option value="">Egal</option>
-                <option value="overdue">Überfällig</option>
-                <option value="week">Bis Ende der Woche</option>
-                <option value="none">Ohne Datum</option>
-              </select>
+              <FilterSelect
+                title="Fällig"
+                value={f.due}
+                options={[
+                  { value: "", label: "Egal" },
+                  { value: "overdue", label: "Überfällig" },
+                  { value: "week", label: "Bis Ende der Woche" },
+                  { value: "none", label: "Ohne Datum" },
+                ]}
+                onChange={(v) => set({ due: v as TaskFilter["due"] })}
+              />
             </label>
             <label>
               Gruppieren
-              <select value={f.groupBy} onChange={(e) => set({ groupBy: e.target.value as TaskFilter["groupBy"] })}>
-                <option value="">Nicht gruppieren</option>
-                <option value="company">nach Firma</option>
-                <option value="person">nach Verantwortlichem</option>
-                <option value="status">nach Status</option>
-              </select>
+              <FilterSelect
+                title="Gruppieren"
+                value={f.groupBy}
+                options={[
+                  { value: "", label: "Nicht gruppieren" },
+                  { value: "company", label: "nach Firma" },
+                  { value: "person", label: "nach Verantwortlichem" },
+                  { value: "status", label: "nach Status" },
+                ]}
+                onChange={(v) => set({ groupBy: v as TaskFilter["groupBy"] })}
+              />
+            </label>
+            <label className="inline">
+              <input type="checkbox" className="check" checked={f.important} onChange={(e) => set({ important: e.target.checked })} /> Nur wichtige
             </label>
             <label className="inline">
               <input type="checkbox" className="check" checked={f.showDone} onChange={(e) => set({ showDone: e.target.checked })} /> Erledigte zeigen
