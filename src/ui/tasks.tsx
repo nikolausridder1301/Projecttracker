@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useLookups, useStore } from "../data/store";
 import type { ChecklistItem, Task } from "../data/types";
 import { formatDate, localDate, relativeLabel, todayIso } from "../logic/dates";
-import { checklistProgress, currentMilestone, effectiveDue, groupSteps, insertStep, nextStep, stepPersons, validateTask } from "../logic/tasks";
+import { checklistProgress, currentMilestone, effectiveDue, isStep, nextStep, stepPersons, validateTask } from "../logic/tasks";
 import { AttachedLinks } from "./links";
 import { AutoText, Avatar, ChipDate, CompaniesChip, CompanyBadges, Disclosure, ImportantChip, MarkdownText, PeopleChip } from "./common";
 import { firstLine } from "../logic/markdown";
@@ -68,11 +68,9 @@ export function TaskRow({
   // Worauf hingearbeitet wird: der aktuelle Meilenstein, darunter der nächste Schritt
   const ms = done ? undefined : currentMilestone(task);
   if (ms) {
-    const msLate = !!ms.due && ms.due < today;
     sub.push(
-      <span key="m" className={`task-next task-ms${msLate ? " tone-red" : ""}`} title={`Meilenstein: ${ms.text}`}>
+      <span key="m" className="task-next task-ms" title={`Meilenstein: ${ms.text}`}>
         <span className="task-next-text">◆ {firstLine(ms.text)}</span>
-        {ms.due && <span className="task-next-meta">· bis {ddmm(ms.due)}</span>}
       </span>,
     );
   }
@@ -163,17 +161,16 @@ export function shortDay(iso: string): string {
 }
 
 /**
- * Meilensteine & Schritte: die Etappen der Aufgabe (◆, mit Zieldatum) und darunter
- * die konkreten Schritte (wer, bis wann). Alles in derselben Liste der Aufgabe.
+ * Schritte (wer, bis wann) und Meilensteine (◆, nur zur Orientierung) einer Aufgabe –
+ * zwei voneinander unabhängige Listen in derselben `checklist`.
  */
 function PlanEditor({ task, save }: { task: Task; save: (patch: { checklist: ChecklistItem[] }) => void }) {
   const today = todayIso();
   const list = task.checklist;
-  const groups = groupSteps(list);
   const [editing, setEditing] = useState<{ i: number; text: string } | null>(null);
-  // Offenes „+ Schritt“-Feld in einer Meilenstein-Karte: Index des Meilensteins
-  const [addingTo, setAddingTo] = useState<number | null>(null);
   const cl = checklistProgress(task);
+  const steps = list.map((_, i) => i).filter((i) => isStep(list[i]));
+  const milestones = list.map((_, i) => i).filter((i) => !isStep(list[i]));
 
   const setItem = (i: number, patch: Partial<ChecklistItem>) => save({ checklist: list.map((c, j) => (j === i ? { ...c, ...patch } : c)) });
   const remove = (i: number) => save({ checklist: list.filter((_, j) => j !== i) });
@@ -207,94 +204,68 @@ function PlanEditor({ task, save }: { task: Task; save: (patch: { checklist: Che
     );
 
   return (
-    <Disclosure title="Meilensteine & Schritte" meta={cl.total > 0 ? `${cl.done}/${cl.total}` : undefined} defaultOpen>
+    <Disclosure title="Schritte & Meilensteine" meta={cl.total > 0 ? `${cl.done}/${cl.total}` : undefined} defaultOpen>
       <div className="plan">
-        {groups.map((g) => {
-          const ms = g.milestone !== null ? list[g.milestone] : undefined;
-          const stepsDone = g.steps.filter((i) => list[i].done).length;
-          // Schritte ohne Meilenstein stehen oben, ohne Karte – nur zeigen, wenn es welche gibt
-          if (!ms && g.steps.length === 0) return null;
-          return (
-            <div key={g.milestone ?? "top"} className={`plan-group${ms ? " has-ms" : ""}${ms?.done ? " ms-done" : ""}`}>
-              {ms && g.milestone !== null && (
-                <div className="ms-row">
+        {steps.length > 0 && (
+          <ul className="checklist steps">
+            {steps.map((i) => {
+              const item = list[i];
+              const persons = stepPersons(item);
+              const hasMeta = persons.length > 0 || !!item.due;
+              return (
+                <li key={i} className="step-item">
+                  <input type="checkbox" className="check" checked={item.done} onChange={() => setItem(i, { done: !item.done })} aria-label="Schritt erledigt" />
+                  <div className="step-body">
+                    {textOf(i, "step-text")}
+                    {!item.done && (
+                      <div className={`step-meta${hasMeta ? "" : " no-meta"}`}>
+                        <PeopleChip title="Wer?" emptyLabel="Wer?" value={persons} onChange={(ids) => setItem(i, { person_ids: ids, person_id: undefined })} />
+                        <ChipDate
+                          title="Bis wann?"
+                          value={item.due ?? null}
+                          onChange={(v) => setItem(i, { due: v })}
+                          placeholder="Bis?"
+                          format={(v) => `bis ${ddmm(v)}`}
+                          tone={item.due && item.due < today ? "red" : undefined}
+                        />
+                      </div>
+                    )}
+                  </div>
+                  <button className="icon-btn hover-only" aria-label="Schritt entfernen" onClick={() => remove(i)}>
+                    <X size={14} />
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        <StepAddForm onAdd={(step) => save({ checklist: [...list, step] })} />
+        <div className="plan-label">Meilensteine</div>
+        {milestones.length > 0 && (
+          <ul className="checklist steps">
+            {milestones.map((i) => {
+              const ms = list[i];
+              return (
+                <li key={i} className="step-item">
                   <button
                     type="button"
                     className={`ms-toggle${ms.done ? " done" : ""}`}
-                    onClick={() => setItem(g.milestone!, { done: !ms.done })}
+                    onClick={() => setItem(i, { done: !ms.done })}
                     aria-label={ms.done ? "Meilenstein wieder öffnen" : "Meilenstein erreicht"}
                     title={ms.done ? "Erreicht – wieder öffnen" : "Als erreicht markieren"}
                   >
                     <Diamond size={16} />
                   </button>
-                  <div className="ms-body">
-                    {textOf(g.milestone, "ms-text")}
-                    <div className="step-meta">
-                      {g.steps.length > 0 && <span className="muted small">{stepsDone}/{g.steps.length} Schritte</span>}
-                      {!ms.done && (
-                        <ChipDate
-                          title="Zieldatum"
-                          value={ms.due ?? null}
-                          onChange={(v) => setItem(g.milestone!, { due: v })}
-                          placeholder="Ziel?"
-                          format={(v) => `Ziel ${ddmm(v)}`}
-                          tone={ms.due && ms.due < today ? "red" : undefined}
-                        />
-                      )}
-                    </div>
-                  </div>
-                  <button className="icon-btn hover-only" aria-label="Meilenstein entfernen" title="Meilenstein entfernen (Schritte bleiben)" onClick={() => remove(g.milestone!)}>
+                  <div className="step-body">{textOf(i, "ms-text")}</div>
+                  <button className="icon-btn hover-only" aria-label="Meilenstein entfernen" onClick={() => remove(i)}>
                     <X size={14} />
                   </button>
-                </div>
-              )}
-              <ul className="checklist steps">
-                {g.steps.map((i) => {
-                  const item = list[i];
-                  const persons = stepPersons(item);
-                  const hasMeta = persons.length > 0 || !!item.due;
-                  return (
-                    <li key={i} className="step-item">
-                      <input type="checkbox" className="check" checked={item.done} onChange={() => setItem(i, { done: !item.done })} aria-label="Schritt erledigt" />
-                      <div className="step-body">
-                        {textOf(i, "step-text")}
-                        {!item.done && (
-                          <div className={`step-meta${hasMeta ? "" : " no-meta"}`}>
-                            <PeopleChip title="Wer?" emptyLabel="Wer?" value={persons} onChange={(ids) => setItem(i, { person_ids: ids, person_id: undefined })} />
-                            <ChipDate
-                              title="Bis wann?"
-                              value={item.due ?? null}
-                              onChange={(v) => setItem(i, { due: v })}
-                              placeholder="Bis?"
-                              format={(v) => `bis ${ddmm(v)}`}
-                              tone={item.due && item.due < today ? "red" : undefined}
-                            />
-                          </div>
-                        )}
-                      </div>
-                      <button className="icon-btn hover-only" aria-label="Schritt entfernen" onClick={() => remove(i)}>
-                        <X size={14} />
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-              {ms &&
-                (addingTo === g.milestone ? (
-                  <StepAddForm onAdd={(step) => save({ checklist: insertStep(list, step, g.milestone) })} onClose={() => setAddingTo(null)} autoFocus />
-                ) : (
-                  <button className="link-btn small plan-add" onClick={() => setAddingTo(g.milestone)}>
-                    <ListPlus size={14} /> Schritt in diesem Meilenstein
-                  </button>
-                ))}
-            </div>
-          );
-        })}
-        <div className="plan-adds">
-          {/* Beide Eingaben sind immer da und unabhängig: Schritt ohne Meilenstein, Meilenstein ohne Schritt */}
-          <StepAddForm onAdd={(step) => save({ checklist: insertStep(list, step, null) })} />
-          <MilestoneAddForm onAdd={(ms) => save({ checklist: [...list, ms] })} />
-        </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        <MilestoneAddForm onAdd={(ms) => save({ checklist: [...list, ms] })} />
       </div>
     </Disclosure>
   );
@@ -306,29 +277,21 @@ function PlanAddRow({
   value,
   onChange,
   onSubmit,
-  onBlur,
-  onEscape,
-  autoFocus,
   placeholder,
   ariaLabel,
-  className,
   children,
 }: {
   icon: ReactNode;
   value: string;
   onChange: (v: string) => void;
   onSubmit: () => void;
-  onBlur?: () => void;
-  onEscape?: () => void;
-  autoFocus?: boolean;
   placeholder: string;
   ariaLabel: string;
-  className?: string;
-  children: ReactNode;
+  children?: ReactNode;
 }) {
   return (
     <form
-      className={`plan-new${className ? ` ${className}` : ""}`}
+      className="plan-new"
       onSubmit={(e) => {
         e.preventDefault();
         onSubmit();
@@ -338,19 +301,8 @@ function PlanAddRow({
         {icon}
       </span>
       <div className="plan-new-main">
-        <AutoText
-          autoFocus={autoFocus}
-          minRows={1}
-          className="step-edit"
-          ariaLabel={ariaLabel}
-          value={value}
-          onChange={onChange}
-          onBlur={onBlur}
-          onSubmit={onSubmit}
-          onEscape={onEscape}
-          placeholder={placeholder}
-        />
-        <div className="plan-new-chips">{children}</div>
+        <AutoText minRows={1} className="step-edit" ariaLabel={ariaLabel} value={value} onChange={onChange} onSubmit={onSubmit} placeholder={placeholder} />
+        {children && <div className="plan-new-chips">{children}</div>}
         <span className="md-hint">Umschalt+Enter: neue Zeile · „- “ für Aufzählung · **fett**</span>
       </div>
     </form>
@@ -358,7 +310,7 @@ function PlanAddRow({
 }
 
 /** Neuer Schritt: Text, optional Wer/Bis, Enter – das Feld bleibt für den nächsten offen. */
-function StepAddForm({ onAdd, onClose, autoFocus }: { onAdd: (step: ChecklistItem) => void; onClose?: () => void; autoFocus?: boolean }) {
+function StepAddForm({ onAdd }: { onAdd: (step: ChecklistItem) => void }) {
   const [text, setText] = useState("");
   const [persons, setPersons] = useState<string[]>([]);
   const [due, setDue] = useState<string | null>(null);
@@ -370,49 +322,25 @@ function StepAddForm({ onAdd, onClose, autoFocus }: { onAdd: (step: ChecklistIte
     setDue(null);
   };
   return (
-    <PlanAddRow
-      icon={<ListPlus size={16} />}
-      className={onClose ? "in-card" : undefined}
-      value={text}
-      onChange={setText}
-      onSubmit={add}
-      onBlur={onClose ? () => !text.trim() && persons.length === 0 && !due && onClose() : undefined}
-      onEscape={onClose}
-      autoFocus={autoFocus}
-      placeholder="Schritt hinzufügen… (Enter)"
-      ariaLabel="Schritt hinzufügen"
-    >
+    <PlanAddRow icon={<ListPlus size={16} />} value={text} onChange={setText} onSubmit={add} placeholder="Schritt hinzufügen… (Enter)" ariaLabel="Schritt hinzufügen">
       <PeopleChip title="Wer?" emptyLabel="Wer?" value={persons} onChange={setPersons} />
       <ChipDate title="Bis wann?" value={due} onChange={setDue} placeholder="Bis?" format={(v) => `bis ${ddmm(v)}`} />
     </PlanAddRow>
   );
 }
 
-/** Neuer Meilenstein: Text, optional Zieldatum, Enter. */
+/** Neuer Meilenstein: nur Text, Enter. */
 function MilestoneAddForm({ onAdd }: { onAdd: (ms: ChecklistItem) => void }) {
   const [text, setText] = useState("");
-  const [due, setDue] = useState<string | null>(null);
   const add = () => {
     if (!text.trim()) return;
-    onAdd({ text: text.trim(), done: false, milestone: true, due });
+    onAdd({ text: text.trim(), done: false, milestone: true });
     setText("");
-    setDue(null);
   };
-  return (
-    <PlanAddRow
-      icon={<Diamond size={16} />}
-      value={text}
-      onChange={setText}
-      onSubmit={add}
-      placeholder="Meilenstein hinzufügen… (Enter)"
-      ariaLabel="Meilenstein hinzufügen"
-    >
-      <ChipDate title="Zieldatum" value={due} onChange={setDue} placeholder="Ziel?" format={(v) => `Ziel ${ddmm(v)}`} />
-    </PlanAddRow>
-  );
+  return <PlanAddRow icon={<Diamond size={16} />} value={text} onChange={setText} onSubmit={add} placeholder="Meilenstein hinzufügen… (Enter)" ariaLabel="Meilenstein hinzufügen" />;
 }
 
-/** Im Meeting: vereinbarten Schritt direkt notieren – landet beim aktuellen Meilenstein der Aufgabe. */
+/** Im Meeting: vereinbarten Schritt direkt notieren – kommt als neuer Schritt in die Aufgabe. */
 export function StepInput({ task }: { task: Task }) {
   const { update, toast } = useStore();
   const [text, setText] = useState("");
@@ -423,7 +351,7 @@ export function StepInput({ task }: { task: Task }) {
         e.preventDefault();
         const t = text.trim();
         if (!t) return;
-        void update("tasks", task.id, { checklist: insertStep(task.checklist, { text: t, done: false, person_ids: [], due: null }, "current") })
+        void update("tasks", task.id, { checklist: [...task.checklist, { text: t, done: false, person_ids: [], due: null }] })
           .then(() => toast("Schritt notiert"))
           .catch(() => {});
         setText("");

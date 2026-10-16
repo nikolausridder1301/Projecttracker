@@ -2575,23 +2575,6 @@ button.traffic-tile:hover {
   flex-direction: column;
   gap: 6px;
 }
-.plan-group.has-ms {
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 8px 10px 6px;
-  background: var(--surface);
-}
-.plan-group.has-ms .steps {
-  padding-left: 26px;
-}
-.plan-group.ms-done {
-  background: var(--surface-2);
-}
-.ms-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-}
 .ms-toggle {
   border: 0;
   background: none;
@@ -2604,49 +2587,28 @@ button.traffic-tile:hover {
 .ms-toggle.done svg {
   fill: var(--accent);
 }
-.ms-body {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
 .ms-text {
   font-weight: 600;
-  line-height: 1.4;
+  line-height: 1.45;
   overflow-wrap: anywhere;
   cursor: text;
 }
-.ms-row > .icon-btn {
-  flex-shrink: 0;
-}
-.plan-add {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin: 2px 0 0 30px;
-  align-self: flex-start;
-}
-.plan-group.has-ms .plan-add {
-  margin-left: 26px;
+.plan-label {
+  margin-top: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--surface-3);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 /* Eingabezeilen „Schritt hinzufügen“ und „Meilenstein hinzufügen“ – identisch aufgebaut */
-.plan-adds {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin-top: 4px;
-  padding-top: 6px;
-  border-top: 1px solid var(--surface-3);
-}
 .plan-new {
   display: flex;
   align-items: flex-start;
   gap: 10px;
   padding: 2px 0;
-}
-.plan-new.in-card {
-  margin-left: 26px;
 }
 .plan-new-icon {
   display: inline-flex;
