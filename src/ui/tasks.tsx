@@ -7,7 +7,7 @@ import { checklistProgress, latestUpdates, standText, validateTask } from "../lo
 import { AttachedLinks } from "./links";
 import { AutoText, Avatar, ChipDate, ChipSelect, CompanyBadge, Disclosure, ImportantChip } from "./common";
 import { ProjectBadge } from "./ProjectSwitcher";
-import { useUi } from "./uiState";
+import { NoteLink, useUi } from "./uiState";
 
 // ---------------------------------------------------------------------------
 // Aktionen
@@ -197,22 +197,22 @@ export function UpdateTimeline({ taskId, limit = 5 }: { taskId: string; limit?: 
 // ---------------------------------------------------------------------------
 
 export function TaskPanel() {
-  const { openTaskId, openTask } = useUi();
+  const { openTaskId, openTask, capture } = useUi();
   const { db } = useStore();
   const task = db.tasks.find((t) => t.id === openTaskId);
 
   useEffect(() => {
     if (!openTaskId) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && openTask(null);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && !capture && openTask(null);
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [openTaskId, openTask]);
+  }, [openTaskId, openTask, capture]);
 
   if (!task) return null;
   return (
     <>
-      <div className="panel-backdrop" onClick={() => openTask(null)} />
-      <aside className="panel" aria-label="Aufgabe">
+      <div className="panel-backdrop task-layer" onClick={() => openTask(null)} />
+      <aside className="panel task-layer" aria-label="Aufgabe">
         <TaskEditor key={task.id} task={task} onClose={() => openTask(null)} />
       </aside>
     </>
@@ -408,9 +408,7 @@ function TaskEditor({ task, onClose }: { task: Task; onClose: () => void }) {
         {sourceNote && (
           <>
             {" · aus "}
-            <a href={`#/notizen/${sourceNote.id}`} onClick={onClose}>
-              {sourceNote.title}
-            </a>
+            <NoteLink id={sourceNote.id}>{sourceNote.title}</NoteLink>
           </>
         )}
       </p>

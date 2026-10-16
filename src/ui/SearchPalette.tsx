@@ -16,7 +16,7 @@ export function SearchPalette() {
 
 function Palette({ onClose }: { onClose: () => void }) {
   const { db } = useStore();
-  const { openTask } = useUi();
+  const { openTask, openNote } = useUi();
   const navigate = useNavigate();
   const [q, setQ] = useState("");
   const [sel, setSel] = useState(0);
@@ -27,7 +27,7 @@ function Palette({ onClose }: { onClose: () => void }) {
   const go = (h: Hit) => {
     onClose();
     if (h.type === "task") openTask(h.id);
-    else if (h.type === "note") navigate(`/notizen/${h.id}`);
+    else if (h.type === "note") openNote(h.id);
     else if (h.type === "person") navigate(`/personen/${h.id}`);
     else if (h.type === "vendor") navigate(`/anbieter?id=${h.id}`);
     else {

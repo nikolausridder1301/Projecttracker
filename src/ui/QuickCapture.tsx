@@ -1,13 +1,28 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { useLookups, useStore } from "../data/store";
-import { NOTE_KIND_LABEL, type Id, type NoteKind, type Priority } from "../data/types";
+import type { Id, NoteKind, Priority } from "../data/types";
 import { relativeLabel, todayIso } from "../logic/dates";
 import { isValidUrl, overarchingCompany } from "../logic/tasks";
 import { ChipDate, ChipMulti, ChipSelect, ImportantChip, useDraft } from "./common";
 import { useUi, type CaptureType } from "./uiState";
 
 // Schnellerfassung (SPEC 6.5): Titel + Enter genügt, alles andere optional.
+
+const TYPES: [CaptureType, string][] = [
+  ["task", "Aufgabe"],
+  ["note", "Notiz"],
+  ["meeting", "Protokoll"],
+  ["decision", "Entscheidung"],
+  ["link", "Link"],
+];
+
+const PLACEHOLDER: Record<CaptureType, string> = {
+  task: "Was ist zu tun?",
+  note: "Titel der Notiz",
+  meeting: "Worum ging es im Meeting?",
+  decision: "Was wurde entschieden?",
+  link: "Titel des Links",
+};
 
 export function QuickCapture() {
   const { capture, closeCapture, context } = useUi();
@@ -26,7 +41,7 @@ function CaptureDialog({
 }) {
   const { insert, toast } = useStore();
   const { companies, people, categories } = useLookups();
-  const navigate = useNavigate();
+  const { openTask, openNote } = useUi();
 
   const defaultCompany = prefill.companyId ?? context.companyId ?? overarchingCompany(companies)?.id ?? "";
   const [type, setType] = useState<CaptureType>(prefill.type ?? "task");
@@ -38,7 +53,6 @@ function CaptureDialog({
   const [assignee, setAssignee] = useState<Id | "">("");
   const [due, setDue] = useState("");
   const [priority, setPriority] = useState<Priority>("medium");
-  const [kind, setKind] = useState<NoteKind>("note");
   const [url, setUrl] = useState("");
   const [categoryId, setCategoryId] = useState<Id | "">("");
   const [busy, setBusy] = useState(false);
@@ -57,7 +71,7 @@ function CaptureDialog({
         const targets = companyIds;
         if (targets.length === 0) return toast("Bitte mindestens eine Firma wählen.", "error");
         const groupId = targets.length > 1 ? crypto.randomUUID() : null;
-        await insert(
+        const created = await insert(
           "tasks",
           targets.map((cid) => ({
             title: title.trim(),
@@ -77,7 +91,10 @@ function CaptureDialog({
           })),
         );
         toast(targets.length > 1 ? `${targets.length} Aufgaben angelegt` : "Aufgabe angelegt", "info");
-      } else if (type === "note") {
+        // Gleicher Ablauf wie bei Notizen: das Neue öffnet sich – außer beim Mitschreiben im Protokoll
+        if (!prefill.sourceNoteId && created[0]) openTask(created[0].id);
+      } else if (type === "note" || type === "meeting" || type === "decision") {
+        const kind: NoteKind = type;
         const [n] = await insert("notes", [
           {
             title: title.trim(),
@@ -90,7 +107,7 @@ function CaptureDialog({
             participants_text: "",
           },
         ]);
-        navigate(`/notizen/${n.id}`);
+        openNote(n.id);
       } else {
         if (!isValidUrl(url)) return toast("Bitte eine gültige Adresse mit http:// oder https:// eingeben.", "error");
         const [l] = await insert("links", [
@@ -133,16 +150,16 @@ function CaptureDialog({
         }}
       >
         <div className="seg-group">
-          {(["task", "note", "link"] as CaptureType[]).map((t) => (
+          {TYPES.map(([t, label]) => (
             <button type="button" key={t} className={`seg${type === t ? " active" : ""}`} onClick={() => setType(t)}>
-              {t === "task" ? "Aufgabe" : t === "note" ? "Notiz" : "Link"}
+              {label}
             </button>
           ))}
         </div>
         <input
           autoFocus
           className="capture-input"
-          placeholder={type === "task" ? "Was ist zu tun?" : type === "note" ? "Titel der Notiz" : "Titel des Links"}
+          placeholder={PLACEHOLDER[type]}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
         />
@@ -175,14 +192,6 @@ function CaptureDialog({
               <ChipDate title="Fällig" value={due || null} onChange={(v) => setDue(v ?? "")} placeholder="Fällig" format={(v) => `fällig ${relativeLabel(v, todayIso())}`} />
               <ImportantChip value={priority === "high"} onChange={(v) => setPriority(v ? "high" : "medium")} />
             </>
-          )}
-          {type === "note" && (
-            <ChipSelect
-              title="Art"
-              value={kind}
-              options={(Object.keys(NOTE_KIND_LABEL) as NoteKind[]).map((k) => ({ value: k, label: NOTE_KIND_LABEL[k] }))}
-              onChange={(v) => setKind(v as NoteKind)}
-            />
           )}
           {type === "link" && (
             <ChipSelect

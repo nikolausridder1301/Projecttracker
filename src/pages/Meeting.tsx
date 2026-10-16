@@ -1,6 +1,6 @@
 import { CheckCircle2, ChevronDown, ClipboardCopy, NotebookPen, Plus } from "lucide-react";
 import { useEffect, useMemo } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useLookups, useStore } from "../data/store";
 import { NOTE_KIND_LABEL, type Id, type Task } from "../data/types";
 import { agendaText, buildBriefing, type MeetingTarget } from "../logic/briefing";
@@ -8,7 +8,7 @@ import { formatDate, todayIso } from "../logic/dates";
 import { ageLabel, statusDef } from "../logic/vendor";
 import { Avatar, CompanyLogo, Dropdown, Empty, usePersisted } from "../ui/common";
 import { TaskRow, UpdateInput } from "../ui/tasks";
-import { useCaptureContext, useUi } from "../ui/uiState";
+import { NoteLink, useCaptureContext, useUi } from "../ui/uiState";
 import { useVendor } from "../ui/vendor";
 import { KIND_ICON } from "./Notes";
 import { CATEGORY_ICON } from "./Tacto";
@@ -23,8 +23,7 @@ export function MeetingPage() {
   const { db, insert, toast } = useStore();
   const { people, companies, companyById, personById } = useLookups();
   const vendor = useVendor();
-  const { openCapture } = useUi();
-  const navigate = useNavigate();
+  const { openCapture, openNote } = useUi();
   const [params, setParams] = useSearchParams();
   const [saved, setSaved] = usePersisted<{ target: string }>("meeting", { target: "" });
   const today = todayIso();
@@ -93,7 +92,7 @@ export function MeetingPage() {
           participants_text: "",
         },
       ]);
-      navigate(`/notizen/${n.id}`);
+      openNote(n.id);
     } catch {
       /* Fehler wurde gemeldet */
     }
@@ -189,14 +188,14 @@ export function MeetingPage() {
                   {b.notes.map((n) => {
                     const Icon = KIND_ICON[n.kind];
                     return (
-                      <Link key={n.id} to={`/notizen/${n.id}`} className="note-row">
+                      <NoteLink key={n.id} id={n.id} className="note-row">
                         <Icon size={18} className={`row-icon${n.kind === "decision" ? " tone-blue" : ""}`} aria-label={NOTE_KIND_LABEL[n.kind]} />
                         <span className="note-main">
                           <span className="task-title">{n.title}</span>
                           {n.body && <span className="task-sub">{n.body.replace(/[#*_>`[\]-]/g, "").replace(/\s+/g, " ").slice(0, 90)}</span>}
                         </span>
                         <span className="due">{formatDate(n.meeting_date ?? n.created_at.slice(0, 10))}</span>
-                      </Link>
+                      </NoteLink>
                     );
                   })}
                 </Section>

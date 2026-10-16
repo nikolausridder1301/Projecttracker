@@ -11,6 +11,7 @@ import { useVendor } from "./vendor";
 import { QuickCapture } from "./QuickCapture";
 import { SearchPalette } from "./SearchPalette";
 import { TaskPanel } from "./tasks";
+import { NotePanel } from "../pages/Notes";
 import { useUi } from "./uiState";
 
 export function Layout({ email, onSignOut }: { email: string; onSignOut: () => void }) {
@@ -98,6 +99,7 @@ export function Layout({ email, onSignOut }: { email: string; onSignOut: () => v
         </main>
       </div>
 
+      <NotePanel />
       <TaskPanel />
       <QuickCapture />
       <SearchPalette />

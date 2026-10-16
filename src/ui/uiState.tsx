@@ -1,11 +1,12 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type MouseEvent, type ReactNode } from "react";
 import type { Id } from "../data/types";
 
 // Globale Oberflächen-Zustände: offenes Aufgaben-Panel, Schnellerfassung,
 // Suche und der "Kontext" (Firma/Thema der aktuellen Ansicht), den neue
 // Einträge übernehmen (SPEC 6.5).
 
-export type CaptureType = "task" | "note" | "link";
+/** Alles Neue läuft über „+ Neu“: Aufgabe, Notiz, Protokoll, Entscheidung, Link. */
+export type CaptureType = "task" | "note" | "meeting" | "decision" | "link";
 
 export interface CapturePrefill {
   type?: CaptureType;
@@ -24,6 +25,9 @@ export interface CaptureContext {
 interface UiValue {
   openTaskId: Id | null;
   openTask(id: Id | null): void;
+  /** Notiz/Protokoll/Entscheidung als Pop-up-Panel */
+  openNoteId: Id | null;
+  openNote(id: Id | null): void;
   capture: CapturePrefill | null;
   openCapture(prefill?: CapturePrefill): void;
   closeCapture(): void;
@@ -37,6 +41,7 @@ const Ctx = createContext<UiValue | null>(null);
 
 export function UiProvider({ children }: { children: ReactNode }) {
   const [openTaskId, openTask] = useState<Id | null>(null);
+  const [openNoteId, openNote] = useState<Id | null>(null);
   const [capture, setCapture] = useState<CapturePrefill | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [context, setContext] = useState<CaptureContext>({});
@@ -45,6 +50,8 @@ export function UiProvider({ children }: { children: ReactNode }) {
     () => ({
       openTaskId,
       openTask,
+      openNoteId,
+      openNote,
       capture,
       openCapture: (p = {}) => setCapture(p),
       closeCapture: () => setCapture(null),
@@ -53,7 +60,7 @@ export function UiProvider({ children }: { children: ReactNode }) {
       context,
       setContext,
     }),
-    [openTaskId, capture, searchOpen, context],
+    [openTaskId, openNoteId, capture, searchOpen, context],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
@@ -71,4 +78,21 @@ export function useCaptureContext(companyId?: Id, topicId?: Id) {
     setContext({ companyId, topicId });
     return () => setContext({});
   }, [companyId, topicId, setContext]);
+}
+
+/** Link auf eine Notiz: öffnet sie als Pop-up, statt die Seite zu wechseln. */
+export function NoteLink({ id, className, children }: { id: Id; className?: string; children: ReactNode }) {
+  const { openNote } = useUi();
+  return (
+    <a
+      href={`#/notizen/${id}`}
+      className={className}
+      onClick={(e: MouseEvent) => {
+        e.preventDefault();
+        openNote(id);
+      }}
+    >
+      {children}
+    </a>
+  );
 }
