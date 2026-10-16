@@ -2525,3 +2525,142 @@ button.traffic-tile:hover {
 .checklist li .chip span {
   flex: none;
 }
+
+/* Firmen & Personen: eine Ansicht für beide */
+.company-card-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text);
+  text-decoration: none !important;
+}
+.company-card-head:hover .task-title {
+  color: var(--accent);
+}
+.company-people {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.company-card .company-people {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+.person-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 3px 10px 3px 3px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: var(--fs-sm);
+  text-decoration: none !important;
+  cursor: pointer;
+}
+.person-pill:hover {
+  border-color: var(--accent);
+}
+.person-pill.inactive {
+  opacity: 0.55;
+}
+.person-pill.add {
+  padding-left: 10px;
+  color: var(--text-muted);
+  border-style: dashed;
+}
+.person-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.person-count {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  display: inline-grid;
+  place-content: center;
+}
+.person-add input {
+  height: 28px !important;
+  width: 170px;
+  font-size: var(--fs-sm);
+}
+.contact-head {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.contact-head h1 {
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.contact-head > .company-people {
+  flex-basis: 100%;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.contact-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.contact-avatar .avatar {
+  width: 56px;
+  height: 56px;
+  font-size: 20px;
+}
+.contact-meta {
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: var(--fs-sm);
+}
+.contact-meta a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.contact-edit {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.contact-open {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: stretch;
+}
+.contact-open > .link-btn {
+  align-self: flex-start;
+}
+.search-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  padding: 0 10px;
+  min-width: min(320px, 100%);
+  color: var(--text-faint);
+}
+.search-field input {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  height: 38px;
+  flex: 1;
+}

@@ -3,12 +3,12 @@ import { HashRouter, Route, Routes } from "react-router-dom";
 import { createBackend, type Backend } from "./data/backend";
 import { StoreProvider } from "./data/store";
 import type { Db } from "./data/types";
-import { CompaniesPage, CompanyDetailPage } from "./pages/Companies";
+import { CompaniesPage } from "./pages/Companies";
+import { CompanyDetailPage, PersonDetailPage } from "./pages/Contact";
 import { LinksPage } from "./pages/Links";
 import { MeetingPage } from "./pages/Meeting";
 import { ProgressPage } from "./pages/Progress";
 import { NoteDetailPage, NotesPage } from "./pages/Notes";
-import { PeoplePage, PersonDetailPage } from "./pages/People";
 import { SettingsPage } from "./pages/Settings";
 import { TactoPage } from "./pages/Tacto";
 import { TasksPage } from "./pages/Tasks";
@@ -78,7 +78,7 @@ function DataGate({ backend, email }: { backend: Backend; email: string }) {
               <Route path="anbieter" element={<TactoPage />} />
               <Route path="tacto" element={<TactoPage />} />
               <Route path="links" element={<LinksPage />} />
-              <Route path="personen" element={<PeoplePage />} />
+              <Route path="personen" element={<CompaniesPage />} />
               <Route path="personen/:id" element={<PersonDetailPage />} />
               <Route path="firmen" element={<CompaniesPage />} />
               <Route path="firmen/:id" element={<CompanyDetailPage />} />
