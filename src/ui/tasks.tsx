@@ -1,5 +1,5 @@
 import { Ban, Diamond, Flag, ListPlus, Trash2, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useLookups, useStore } from "../data/store";
 import type { ChecklistItem, Task } from "../data/types";
 import { formatDate, localDate, relativeLabel, todayIso } from "../logic/dates";
@@ -170,12 +170,9 @@ function PlanEditor({ task, save }: { task: Task; save: (patch: { checklist: Che
   const today = todayIso();
   const list = task.checklist;
   const groups = groupSteps(list);
-  const hasMilestones = groups.length > 1;
   const [editing, setEditing] = useState<{ i: number; text: string } | null>(null);
-  // Offenes „+ Schritt“-Feld: Index des Meilensteins, null = ohne Meilenstein, "none" = keins
-  const [addingTo, setAddingTo] = useState<number | null | "none">(list.length === 0 ? null : "none");
-  const [msText, setMsText] = useState("");
-  const [msDue, setMsDue] = useState<string | null>(null);
+  // Offenes „+ Schritt“-Feld in einer Meilenstein-Karte: Index des Meilensteins
+  const [addingTo, setAddingTo] = useState<number | null>(null);
   const cl = checklistProgress(task);
 
   const setItem = (i: number, patch: Partial<ChecklistItem>) => save({ checklist: list.map((c, j) => (j === i ? { ...c, ...patch } : c)) });
@@ -185,13 +182,6 @@ function PlanEditor({ task, save }: { task: Task; save: (patch: { checklist: Che
     const t = editing.text.trim();
     if (t && t !== list[editing.i]?.text) setItem(editing.i, { text: t });
     setEditing(null);
-  };
-  const addMilestone = () => {
-    const t = msText.trim();
-    if (!t) return;
-    save({ checklist: [...list, { text: t, done: false, milestone: true, due: msDue }] });
-    setMsText("");
-    setMsDue(null);
   };
 
   const textOf = (i: number, className: string) =>
@@ -222,8 +212,8 @@ function PlanEditor({ task, save }: { task: Task; save: (patch: { checklist: Che
         {groups.map((g) => {
           const ms = g.milestone !== null ? list[g.milestone] : undefined;
           const stepsDone = g.steps.filter((i) => list[i].done).length;
-          // Ohne Meilenstein: Gruppe nur zeigen, wenn sie Schritte hat oder es (noch) keine Meilensteine gibt
-          if (!ms && g.steps.length === 0 && hasMilestones && addingTo !== null) return null;
+          // Schritte ohne Meilenstein stehen oben, ohne Karte – nur zeigen, wenn es welche gibt
+          if (!ms && g.steps.length === 0) return null;
           return (
             <div key={g.milestone ?? "top"} className={`plan-group${ms ? " has-ms" : ""}${ms?.done ? " ms-done" : ""}`}>
               {ms && g.milestone !== null && (
@@ -289,48 +279,86 @@ function PlanEditor({ task, save }: { task: Task; save: (patch: { checklist: Che
                   );
                 })}
               </ul>
-              {addingTo === g.milestone ? (
-                <StepAddForm
-                  onAdd={(step) => save({ checklist: insertStep(list, step, g.milestone) })}
-                  onClose={() => setAddingTo("none")}
-                  autoFocus={list.length > 0}
-                />
-              ) : (
-                !ms?.done && (
+              {ms &&
+                (addingTo === g.milestone ? (
+                  <StepAddForm onAdd={(step) => save({ checklist: insertStep(list, step, g.milestone) })} onClose={() => setAddingTo(null)} autoFocus />
+                ) : (
                   <button className="link-btn small plan-add" onClick={() => setAddingTo(g.milestone)}>
-                    <ListPlus size={14} /> Schritt
+                    <ListPlus size={14} /> Schritt in diesem Meilenstein
                   </button>
-                )
-              )}
+                ))}
             </div>
           );
         })}
-        <form
-          className="ms-new"
-          onSubmit={(e) => {
-            e.preventDefault();
-            addMilestone();
-          }}
-        >
-          <Diamond size={16} className="ms-new-icon" aria-hidden />
-          <AutoText
-            minRows={1}
-            className="step-edit"
-            ariaLabel="Meilenstein hinzufügen"
-            value={msText}
-            onChange={setMsText}
-            placeholder="Meilenstein hinzufügen… (Enter)"
-            onSubmit={addMilestone}
-          />
-          <ChipDate title="Zieldatum" value={msDue} onChange={setMsDue} placeholder="Ziel?" format={(v) => `Ziel ${ddmm(v)}`} />
-        </form>
+        <div className="plan-adds">
+          {/* Beide Eingaben sind immer da und unabhängig: Schritt ohne Meilenstein, Meilenstein ohne Schritt */}
+          <StepAddForm onAdd={(step) => save({ checklist: insertStep(list, step, null) })} />
+          <MilestoneAddForm onAdd={(ms) => save({ checklist: [...list, ms] })} />
+        </div>
       </div>
     </Disclosure>
   );
 }
 
+/** Eine Eingabezeile zum Hinzufügen – für Schritte und Meilensteine gleich aufgebaut: Symbol, Text, Chips. */
+function PlanAddRow({
+  icon,
+  value,
+  onChange,
+  onSubmit,
+  onBlur,
+  onEscape,
+  autoFocus,
+  placeholder,
+  ariaLabel,
+  className,
+  children,
+}: {
+  icon: ReactNode;
+  value: string;
+  onChange: (v: string) => void;
+  onSubmit: () => void;
+  onBlur?: () => void;
+  onEscape?: () => void;
+  autoFocus?: boolean;
+  placeholder: string;
+  ariaLabel: string;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <form
+      className={`plan-new${className ? ` ${className}` : ""}`}
+      onSubmit={(e) => {
+        e.preventDefault();
+        onSubmit();
+      }}
+    >
+      <span className="plan-new-icon" aria-hidden>
+        {icon}
+      </span>
+      <div className="plan-new-main">
+        <AutoText
+          autoFocus={autoFocus}
+          minRows={1}
+          className="step-edit"
+          ariaLabel={ariaLabel}
+          value={value}
+          onChange={onChange}
+          onBlur={onBlur}
+          onSubmit={onSubmit}
+          onEscape={onEscape}
+          placeholder={placeholder}
+        />
+        <div className="plan-new-chips">{children}</div>
+        <span className="md-hint">Umschalt+Enter: neue Zeile · „- “ für Aufzählung · **fett**</span>
+      </div>
+    </form>
+  );
+}
+
 /** Neuer Schritt: Text, optional Wer/Bis, Enter – das Feld bleibt für den nächsten offen. */
-function StepAddForm({ onAdd, onClose, autoFocus }: { onAdd: (step: ChecklistItem) => void; onClose: () => void; autoFocus: boolean }) {
+function StepAddForm({ onAdd, onClose, autoFocus }: { onAdd: (step: ChecklistItem) => void; onClose?: () => void; autoFocus?: boolean }) {
   const [text, setText] = useState("");
   const [persons, setPersons] = useState<string[]>([]);
   const [due, setDue] = useState<string | null>(null);
@@ -342,31 +370,45 @@ function StepAddForm({ onAdd, onClose, autoFocus }: { onAdd: (step: ChecklistIte
     setDue(null);
   };
   return (
-    <form
-      className="step-new"
-      onSubmit={(e) => {
-        e.preventDefault();
-        add();
-      }}
+    <PlanAddRow
+      icon={<ListPlus size={16} />}
+      className={onClose ? "in-card" : undefined}
+      value={text}
+      onChange={setText}
+      onSubmit={add}
+      onBlur={onClose ? () => !text.trim() && persons.length === 0 && !due && onClose() : undefined}
+      onEscape={onClose}
+      autoFocus={autoFocus}
+      placeholder="Schritt hinzufügen… (Enter)"
+      ariaLabel="Schritt hinzufügen"
     >
-      <AutoText
-        autoFocus={autoFocus}
-        minRows={1}
-        className="step-edit"
-        ariaLabel="Schritt hinzufügen"
-        value={text}
-        onChange={setText}
-        onBlur={() => !text.trim() && persons.length === 0 && !due && onClose()}
-        placeholder="Schritt hinzufügen… (Enter)"
-        onSubmit={add}
-        onEscape={onClose}
-      />
-      <span className="md-hint">Umschalt+Enter: neue Zeile · „- “ für Aufzählung · **fett**</span>
-      <div className="step-meta">
-        <PeopleChip title="Wer?" emptyLabel="Wer?" value={persons} onChange={setPersons} />
-        <ChipDate title="Bis wann?" value={due} onChange={setDue} placeholder="Bis?" format={(v) => `bis ${ddmm(v)}`} />
-      </div>
-    </form>
+      <PeopleChip title="Wer?" emptyLabel="Wer?" value={persons} onChange={setPersons} />
+      <ChipDate title="Bis wann?" value={due} onChange={setDue} placeholder="Bis?" format={(v) => `bis ${ddmm(v)}`} />
+    </PlanAddRow>
+  );
+}
+
+/** Neuer Meilenstein: Text, optional Zieldatum, Enter. */
+function MilestoneAddForm({ onAdd }: { onAdd: (ms: ChecklistItem) => void }) {
+  const [text, setText] = useState("");
+  const [due, setDue] = useState<string | null>(null);
+  const add = () => {
+    if (!text.trim()) return;
+    onAdd({ text: text.trim(), done: false, milestone: true, due });
+    setText("");
+    setDue(null);
+  };
+  return (
+    <PlanAddRow
+      icon={<Diamond size={16} />}
+      value={text}
+      onChange={setText}
+      onSubmit={add}
+      placeholder="Meilenstein hinzufügen… (Enter)"
+      ariaLabel="Meilenstein hinzufügen"
+    >
+      <ChipDate title="Zieldatum" value={due} onChange={setDue} placeholder="Ziel?" format={(v) => `Ziel ${ddmm(v)}`} />
+    </PlanAddRow>
   );
 }
 
