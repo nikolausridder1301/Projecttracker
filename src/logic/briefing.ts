@@ -1,7 +1,7 @@
 // Meeting-Briefing: alles Relevante für ein Gespräch mit einer Person bzw. Firma.
-import type { Company, Db, Id, IsoDate, Note, Person, Task, VendorItem } from "../data/types";
+import type { Company, Db, Id, IsoDate, Note, Person, Task, TaskFollowup, VendorItem } from "../data/types";
 import { addDays, formatDate } from "./dates";
-import { compareTasks, isActive } from "./tasks";
+import { compareTasks, isActive, latestUpdates, standText } from "./tasks";
 import { affectsCompany, isOpenItem, statusDef } from "./vendor";
 
 export type MeetingTarget = { kind: "person"; id: Id } | { kind: "company"; id: Id };
@@ -22,6 +22,8 @@ export interface Briefing {
   notes: Note[];
   lastMeeting?: Note;
   topics: { id: Id; name: string; count: number }[];
+  /** letzter Stand je Aufgabe (Verlauf) */
+  lastUpdate: Map<Id, TaskFollowup>;
 }
 
 /** Blockierte zuerst, dann wie gewohnt nach Fälligkeit/Priorität. */
@@ -87,6 +89,7 @@ export function buildBriefing(db: Db, target: MeetingTarget, today: IsoDate, top
     notes: notes.filter(topicOk).slice(0, 6),
     lastMeeting,
     topics,
+    lastUpdate: latestUpdates(db.task_followups),
   };
 }
 
@@ -100,7 +103,8 @@ export function agendaText(b: Briefing, personName: (id: Id | null) => string): 
       t.due_date ? `fällig ${formatDate(t.due_date)}` : "",
       t.assignee_person_id && t.assignee_person_id !== b.person?.id ? personName(t.assignee_person_id) : "",
     ].filter(Boolean);
-    return `- [ ] ${t.title}${extra.length ? ` (${extra.join(", ")})` : ""}`;
+    const stand = b.lastUpdate.get(t.id);
+    return `- [ ] ${t.title}${extra.length ? ` (${extra.join(", ")})` : ""}${stand ? `\n  ${standText(stand)}` : ""}`;
   };
   const parts: string[] = [];
   const section = (title: string, rows: string[]) => {

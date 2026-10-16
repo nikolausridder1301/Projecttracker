@@ -94,8 +94,8 @@ Alle Tabellen: `id`, `created_at`, `updated_at`, `deleted_at` (Papierkorb). Proj
 | `topics` | **Meilensteine** (Name, Sortierung, archiviert) |
 | `milestone_status` | Stand je Meilenstein und Firma: Status, Zieldatum, Kommentar (eindeutig je Paar) |
 | `people` | Personen je Projekt |
-| `tasks` | Titel, Firma, Verantwortlich (`null` = ich), Status (offen/blockiert/erledigt), Grund bei „Blockiert“, Wichtig-Fahne (`priority` high/medium), fällig, nächstes Nachhaken, Checkliste, Gruppe (Mehrfirmen), Herkunfts-Protokoll; Beschreibung nur noch für Altbestand |
-| `task_followups` | Nachfragen: Datum, Notiz |
+| `tasks` | Titel, Firma, Verantwortlich (`null` = ich), Status (offen/blockiert/erledigt), Grund bei „Blockiert“, Wichtig-Fahne (`priority` high/medium), fällig, Checkliste, Gruppe (Mehrfirmen), Herkunfts-Protokoll; Beschreibung nur noch für Altbestand |
+| `task_followups` | **Verlauf** je Aufgabe: Datum, Text (ein Update je Eintrag; frühere Nachfragen sind die ersten Einträge). Die Spalte `tasks.follow_up_date` wird nicht mehr genutzt. |
 | `notes` | Notiz / Meeting-Protokoll / Entscheidung, Firma, Datum, Teilnehmer, Text |
 | `links`, `link_categories`, `attachments` | Link-Sammlung; Anhänge an Notizen (an Aufgaben nur Altbestand) |
 | `vendor_items` | Anbieter-Punkte: Kategorie, Status, betroffene Firmen (leer = alle), Wichtig-Fahne, Ansprechpartner, Ticket, Antwort, Versprochen/Tatsächlich/Beleg, Meldedatum |
@@ -122,9 +122,9 @@ Kopfzeile: globale Suche (Strg+K), Backup-Icon, „+ Neu“ (Taste N).
 ### 6.3 Heute
 
 1. **Ampelleiste** der Firmen – **nur Anzeige**: Logo, Kürzel, ein Punkt, „seit …“, farbiger Rand bei Gelb/Rot. Klick öffnet den Ampel-Dialog (6.10).
-2. **Meine Fälligen** (überfällig / heute / diese Woche), **Heute nachhaken**, **Blockiert** – leere Bereiche entfallen; sind alle leer, erscheint eine schlichte Zeile „Alles erledigt für heute“.
+2. **Fällig** (überfällig / heute / diese Woche – eigene und delegierte) und **Blockiert** – leere Bereiche entfallen; sind alle leer, erscheint eine schlichte Zeile „Alles erledigt für heute“.
 3. Bei mehreren Projekten: Umschalter **„Dieses Projekt | Alle Projekte“**; in der Gesamtansicht trägt jede Aufgabe ihr Projekt-Kürzel, ein Klick wechselt ins Projekt.
-4. Tab-Titel und Menü-Zähler zeigen die Anzahl offener Heute-Punkte.
+4. Tab-Titel und Menü-Zähler zeigen die Anzahl überfälliger und heute fälliger Aufgaben.
 
 ### 6.4 Fortschritt (Meilensteine)
 
@@ -143,20 +143,20 @@ Kopfzeile: globale Suche (Strg+K), Backup-Icon, „+ Neu“ (Taste N).
 - **Mehrere Firmen:** In der Schnellerfassung ist „Firma“ eine Mehrfachauswahl. Eine Firma = eine Aufgabe, mehrere Firmen = je Firma eine eigene Aufgabe (ohne Firmen-Zähler); in der Zeile steht nur „x/y Punkte“, wenn die Aufgabe eine Checkliste hat; Schnellauswahl „Alle Gesellschaften“ (ohne Holding und externe Partner) unten in der Liste. Im Aufgaben-Panel bleibt die Firma eine Einzelauswahl, weil jede Aufgabe zu genau einer Firma gehört.
 - Löschen mit „Rückgängig“ und Papierkorb.
 
-### 6.6 Delegiert und Nachhaken
+### 6.6 Verlauf und Delegiert
 
-- Menüpunkt **„Delegiert“** (früher „Wartet auf…“): offene Delegationen nach Person.
-- **„Nachfrage notieren“**: Notiz („Was hast du gefragt oder erfahren?“), nächstes Nachhaken per Schnellwahl (in 3 Tagen · 1 Woche · 2 Wochen · keins · Datum) mit Vorschau, Option **„Damit erledigt – Aufgabe abschließen“**, Mail-Button (vorausgefülltes `mailto:`).
-- **Jede Nachfrage bleibt** als eigener Eintrag; **Verlauf als Zeitleiste** im Panel, einzeln löschbar.
-- Zeilen zeigen **rechts den Grund** („Frist seit 2 T. überschritten“, „Heute nachhaken“) bzw. den nächsten Termin und **darunter den Stand** („3× nachgefragt · zuletzt …“).
-- Ein Nachhak-Termin erzeugt **keine eigene Aufgabe** – die delegierte Aufgabe erscheint am Stichtag unter „Heute nachhaken“.
+- **Verlauf statt Nachhaken:** Jede Aufgabe hat im Panel den Bereich **„Verlauf“** – ein Feld „Update hinzufügen…“, Enter speichert den Satz mit heutigem Datum. Darunter alle Updates als Zeitleiste, neueste oben, einzeln löschbar. Kein Nachhak-Datum, keine Nachfrage-Box, kein Mail-Button.
+- **Letzter Stand in allen Listen:** unter dem Titel offener Aufgaben steht gekürzt „Stand 12.10.: …“.
+- Menüpunkt **„Delegiert“** (früher „Wartet auf…“): offene Delegationen nach Person, **am längsten ohne Update zuerst**; rechts „seit 23 T. kein Update“ (rot ab 14 Tagen), ohne Update zählt das Anlagedatum. Ersetzt die Erinnerung, ohne Datumspflege.
+- Delegieren bleibt einfach der Chip **„Verantwortlich“**.
 
 ### 6.7 Meeting-Vorbereitung
 
 - Person oder ganze Firma wählen (Suche; letzte Auswahl bleibt), auch per „Meeting vorbereiten“ auf Personen-/Firmenseiten.
-- **Briefing:** **Offen bei der Person** (mit „Nachfrage notieren“), **meine offenen Punkte**, **weitere Offene der Firma**, rechts **Anbieter-Punkte** der Firma und **letzte Notizen** – Blockiertes zuerst. Leere Bereiche entfallen; ohne rechte Inhalte nutzt die Liste die volle Breite. Kein Kopfbereich und kein „Erledigt“-Rückblick (kein Mehrwert).
+- **Briefing:** **Offen bei der Person**, **meine offenen Punkte**, **weitere Offene der Firma**, rechts **Anbieter-Punkte** der Firma und **letzte Notizen** – Blockiertes zuerst. Leere Bereiche entfallen; ohne rechte Inhalte nutzt die Liste die volle Breite. Kein Kopfbereich und kein „Erledigt“-Rückblick (kein Mehrwert).
+- Unter jeder offenen Aufgabe ein dezentes Feld **„Update notieren…“** – was im Gespräch besprochen wird, landet direkt im Verlauf.
 - **Nichts offen:** schlichte Karte „Mit … ist gerade nichts offen“ mit Button **„Aufgabe anlegen“** (Firma vorbelegt).
-- **„Protokoll starten“** legt ein Meeting-Protokoll mit Teilnehmer, Firma, Datum und Agenda-Checkliste an; **„Agenda kopieren“** in die Zwischenablage.
+- **„Protokoll starten“** legt ein Meeting-Protokoll mit Teilnehmer, Firma, Datum und Agenda-Checkliste (inkl. letztem Stand je Aufgabe) an; **„Agenda kopieren“** in die Zwischenablage.
 
 ### 6.8 Notizen
 
@@ -197,7 +197,7 @@ Gelöschtes landet im Papierkorb (je Projekt), wiederherstellbar oder endgültig
 
 ### 6.15 Mobil
 
-Seitenleiste als Menü; Heute, Abhaken, Schnellerfassung, Nachfrage notieren und alle Dialoge ohne seitliches Scrollen; breite Tabellen (Fortschritt) scrollen in sich.
+Seitenleiste als Menü; Heute, Abhaken, Schnellerfassung, Updates und alle Dialoge ohne seitliches Scrollen; breite Tabellen (Fortschritt) scrollen in sich.
 
 ## 7. Technik und Betrieb
 
@@ -223,7 +223,7 @@ Seitenleiste als Menü; Heute, Abhaken, Schnellerfassung, Nachfrage notieren und
 - Projekt anlegen mit Kopie; Daten strikt je Projekt getrennt; „Alle Projekte“ auf Heute.
 - Ampel ändert sich nicht per Einzelklick; Gelb/Rot nur mit Begründung; Verlauf mit von/nach.
 - Fortschritts-Matrix: Zelle setzen/ändern ohne Duplikate; überschrittene Ziele markiert; Ampel-Vorschlag passend.
-- Nachfragen bleiben alle im Verlauf; „Damit erledigt“ schließt ab; Grund und Stand in der Zeile.
+- Updates bleiben alle im Verlauf; der letzte Stand steht in der Zeile; „Delegiert“ sortiert nach Tagen ohne Update.
 - Meeting-Briefing zeigt nur die gewählte Person/Firma; Protokoll mit Agenda und Teilnehmer.
 - Erledigte Aufgaben unter Trennlinie nach Datum.
 - Menü per Ziehen sortierbar, ohne versehentlichen Seitenwechsel.
@@ -248,7 +248,7 @@ Seitenleiste als Menü; Heute, Abhaken, Schnellerfassung, Nachfrage notieren und
 | Tacto-Bereich | Eigener Bereich mit Status statt Notiz-Arten; Erfassungszeile, eine Filterzeile |
 | Mehrere Projekte | Alles je Projekt, Kopie bei Neuanlage, Anbieter-Bereich optional |
 | Menü | Sortierbar per Drag-and-Drop, gespeichert in der Datenbank |
-| Nachhaken | „Nachfrage notieren“ mit Verlauf statt „Nachgehakt“; keine eigene Aufgabe |
+| Nachhaken | Ersetzt durch **Verlauf** (datierte Updates je Aufgabe); kein Nachhak-Datum, kein „Heute nachhaken“ |
 | Ampel | Nur im Dialog mit Begründung und Verlauf; Vorschlag aus Meilensteinen |
 | Erledigte | Unter Trennlinie, nach Datum |
 | Meeting | Briefing zu Person/Firma mit Protokoll-Start |

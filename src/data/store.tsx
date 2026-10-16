@@ -52,7 +52,7 @@ function readStoredProject(): Id | null {
   }
 }
 
-/** Gefilterte Sicht auf ein Projekt; Nachhaken/Anhänge folgen ihren Aufgaben/Links. */
+/** Gefilterte Sicht auf ein Projekt; Verlauf/Anhänge folgen ihren Aufgaben/Links. */
 export function scopeDb(all: Db, projectId: Id | undefined): Db {
   if (!projectId) return all;
   const scoped = { ...all } as Db;

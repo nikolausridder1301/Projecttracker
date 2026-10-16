@@ -157,7 +157,11 @@ export function demoSeed(): Db {
     people,
     notes: [],
     tasks,
-    task_followups: [],
+    // Beispiel-Verlauf: Stand der delegierten Aufgaben
+    task_followups: [
+      { ...meta(), task_id: tasks[2].id, date: addDays(today, -9), note: "Max prüft, welche Felder der Export braucht" },
+      { ...meta(), task_id: tasks[2].id, date: addDays(today, -2), note: "Testexport läuft, Freigabe IT steht noch aus" },
+    ],
     links: [],
     attachments: [],
     app_meta: [{ ...meta(), last_export_at: null, nav_order: [] }],

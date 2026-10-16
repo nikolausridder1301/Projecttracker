@@ -2386,3 +2386,64 @@ button.traffic-tile:hover {
   width: 100%;
   max-width: none;
 }
+
+/* Verlauf (Updates je Aufgabe) */
+.updates {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.section-label {
+  font-size: var(--fs-base);
+  font-weight: 600;
+  margin: 0;
+}
+.update-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  padding: 0 10px;
+}
+.update-input:focus-within {
+  border-color: var(--accent);
+}
+.update-input input {
+  flex: 1;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  height: 38px;
+}
+.update-icon {
+  color: var(--text-faint);
+  flex-shrink: 0;
+}
+.update-input.compact {
+  border-color: transparent;
+  background: transparent;
+  margin: -6px 0 6px 34px;
+  padding: 0 6px;
+}
+.update-input.compact input {
+  height: 30px;
+  font-size: var(--fs-sm);
+}
+.update-input.compact:hover,
+.update-input.compact:focus-within {
+  border-color: var(--border);
+  background: var(--surface);
+}
+.task-stand {
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.task-sub {
+  min-width: 0;
+}

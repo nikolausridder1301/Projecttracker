@@ -9,7 +9,19 @@ import { isOverdue, progress, suggestTraffic } from "./milestones";
 import { search } from "./search";
 import { sinceLabel, validateTrafficChange } from "./traffic";
 import { affectsCompany, ageLabel, isOpenItem, jourFixeText, newVendorItem, showTicket, statusPatch } from "./vendor";
-import { compareTasks, followUpReason, groupProgress, isValidUrl, splitDone, todayCount, todayView, validateTask } from "./tasks";
+import {
+  compareTasks,
+  daysSinceUpdate,
+  groupProgress,
+  isValidUrl,
+  latestUpdates,
+  splitDone,
+  staleLabel,
+  standText,
+  todayCount,
+  todayView,
+  validateTask,
+} from "./tasks";
 
 const T = (o: Partial<Task>): Task => ({
   id: crypto.randomUUID(),
@@ -69,19 +81,22 @@ describe("todayView", () => {
   const v = todayView(tasks, today);
   const titles = (l: Task[]) => l.map((t) => t.title);
 
-  it("trennt eigene Fälligkeiten", () => {
-    expect(titles(v.overdue)).toEqual(["überfällig"]);
-    expect(titles(v.today)).toEqual(["heute"]);
+  it("trennt Fälligkeiten", () => {
+    expect(titles(v.overdue)).toEqual(["delegiert überfällig", "überfällig"]);
+    expect(titles(v.today)).toEqual(["delegiert heute", "heute"]);
     expect(titles(v.week)).toEqual(["woche"]);
   });
-  it("delegierte erscheinen unter Nachhaken, nicht unter Meine", () => {
-    expect(titles(v.followUp)).toEqual(["delegiert überfällig", "delegiert heute"]);
+  it("delegierte Fälligkeiten erscheinen mit", () => {
+    expect(titles(v.overdue)).toContain("überfällig");
+    expect(titles(v.overdue)).toContain("delegiert überfällig");
+    expect(titles(v.today)).toContain("delegiert heute");
   });
   it("blockierte gesondert", () => {
     expect(titles(v.blocked)).toEqual(["blockiert"]);
   });
   it("Zähler für den Tab-Titel", () => {
     expect(todayCount(v)).toBe(4);
+    expect(v).not.toHaveProperty("followUp");
   });
 });
 
@@ -255,20 +270,38 @@ describe("nav", () => {
   });
 });
 
-describe("followUpReason", () => {
+describe("Verlauf", () => {
   const today = "2026-10-15";
-  it("überschrittene Frist hat Vorrang", () => {
-    expect(followUpReason({ due_date: "2026-10-13", follow_up_date: "2026-10-20" }, today)).toEqual({
-      label: "Frist seit 2 T. überschritten",
-      urgent: true,
-    });
+  const U = (task_id: string, date: string, note: string, created_at = `${date}T10:00:00Z`, deleted_at: string | null = null) => ({
+    id: crypto.randomUUID(),
+    created_at,
+    updated_at: created_at,
+    deleted_at,
+    task_id,
+    date,
+    note,
   });
-  it("geplantes Nachhaken heute bzw. verpasst", () => {
-    expect(followUpReason({ due_date: null, follow_up_date: today }, today)?.label).toBe("Heute nachhaken");
-    expect(followUpReason({ due_date: null, follow_up_date: "2026-10-14" }, today)?.label).toBe("Nachhaken seit gestern fällig");
+  it("jüngstes Update je Aufgabe, Gelöschte zählen nicht", () => {
+    const m = latestUpdates([
+      U("a", "2026-10-01", "alt"),
+      U("a", "2026-10-12", "neu"),
+      U("a", "2026-10-12", "neuer", "2026-10-12T15:00:00Z"),
+      U("a", "2026-10-14", "gelöscht", "2026-10-14T10:00:00Z", "x"),
+      U("b", "2026-09-30", "b"),
+    ]);
+    expect(m.get("a")?.note).toBe("neuer");
+    expect(m.get("b")?.note).toBe("b");
   });
-  it("nichts fällig", () => {
-    expect(followUpReason({ due_date: "2026-10-30", follow_up_date: "2026-10-20" }, today)).toBeNull();
+  it("Tage ohne Update, sonst seit Anlage", () => {
+    expect(daysSinceUpdate({ created_at: "2026-09-01T08:00:00Z" }, { date: "2026-10-12" }, today)).toBe(3);
+    expect(daysSinceUpdate({ created_at: "2026-10-05T08:00:00Z" }, undefined, today)).toBe(10);
+  });
+  it("Beschriftungen", () => {
+    expect(staleLabel(0, true)).toBe("Update heute");
+    expect(staleLabel(1, true)).toBe("Update gestern");
+    expect(staleLabel(23, true)).toBe("seit 23 T. kein Update");
+    expect(staleLabel(0, false)).toBe("noch kein Update");
+    expect(standText({ date: "2026-10-12", note: "Oliver klärt" })).toBe("Stand 12.10.: Oliver klärt");
   });
 });
 

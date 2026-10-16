@@ -1,9 +1,9 @@
-import { CalendarClock, Flag, Mail, Trash2, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Flag, MessageSquarePlus, Trash2, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { useLookups, useStore } from "../data/store";
 import { STATUS_LABEL, type Task, type TaskStatus } from "../data/types";
-import { addWorkdays, formatDate, relativeLabel, todayIso } from "../logic/dates";
-import { checklistProgress, validateTask } from "../logic/tasks";
+import { formatDate, relativeLabel, todayIso } from "../logic/dates";
+import { checklistProgress, latestUpdates, standText, validateTask } from "../logic/tasks";
 import { AttachedLinks } from "./links";
 import { AutoText, Avatar, ChipDate, ChipSelect, CompanyBadge, Disclosure, ImportantChip } from "./common";
 import { ProjectBadge } from "./ProjectSwitcher";
@@ -15,38 +15,23 @@ import { useUi } from "./uiState";
 
 export function useTaskActions() {
   const { update, insert, toast } = useStore();
-  const { personById } = useLookups();
 
   const setDone = (t: Task, done: boolean) =>
     update("tasks", t.id, done ? { status: "done", done_at: new Date().toISOString() } : { status: "open", done_at: null });
 
-  /** Nachfrage protokollieren; nächstes Datum setzen oder Aufgabe abschließen. */
-  const followUp = async (t: Task, note: string, next: string | null, done = false) => {
-    await insert("task_followups", [{ task_id: t.id, date: todayIso(), note }]);
-    if (done) {
-      await update("tasks", t.id, { follow_up_date: null, status: "done", done_at: new Date().toISOString() });
-      toast(`Erledigt: ${t.title}`);
-    } else {
-      await update("tasks", t.id, { follow_up_date: next });
-      toast(next ? `Notiert – nächstes Nachhaken ${formatDate(next)}` : "Notiert – kein weiteres Nachhaken geplant");
-    }
+  /** Neuen Stand in den Verlauf schreiben (nichts wird überschrieben). */
+  const addUpdate = async (taskId: string, note: string) => {
+    await insert("task_followups", [{ task_id: taskId, date: todayIso(), note }]);
+    toast("Update gespeichert");
   };
 
-  const mailto = (t: Task) => {
-    const p = t.assignee_person_id ? personById.get(t.assignee_person_id) : undefined;
-    const subject = `Nachfrage: ${t.title}`;
-    const lines = [
-      `Hallo ${p?.name.split(" ")[0] ?? ""},`,
-      "",
-      `kurze Nachfrage zum Stand bei „${t.title}“${t.due_date ? ` (fällig ${formatDate(t.due_date)})` : ""}.`,
-      ...(t.description.trim() ? ["", t.description.trim()] : []),
-      "",
-      "Danke und viele Grüße",
-    ];
-    return `mailto:${encodeURIComponent(p?.email ?? "")}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(lines.join("\n"))}`;
-  };
+  return { setDone, addUpdate };
+}
 
-  return { setDone, followUp, mailto };
+/** Letzter Stand je Aufgabe (über alle Projekte). */
+export function useLatestUpdates() {
+  const { allDb } = useStore();
+  return useMemo(() => latestUpdates(allDb.task_followups), [allDb.task_followups]);
 }
 
 // ---------------------------------------------------------------------------
@@ -60,22 +45,26 @@ export function TaskRow({
   extra,
   rightLabel,
   subExtra,
+  hideStand = false,
 }: {
   task: Task;
   showCompany?: boolean;
   /** Projekt-Kürzel zeigen („Heute – Alle Projekte“) */
   showProject?: boolean;
   extra?: React.ReactNode;
-  /** ersetzt die Fälligkeit rechts (z. B. Grund fürs Nachhaken) */
+  /** ersetzt die Fälligkeit rechts (z. B. „seit 5 T. kein Update“) */
   rightLabel?: React.ReactNode;
   /** zusätzliche Angabe in der zweiten Zeile */
   subExtra?: React.ReactNode;
+  /** letzten Stand aus dem Verlauf nicht zeigen */
+  hideStand?: boolean;
 }) {
   const { project: currentProject, setProject } = useStore();
   const { personById, projectById } = useLookups();
   const { openTask } = useUi();
   const taskProject = projectById.get(task.project_id);
   const { setDone } = useTaskActions();
+  const latest = useLatestUpdates();
   const today = todayIso();
   const cl = checklistProgress(task);
   const person = task.assignee_person_id ? personById.get(task.assignee_person_id) : undefined;
@@ -86,6 +75,8 @@ export function TaskRow({
   if (task.status === "blocked") sub.push(<span key="b" className="tone-red">Blockiert: {task.blocked_reason}</span>);
   if (cl.total > 0) sub.push(<span key="c">{cl.done}/{cl.total} Punkte</span>);
   if (subExtra) sub.push(<span key="x">{subExtra}</span>);
+  const stand = !hideStand && !done ? latest.get(task.id) : undefined;
+  if (stand) sub.push(<span key="s" className="task-stand" title={stand.note}>{standText(stand)}</span>);
 
   return (
     <div className={`task-row${done ? " is-done" : ""}`}>
@@ -126,14 +117,8 @@ export function TaskRow({
 }
 
 // ---------------------------------------------------------------------------
-// Nachhaken
+// Verlauf
 // ---------------------------------------------------------------------------
-
-const NEXT_OPTIONS = [
-  { key: "3", label: "in 3 Tagen", days: 3 },
-  { key: "5", label: "in 1 Woche", days: 5 },
-  { key: "10", label: "in 2 Wochen", days: 10 },
-] as const;
 
 /** Wochentag + Datum, z. B. „Di, 20.10.“ */
 export function shortDay(iso: string): string {
@@ -142,104 +127,51 @@ export function shortDay(iso: string): string {
   return `${wd}, ${String(d).padStart(2, "0")}.${String(m).padStart(2, "0")}.`;
 }
 
-/**
- * „Nachfrage notieren“: Was wurde gefragt/vereinbart? Wann wieder nachhaken –
- * oder ist die Sache damit erledigt? Jede Nachfrage wird als eigener Eintrag
- * im Verlauf gespeichert, nichts wird überschrieben.
- */
-export function FollowUpForm({ task, onDone }: { task: Task; onDone: () => void }) {
-  const { followUp, mailto } = useTaskActions();
-  const today = todayIso();
-  const [note, setNote] = useState("");
-  const [choice, setChoice] = useState<string>("3");
-  const [custom, setCustom] = useState<string | null>(null);
-  const [done, setDone] = useState(false);
+/** Ein Satz, Enter – landet mit heutigem Datum im Verlauf. */
+export function UpdateInput({ taskId, compact = false }: { taskId: string; compact?: boolean }) {
+  const { addUpdate } = useTaskActions();
+  const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
-
-  const next =
-    choice === "none" ? null : choice === "custom" ? custom : addWorkdays(today, NEXT_OPTIONS.find((o) => o.key === choice)!.days);
-
   return (
     <form
-      className="followup-form"
+      className={`update-input${compact ? " compact" : ""}`}
       onSubmit={async (e) => {
         e.preventDefault();
+        const note = text.trim();
+        if (!note || busy) return;
         setBusy(true);
         try {
-          await followUp(task, note.trim(), next, done);
-          onDone();
+          await addUpdate(taskId, note);
+          setText("");
         } catch {
-          /* Fehler wurde gemeldet */
+          /* Fehler wurde gemeldet; Text bleibt stehen */
         } finally {
           setBusy(false);
         }
       }}
     >
+      <MessageSquarePlus size={compact ? 14 : 16} className="update-icon" aria-hidden />
       <input
-        autoFocus
-        className="followup-note"
-        placeholder="Was hast du gefragt oder erfahren? (optional)"
-        value={note}
-        onChange={(e) => setNote(e.target.value)}
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder={compact ? "Update notieren…" : "Update hinzufügen… (Enter)"}
+        aria-label="Update hinzufügen"
       />
-      <label className="inline followup-done">
-        <input type="checkbox" className="check" checked={done} onChange={(e) => setDone(e.target.checked)} />
-        Damit erledigt – Aufgabe abschließen
-      </label>
-      {!done && (
-        <div className="followup-next">
-          <span className="muted small">Nächstes Nachhaken</span>
-          <div className="seg-group">
-            {NEXT_OPTIONS.map((o) => (
-              <button type="button" key={o.key} className={`seg${choice === o.key ? " active" : ""}`} onClick={() => setChoice(o.key)}>
-                {o.label}
-              </button>
-            ))}
-            <button type="button" className={`seg${choice === "none" ? " active" : ""}`} onClick={() => setChoice("none")}>
-              keins
-            </button>
-          </div>
-          <ChipDate
-            icon={<CalendarClock size={14} />}
-            value={choice === "custom" ? custom : null}
-            onChange={(v) => {
-              setCustom(v);
-              setChoice(v ? "custom" : "3");
-            }}
-            placeholder="Datum wählen"
-            title="Eigenes Datum"
-            format={shortDay}
-          />
-          <span className="muted small followup-preview">{next ? `→ ${shortDay(next)}` : "→ kein Termin"}</span>
-        </div>
-      )}
-      <div className="row">
-        <a className="btn ghost" href={mailto(task)}>
-          <Mail size={15} /> Mail schreiben
-        </a>
-        <span className="spacer" />
-        <button type="button" className="btn ghost" onClick={onDone}>
-          Abbrechen
-        </button>
-        <button className="btn primary" type="submit" disabled={busy}>
-          {done ? "Erledigt speichern" : "Notieren"}
-        </button>
-      </div>
     </form>
   );
 }
 
-/** Alle Nachfragen als Zeitleiste, neueste oben; einzelne Einträge löschbar. */
-export function FollowUpHistory({ taskId, limit = 3 }: { taskId: string; limit?: number }) {
+/** Alle Updates als Zeitleiste, neueste oben; einzelne Einträge löschbar. */
+export function UpdateTimeline({ taskId, limit = 5 }: { taskId: string; limit?: number }) {
   const { allDb, purge } = useStore();
   const [all, setAll] = useState(false);
   const entries = allDb.task_followups
     .filter((f) => f.task_id === taskId && f.deleted_at === null)
-    .sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+    .sort((a, b) => (a.date === b.date ? (a.created_at < b.created_at ? 1 : -1) : a.date < b.date ? 1 : -1));
   if (entries.length === 0) return null;
   const shown = all ? entries : entries.slice(0, limit);
   return (
-    <ol className="timeline" aria-label="Verlauf der Nachfragen">
+    <ol className="timeline" aria-label="Verlauf">
       {shown.map((f) => (
         <li key={f.id}>
           <span className="timeline-date">{shortDay(f.date)}</span>
@@ -289,8 +221,8 @@ export function TaskPanel() {
 
 function TaskEditor({ task, onClose }: { task: Task; onClose: () => void }) {
   const { db, update, trash, toast } = useStore();
-  const { companies, people, noteById, personById } = useLookups();
-  const { mailto, setDone } = useTaskActions();
+  const { companies, people, noteById } = useLookups();
+  const { setDone } = useTaskActions();
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description);
   // Nur zeigen, wenn beim Öffnen schon eine Beschreibung da war
@@ -298,14 +230,11 @@ function TaskEditor({ task, onClose }: { task: Task; onClose: () => void }) {
   const [blockedReason, setBlockedReason] = useState(task.blocked_reason);
   const [pendingBlocked, setPendingBlocked] = useState(false);
   const [newItem, setNewItem] = useState("");
-  const [followUpOpen, setFollowUpOpen] = useState(false);
 
   const save = (patch: Parameters<typeof update<"tasks">>[2]) => void update("tasks", task.id, patch).catch(() => {});
 
   const attachedCount = db.attachments.filter((a) => a.deleted_at === null && a.task_id === task.id).length;
   const sourceNote = task.source_note_id ? noteById.get(task.source_note_id) : undefined;
-  const delegated = task.assignee_person_id !== null;
-  const person = delegated ? personById.get(task.assignee_person_id!) : undefined;
   const cl = checklistProgress(task);
   const today = todayIso();
 
@@ -378,9 +307,7 @@ function TaskEditor({ task, onClose }: { task: Task; onClose: () => void }) {
             { value: "", label: "Ich" },
             ...people.filter((p) => p.active || p.id === task.assignee_person_id).map((p) => ({ value: p.id, label: p.name })),
           ]}
-          onChange={(v) =>
-            save({ assignee_person_id: v || null, follow_up_date: v && !task.follow_up_date ? addWorkdays(today, 3) : task.follow_up_date })
-          }
+          onChange={(v) => save({ assignee_person_id: v || null })}
         />
         <ChipDate
           title="Fällig"
@@ -418,40 +345,11 @@ function TaskEditor({ task, onClose }: { task: Task; onClose: () => void }) {
         </div>
       )}
 
-      {delegated && (
-        <div className="delegation-box">
-          <div className="row">
-            {person && <Avatar name={person.name} />}
-            <span className="grow">
-              Delegiert an <strong>{person?.name ?? "?"}</strong>
-            </span>
-            <a className="icon-btn" href={mailto(task)} title={person?.email ? `Mail an ${person.email}` : "Keine E-Mail hinterlegt"}>
-              <Mail size={16} />
-            </a>
-          </div>
-          {/* Während das Formular offen ist, legt es den nächsten Termin fest – keine doppelte Angabe */}
-          {!followUpOpen && (
-          <div className="row">
-            <span className="muted small">Nächstes Nachhaken</span>
-            <ChipDate
-              icon={<CalendarClock size={14} />}
-              title="Nächstes Nachhaken"
-              value={task.follow_up_date}
-              onChange={(v) => save({ follow_up_date: v })}
-              placeholder="kein Termin"
-              format={shortDay}
-              tone={task.follow_up_date && task.follow_up_date <= today ? "red" : undefined}
-            />
-            <span className="spacer" />
-            <button className="btn primary" onClick={() => setFollowUpOpen(true)}>
-              Nachfrage notieren
-            </button>
-          </div>
-          )}
-          {followUpOpen && <FollowUpForm task={task} onDone={() => setFollowUpOpen(false)} />}
-          <FollowUpHistory taskId={task.id} />
-        </div>
-      )}
+      <section className="updates">
+        <h3 className="section-label">Verlauf</h3>
+        <UpdateInput taskId={task.id} />
+        <UpdateTimeline taskId={task.id} />
+      </section>
 
       {/* Schlank halten: Beschreibung nur, wenn schon eine existiert (keine neuen mehr anlegen) */}
       {hasDescription && (

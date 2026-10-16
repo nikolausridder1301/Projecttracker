@@ -2,17 +2,16 @@ import { CheckCircle2, ChevronDown, ClipboardCopy, NotebookPen, Plus } from "luc
 import { useEffect, useMemo } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useLookups, useStore } from "../data/store";
-import { NOTE_KIND_LABEL, type Id } from "../data/types";
+import { NOTE_KIND_LABEL, type Id, type Task } from "../data/types";
 import { agendaText, buildBriefing, type MeetingTarget } from "../logic/briefing";
 import { formatDate, todayIso } from "../logic/dates";
 import { ageLabel, statusDef } from "../logic/vendor";
 import { Avatar, CompanyLogo, Dropdown, Empty, usePersisted } from "../ui/common";
-import { TaskList } from "../ui/tasks";
+import { TaskRow, UpdateInput } from "../ui/tasks";
 import { useCaptureContext, useUi } from "../ui/uiState";
 import { useVendor } from "../ui/vendor";
 import { KIND_ICON } from "./Notes";
 import { CATEGORY_ICON } from "./Tacto";
-import { FollowUpRow } from "./Today";
 
 // Meeting-Vorbereitung: Person oder Firma wählen → alles Relevante auf einen Blick,
 // mit Agenda und Protokoll-Start.
@@ -139,21 +138,17 @@ export function MeetingPage() {
           <div className="meeting-col">
             {b.person && b.delegatedToPerson.length > 0 && (
               <Section title={`Offen bei ${b.person.name.split(" ")[0]}`} count={b.delegatedToPerson.length}>
-                <div className="task-list">
-                  {b.delegatedToPerson.map((t) => (
-                    <FollowUpRow key={t.id} taskId={t.id} />
-                  ))}
-                </div>
+                <UpdatableTasks tasks={b.delegatedToPerson} />
               </Section>
             )}
             {b.myTasks.length > 0 && (
               <Section title="Meine offenen Punkte" count={b.myTasks.length}>
-                <TaskList tasks={b.myTasks} showCompany={false} />
+                <UpdatableTasks tasks={b.myTasks} />
               </Section>
             )}
             {b.otherTasks.length > 0 && (
               <Section title={b.person ? "Weitere Offene der Firma" : "Delegiert"} count={b.otherTasks.length}>
-                <TaskList tasks={b.otherTasks} showCompany={false} />
+                <UpdatableTasks tasks={b.otherTasks} />
               </Section>
             )}
             {!hasTasks && (
@@ -210,6 +205,20 @@ export function MeetingPage() {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+/** Im Gespräch: zu jeder Aufgabe direkt den neuen Stand notieren. */
+function UpdatableTasks({ tasks }: { tasks: Task[] }) {
+  return (
+    <div className="task-list">
+      {tasks.map((t) => (
+        <div key={t.id} className="update-row">
+          <TaskRow task={t} showCompany={false} />
+          <UpdateInput taskId={t.id} compact />
+        </div>
+      ))}
     </div>
   );
 }
