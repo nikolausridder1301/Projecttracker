@@ -24,6 +24,8 @@
   --yellow-bg: #fdf3dc;
   --green: #15803d;
   --green-bg: #e3f4e8;
+  --violet: #6b3fc2;
+  --violet-bg: #efe9fb;
 
   --fs-xs: 12px;
   --fs-sm: 13px;
@@ -861,6 +863,11 @@ kbd {
   background: var(--green-bg);
   border-color: transparent;
   color: var(--green);
+}
+.chip.tone-violet {
+  background: var(--violet-bg);
+  border-color: transparent;
+  color: var(--violet);
 }
 
 /* ---------- Detail-Panel ---------- */
@@ -2190,12 +2197,6 @@ button.traffic-tile:hover {
     opacity: 1;
   }
 }
-.task-next {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 100%;
-}
 .update-input .chip {
   height: 26px;
   font-size: var(--fs-sm);
@@ -2475,20 +2476,6 @@ button.traffic-tile:hover {
   min-width: 0;
   max-width: 100%;
 }
-.task-next {
-  display: inline-flex;
-  gap: 4px;
-}
-.task-next-text {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.task-next-meta {
-  flex-shrink: 0;
-  white-space: nowrap;
-}
 .task-right {
   flex-shrink: 0;
 }
@@ -2646,13 +2633,6 @@ button.traffic-tile:hover {
 .plan-new .chip-empty {
   opacity: 0.8;
 }
-.task-ms .task-next-text {
-  font-weight: 500;
-  color: var(--text);
-}
-.task-ms.tone-red .task-next-text {
-  color: inherit;
-}
 
 /* Einfaches Markdown in Schritten und Meilensteinen */
 .md p {
@@ -2681,14 +2661,6 @@ button.traffic-tile:hover {
 }
 .md a {
   overflow-wrap: anywhere;
-}
-.md-hint {
-  display: none;
-  font-size: var(--fs-xs);
-  color: var(--text-faint);
-}
-.plan-new:focus-within .md-hint {
-  display: block;
 }
 /* Listen im Markdown nicht von der Schrittliste erben lassen */
 .md ul {

@@ -46,16 +46,16 @@ export function todayCount(v: TodayView): number {
 /** Schritt (kein Meilenstein)? */
 export const isStep = (c: ChecklistItem) => !c.milestone;
 
-/** Nächster offener Schritt: zuerst der mit dem frühesten Datum, sonst der erste offene. */
-export function nextStep(t: Pick<Task, "checklist">): ChecklistItem | undefined {
-  const open = t.checklist.filter((c) => isStep(c) && !c.done);
-  const dated = open.filter((c) => c.due).sort((a, b) => (a.due! < b.due! ? -1 : 1));
-  return dated[0] ?? open[0];
-}
-
-/** Aktueller Meilenstein: der erste noch nicht erreichte. */
-export function currentMilestone(t: Pick<Task, "checklist">): ChecklistItem | undefined {
-  return t.checklist.find((c) => c.milestone && !c.done);
+/** Kurzer Hinweis für Listen: „2 Meilensteine · 3 offene Schritte“ (leer, wenn nichts davon da ist). */
+export function taskCounts(t: Pick<Task, "checklist">): string {
+  const milestones = t.checklist.filter((c) => !isStep(c)).length;
+  const open = t.checklist.filter((c) => isStep(c) && !c.done).length;
+  return [
+    milestones > 0 ? `${milestones} ${milestones === 1 ? "Meilenstein" : "Meilensteine"}` : "",
+    open > 0 ? `${open} ${open === 1 ? "offener Schritt" : "offene Schritte"}` : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
 }
 
 /** Frühestes Datum aus Aufgabe und offenen Schritten (Meilensteine haben kein Datum). */

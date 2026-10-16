@@ -3,10 +3,9 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useLookups, useStore } from "../data/store";
 import type { ChecklistItem, Task } from "../data/types";
 import { formatDate, localDate, relativeLabel, todayIso } from "../logic/dates";
-import { checklistProgress, currentMilestone, effectiveDue, isStep, nextStep, stepPersons, validateTask } from "../logic/tasks";
+import { checklistProgress, effectiveDue, isStep, stepPersons, taskCounts, validateTask } from "../logic/tasks";
 import { AttachedLinks } from "./links";
 import { AutoText, Avatar, ChipDate, CompaniesChip, CompanyBadges, Disclosure, ImportantChip, MarkdownText, PeopleChip } from "./common";
-import { firstLine } from "../logic/markdown";
 import { ProjectBadge } from "./ProjectSwitcher";
 import { NoteLink, useUi } from "./uiState";
 
@@ -55,7 +54,6 @@ export function TaskRow({
   const taskProject = projectById.get(task.project_id);
   const { setDone } = useTaskActions();
   const today = todayIso();
-  const cl = checklistProgress(task);
   const persons = task.assignee_person_ids.map((id) => personById.get(id)).filter((p) => p !== undefined);
   const done = task.status === "done";
   // Rechts der nächste Termin – Fälligkeit der Aufgabe oder eines offenen Schritts (wie auf „Heute“)
@@ -65,30 +63,9 @@ export function TaskRow({
 
   const sub: React.ReactNode[] = [];
   if (task.status === "blocked") sub.push(<span key="b" className="tone-red">Blockiert: {task.blocked_reason}</span>);
-  // Worauf hingearbeitet wird: der aktuelle Meilenstein, darunter der nächste Schritt
-  const ms = done ? undefined : currentMilestone(task);
-  if (ms) {
-    sub.push(
-      <span key="m" className="task-next task-ms" title={`Meilenstein: ${ms.text}`}>
-        <span className="task-next-text">◆ {firstLine(ms.text)}</span>
-      </span>,
-    );
-  }
-  const next = done ? undefined : nextStep(task);
-  if (next) {
-    const who = stepPersons(next)
-      .map((id) => personById.get(id)?.name.split(" ")[0])
-      .filter(Boolean)
-      .join(", ");
-    const late = !!next.due && next.due < today;
-    const meta = [who, next.due ? ddmm(next.due) : "", cl.total > 1 ? `${cl.done}/${cl.total}` : ""].filter(Boolean).join(" · ");
-    sub.push(
-      <span key="c" className={`task-next${late ? " tone-red" : ""}`} title={`Nächster Schritt: ${next.text}`}>
-        <span className="task-next-text">→ {firstLine(next.text)}</span>
-        {meta && <span className="task-next-meta">· {meta}</span>}
-      </span>,
-    );
-  } else if (cl.total > 0) sub.push(<span key="c">{cl.done}/{cl.total} Schritte</span>);
+  // Nur ein Hinweis, keine Details: Zahl der Meilensteine und der offenen Schritte
+  const counts = done ? "" : taskCounts(task);
+  if (counts) sub.push(<span key="n">{counts}</span>);
   if (subExtra) sub.push(<span key="x">{subExtra}</span>);
 
   return (
@@ -219,14 +196,14 @@ function PlanEditor({ task, save }: { task: Task; save: (patch: { checklist: Che
                     {textOf(i, "step-text")}
                     {!item.done && (
                       <div className={`step-meta${hasMeta ? "" : " no-meta"}`}>
-                        <PeopleChip title="Wer?" emptyLabel="Wer?" value={persons} onChange={(ids) => setItem(i, { person_ids: ids, person_id: undefined })} />
+                        <PeopleChip title="Wer?" emptyLabel="Wer?" tone="blue" value={persons} onChange={(ids) => setItem(i, { person_ids: ids, person_id: undefined })} />
                         <ChipDate
                           title="Bis wann?"
                           value={item.due ?? null}
                           onChange={(v) => setItem(i, { due: v })}
                           placeholder="Bis?"
                           format={(v) => `bis ${ddmm(v)}`}
-                          tone={item.due && item.due < today ? "red" : undefined}
+                          tone={item.due ? (item.due < today ? "red" : "violet") : undefined}
                         />
                       </div>
                     )}
@@ -303,7 +280,6 @@ function PlanAddRow({
       <div className="plan-new-main">
         <AutoText minRows={1} className="step-edit" ariaLabel={ariaLabel} value={value} onChange={onChange} onSubmit={onSubmit} placeholder={placeholder} />
         {children && <div className="plan-new-chips">{children}</div>}
-        <span className="md-hint">Umschalt+Enter: neue Zeile · „- “ für Aufzählung · **fett**</span>
       </div>
     </form>
   );
@@ -323,8 +299,8 @@ function StepAddForm({ onAdd }: { onAdd: (step: ChecklistItem) => void }) {
   };
   return (
     <PlanAddRow icon={<ListPlus size={16} />} value={text} onChange={setText} onSubmit={add} placeholder="Schritt hinzufügen… (Enter)" ariaLabel="Schritt hinzufügen">
-      <PeopleChip title="Wer?" emptyLabel="Wer?" value={persons} onChange={setPersons} />
-      <ChipDate title="Bis wann?" value={due} onChange={setDue} placeholder="Bis?" format={(v) => `bis ${ddmm(v)}`} />
+      <PeopleChip title="Wer?" emptyLabel="Wer?" tone="blue" value={persons} onChange={setPersons} />
+      <ChipDate title="Bis wann?" value={due} onChange={setDue} placeholder="Bis?" format={(v) => `bis ${ddmm(v)}`} tone={due ? "violet" : undefined} />
     </PlanAddRow>
   );
 }

@@ -363,11 +363,14 @@ export function ChipMulti({
   onChange,
   allLabel,
   shortcut,
+  tone,
 }: {
   icon?: ReactNode;
   label: string;
   empty?: boolean;
   title: string;
+  /** Farbe des gefüllten Chips (z. B. „blue“) */
+  tone?: string;
   options: ChipOption[];
   selected: string[];
   onChange: (v: string[]) => void;
@@ -399,7 +402,7 @@ export function ChipMulti({
       }
     >
       {(props) => (
-        <button type="button" {...props} className={`chip${empty ? " chip-empty" : ""}`} title={title}>
+        <button type="button" {...props} className={`chip${empty ? " chip-empty" : tone ? ` tone-${tone}` : ""}`} title={title}>
           {icon}
           <span className="chip-text">{label}</span>
           <ChevronDown size={14} className="chip-caret" aria-hidden />
@@ -458,10 +461,13 @@ export function PeopleChip({
   noneOption,
   icon,
   sortFirst,
+  tone,
 }: {
   value: Id[];
   onChange: (v: Id[]) => void;
   title: string;
+  /** Farbe, sobald jemand gewählt ist */
+  tone?: string;
   /** Beschriftung ohne Auswahl, z. B. „Ich“ oder „Wer?“ */
   emptyLabel: string;
   /** eigener Eintrag für „niemand“ (z. B. „Ich“) – sonst blasser Chip */
@@ -489,6 +495,7 @@ export function PeopleChip({
       icon={icon}
       label={label}
       empty={names.length === 0 && !noneOption}
+      tone={names.length > 0 ? tone : undefined}
       options={list.map((p) => ({
         value: p.id,
         label: `${p.name}${p.company_id ? ` · ${companyById.get(p.company_id)?.short ?? ""}` : ""}`,

@@ -10,15 +10,14 @@ import { search } from "./search";
 import { sinceLabel, validateTrafficChange } from "./traffic";
 import { affectsCompany, ageLabel, isOpenItem, jourFixeText, newVendorItem, showTicket, statusPatch } from "./vendor";
 import { localDate } from "./dates";
-import { firstLine, listIndent, listNewline, parseBlocks, parseInline } from "./markdown";
+import { listIndent, listNewline, parseBlocks, parseInline } from "./markdown";
 import {
   compareTasks,
   checklistProgress,
-  currentMilestone,
   personRefs,
   personsOf,
   effectiveDue,
-  nextStep,
+  taskCounts,
   isValidUrl,
   splitDone,
   todayCount,
@@ -264,19 +263,6 @@ describe("nav", () => {
 
 describe("Nächste Schritte", () => {
   const today = "2026-10-15";
-  it("nächster Schritt: frühestes Datum vor undatierten", () => {
-    const t = T({
-      checklist: [
-        { text: "a", done: false },
-        { text: "b", done: false, due: "2026-10-20" },
-        { text: "c", done: true, due: "2026-10-01" },
-        { text: "d", done: false, due: "2026-10-18" },
-      ],
-    });
-    expect(nextStep(t)?.text).toBe("d");
-    expect(nextStep(T({ checklist: [{ text: "x", done: false }] }))?.text).toBe("x");
-    expect(nextStep(T({ checklist: [{ text: "x", done: true }] }))).toBeUndefined();
-  });
   it("fälliger Schritt bringt die Aufgabe auf Heute", () => {
     const v = todayView(
       [
@@ -460,11 +446,12 @@ describe("Überarbeitung: Fälligkeit, Personen, Anbieter-Punkte", () => {
 describe("Schritte & Meilensteine", () => {
   const M = (text: string, done = false) => ({ text, done, milestone: true });
   const S = (text: string, done = false, due: string | null = null) => ({ text, done, due });
-  it("aktueller Meilenstein, Fortschritt und nächster Schritt zählen nur die jeweilige Art", () => {
-    const t = T({ checklist: [M("M1", true), S("x", true), M("M2"), S("y")] });
-    expect(currentMilestone(t)?.text).toBe("M2");
-    expect(nextStep(t)?.text).toBe("y");
-    expect(checklistProgress(t)).toEqual({ done: 1, total: 2 });
+  it("Hinweis für Listen: Meilensteine und offene Schritte; Fortschritt zählt nur Schritte", () => {
+    const t = T({ checklist: [M("M1", true), S("x", true), M("M2"), S("y"), S("z")] });
+    expect(taskCounts(t)).toBe("2 Meilensteine · 2 offene Schritte");
+    expect(taskCounts(T({ checklist: [M("M"), S("a")] }))).toBe("1 Meilenstein · 1 offener Schritt");
+    expect(taskCounts(T({ checklist: [S("a", true)] }))).toBe("");
+    expect(checklistProgress(t)).toEqual({ done: 1, total: 3 });
   });
   it("nächster Termin: Aufgabe und offene Schritte; Meilensteine haben kein Datum", () => {
     const t = T({ due_date: "2026-11-01", checklist: [{ ...M("M"), due: "2026-10-01" }, S("a", true, "2026-10-02"), S("b", false, "2026-10-20")] });
@@ -491,10 +478,6 @@ describe("Markdown", () => {
       { kind: "link", text: "x.de/a", href: "https://x.de/a" },
       { kind: "text", text: "." },
     ]);
-  });
-  it("erste Zeile ohne Zeichen, mit … bei mehr Zeilen", () => {
-    expect(firstLine("- **Freigabe** holen\n- Termin")).toBe("Freigabe holen …");
-    expect(firstLine("Einfach")).toBe("Einfach");
   });
   it("Enter in Aufzählung setzt nächsten Punkt, leerer Punkt beendet; Tab rückt ein", () => {
     expect(listNewline("- a", 3)).toEqual({ value: "- a\n- ", caret: 6 });

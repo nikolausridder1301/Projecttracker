@@ -63,16 +63,6 @@ export function parseInline(text: string): Inline[] {
   return out;
 }
 
-/** Erste Zeile ohne Markdown-Zeichen – für einzeilige Anzeigen in Listen. */
-export function firstLine(text: string): string {
-  const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
-  const line = (lines[0] ?? "").replace(BULLET, "$3").replace(NUMBER, "$3");
-  const plain = parseInline(line)
-    .map((t) => t.text)
-    .join("");
-  return lines.length > 1 ? `${plain} …` : plain;
-}
-
 export interface Edit {
   value: string;
   caret: number;

@@ -145,11 +145,11 @@ Kopfzeile: globale Suche (Strg+K), Backup-Icon, „+ Neu“ (Taste N). **Alles N
 ### 6.6 Schritte & Meilensteine, Delegiert
 
 - **Schritte & Meilensteine** je Aufgabe (ersetzt den früheren Verlauf): zwei voneinander **unabhängige Listen** – kein eigenes Objekt, alles in der Aufgabe (`checklist`).
-  - **Schritte:** Text, optional **Wer?** (mehrere) und **Bis?**; Wer/Bis stehen unter dem Text (lange Texte haben die volle Breite), leer erst beim Darüberfahren. Häkchen = erledigt. Texte per Klick bearbeitbar.
+  - **Schritte:** Text, optional **Wer?** (mehrere) und **Bis?**; Wer/Bis stehen unter dem Text (lange Texte haben die volle Breite), leer erst beim Darüberfahren. Häkchen = erledigt. Texte per Klick bearbeitbar. **Farben:** Person blau, Datum violett (rot, wenn überfällig).
   - **Meilensteine (◆):** die Etappen, auf die hingearbeitet wird – **nur Text, kein Datum, keine Schritte**; Klick auf ◆ = „erreicht“. Sie dienen der Orientierung und zählen nicht zum Fortschritt oder zu Terminen.
   - **Hinzufügen:** je Liste eine gleich aufgebaute Eingabezeile mit Enter – „Schritt hinzufügen…“ (Wer?, Bis?) unter den Schritten, „Meilenstein hinzufügen…“ unter den Meilensteinen; das Feld bleibt für den nächsten Eintrag offen. Ältere Aufgaben mit verschachtelten Schritten oder Meilenstein-Daten werden in diese zwei Listen aufgeteilt (alte Meilenstein-Daten bleiben unbenutzt gespeichert).
   - **Einfaches Markdown** in Schritten und Meilensteinen: **Enter speichert, Umschalt+Enter = neue Zeile**; „- “/„* “/„1. “ werden Aufzählungen (Enter bzw. Umschalt+Enter setzt den nächsten Punkt, ein leerer Punkt beendet die Liste, Tab/Umschalt+Tab rückt ein); `**fett**`, `*kursiv*`, `` `Code` `` und Links werden dargestellt. In Listen erscheint nur die erste Zeile ohne Zeichen.
-- **In Listen:** unter dem Titel der **aktuelle Meilenstein** („◆ Export-Freigabe“) und der **nächste offene Schritt** („→ … · Arman · 23.10. · 1/3“); lange Texte mit „…“ gekürzt, Person und Datum bleiben sichtbar.
+- **In Listen (Aufgabenkarte, überall gleich):** nur ein kurzer Hinweis unter dem Titel – **Zahl der Meilensteine und der offenen Schritte** („2 Meilensteine · 3 offene Schritte“); keine Texte, Personen oder Daten. Details stehen im Detail-Panel.
 - **Termine:** Fälligkeit und offene Schritte bilden den **nächsten Termin** (Heute, Sortierung, Zeile rechts, Firmenkarten).
 - **Meeting:** unter jeder offenen Aufgabe „Schritt notieren…“ – der vereinbarte Schritt kommt als neuer Schritt in die Aufgabe.
 - Menüpunkt **„Delegiert“**: offene Aufgaben nach Person (verantwortlich **oder mit offenem Schritt**), **zuerst fällig oben**; Kopf „x offen · y überfällig“.
