@@ -1,11 +1,11 @@
-import { Copy, Flag } from "lucide-react";
+import { Flag } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLookups, useStore } from "../data/store";
 import { NOTE_KIND_LABEL, PRIORITY_LABEL, type Id, type NoteKind, type Priority } from "../data/types";
 import { addWorkdays, relativeLabel, todayIso } from "../logic/dates";
 import { isValidUrl, overarchingCompany } from "../logic/tasks";
-import { ChipDate, ChipSelect, useDraft } from "./common";
+import { ChipDate, ChipMulti, ChipSelect, useDraft } from "./common";
 import { useUi, type CaptureType } from "./uiState";
 
 // Schnellerfassung (SPEC 6.5): Titel + Enter genügt, alles andere optional.
@@ -32,12 +32,13 @@ function CaptureDialog({
   const defaultCompany = prefill.companyId ?? context.companyId ?? overarchingCompany(companies)?.id ?? "";
   const [type, setType] = useState<CaptureType>(prefill.type ?? "task");
   const [title, setTitle, clearTitle] = useDraft("capture-title", "", prefill.title);
-  const [companyId, setCompanyId] = useState<Id>(defaultCompany);
+  // Aufgaben: eine oder mehrere Firmen (je Firma eine Aufgabe); Notiz/Link: die erste
+  const [companyIds, setCompanyIds] = useState<Id[]>(defaultCompany ? [defaultCompany] : []);
+  const companyId = companyIds[0] ?? "";
+  const setCompanyId = (id: Id) => setCompanyIds([id]);
   const [assignee, setAssignee] = useState<Id | "">("");
   const [due, setDue] = useState("");
   const [priority, setPriority] = useState<Priority>("medium");
-  const [multi, setMulti] = useState(false);
-  const [multiIds, setMultiIds] = useState<Set<Id>>(new Set());
   const [kind, setKind] = useState<NoteKind>("note");
   const [url, setUrl] = useState("");
   const [categoryId, setCategoryId] = useState<Id | "">("");
@@ -54,7 +55,7 @@ function CaptureDialog({
     setBusy(true);
     try {
       if (type === "task") {
-        const targets = multi ? [...multiIds] : [companyId];
+        const targets = companyIds;
         if (targets.length === 0) return toast("Bitte mindestens eine Firma wählen.", "error");
         const groupId = targets.length > 1 ? crypto.randomUUID() : null;
         await insert(
@@ -119,12 +120,9 @@ function CaptureDialog({
     }
   };
 
-  const toggleMulti = (id: Id) => {
-    const s = new Set(multiIds);
-    if (s.has(id)) s.delete(id);
-    else s.add(id);
-    setMultiIds(s);
-  };
+  const shortOf = (id: Id) => companies.find((c) => c.id === id)?.short ?? "";
+  const companiesLabel =
+    companyIds.length === 0 ? "Firma" : companyIds.length <= 3 ? companyIds.map(shortOf).join(", ") : `${companyIds.length} Firmen`;
 
   return (
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
@@ -154,14 +152,18 @@ function CaptureDialog({
         )}
 
         <div className="chips">
-          {!(type === "task" && multi) && (
+          {type === "task" ? (
+            <ChipMulti
+              title="Firmen – bei mehreren entsteht je Firma eine eigene Aufgabe"
+              label={companiesLabel}
+              empty={companyIds.length === 0}
+              options={companies.map((c) => ({ value: c.id, label: c.short }))}
+              selected={companyIds}
+              onChange={setCompanyIds}
+              shortcut={{ label: "Alle Gesellschaften", values: companies.filter((c) => !c.is_overarching && !c.is_external).map((c) => c.id) }}
+            />
+          ) : (
             <ChipSelect title="Firma" value={companyId} options={companies.map((c) => ({ value: c.id, label: c.short }))} onChange={setCompanyId} />
-          )}
-          {type === "task" && (
-            <button type="button" className={`chip${multi ? " tone-blue" : " chip-empty"}`} onClick={() => setMulti(!multi)} title="Je Firma eine eigene Aufgabe">
-              <Copy size={14} />
-              <span className="chip-text">Mehrere Firmen</span>
-            </button>
           )}
           {type === "task" && (
             <>
@@ -205,24 +207,6 @@ function CaptureDialog({
             />
           )}
         </div>
-
-        {type === "task" && multi && (
-          <div className="chip-checks">
-            {companies.map((c) => (
-              <label key={c.id} className={`chip${multiIds.has(c.id) ? " tone-blue" : " chip-empty"}`}>
-                <input type="checkbox" className="sr-only" checked={multiIds.has(c.id)} onChange={() => toggleMulti(c.id)} />
-                <span className="chip-text">{c.short}</span>
-              </label>
-            ))}
-            <button
-              type="button"
-              className="btn ghost small"
-              onClick={() => setMultiIds(new Set(companies.filter((c) => !c.is_overarching && !c.is_external).map((c) => c.id)))}
-            >
-              Alle Gesellschaften
-            </button>
-          </div>
-        )}
 
         <div className="row">
           <span className="spacer" />

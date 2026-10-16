@@ -135,12 +135,18 @@ export function Dropdown({
   onChange,
   title,
   children,
+  selected,
+  footer,
 }: {
   value: string;
   options: ChipOption[];
   onChange: (v: string) => void;
   title: string;
   children: (trigger: TriggerProps) => ReactNode;
+  /** Mehrfachauswahl: markierte Werte; die Liste bleibt beim Klicken offen */
+  selected?: string[];
+  /** Zusätzliche Aktion unter der Liste (z. B. „Alle Gesellschaften“) */
+  footer?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
@@ -151,6 +157,7 @@ export function Dropdown({
   const searchRef = useRef<HTMLInputElement>(null);
   const searchable = options.length > 8;
   const filtered = q ? options.filter((o) => norm(o.label).includes(norm(q))) : options;
+  const isSel = (v: string) => (selected ? selected.includes(v) : v === value);
 
   const close = (refocus = true) => {
     setOpen(false);
@@ -204,6 +211,7 @@ export function Dropdown({
   }, [active, open]);
 
   const choose = (v: string) => {
+    if (selected) return onChange(v);
     if (v !== value) onChange(v);
     close();
   };
@@ -253,6 +261,7 @@ export function Dropdown({
             className={`dropdown-menu${pos.above ? " above" : ""}`}
             style={{ top: pos.top, left: pos.left, minWidth: pos.minWidth, maxHeight: pos.maxHeight }}
             role="listbox"
+            aria-multiselectable={selected ? true : undefined}
             aria-label={title}
             tabIndex={-1}
             onKeyDown={onMenuKey}
@@ -275,18 +284,19 @@ export function Dropdown({
                   key={o.value}
                   data-index={i}
                   role="option"
-                  aria-selected={o.value === value}
-                  className={`dropdown-item${i === active ? " active" : ""}${o.value === value ? " selected" : ""}`}
+                  aria-selected={isSel(o.value)}
+                  className={`dropdown-item${i === active ? " active" : ""}${isSel(o.value) ? " selected" : ""}`}
                   onMouseEnter={() => setActive(i)}
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => choose(o.value)}
                 >
                   <span className="grow">{o.label}</span>
-                  {o.value === value && <Check size={15} aria-hidden />}
+                  {isSel(o.value) && <Check size={15} aria-hidden />}
                 </div>
               ))}
               {filtered.length === 0 && <div className="dropdown-empty">Keine Treffer</div>}
             </div>
+            {footer && <div className="dropdown-footer">{footer}</div>}
           </div>,
           document.body,
         )}
@@ -345,7 +355,7 @@ export function ChipDate({
   );
 }
 
-/** Mehrfachauswahl als Chip mit kleinem Aufklapp-Menü (z. B. betroffene Firmen). */
+/** Mehrfachauswahl als Chip – gleiche Liste wie ChipSelect, bleibt beim Ankreuzen offen. */
 export function ChipMulti({
   icon,
   label,
@@ -355,6 +365,7 @@ export function ChipMulti({
   selected,
   onChange,
   allLabel,
+  shortcut,
 }: {
   icon?: ReactNode;
   label: string;
@@ -363,39 +374,41 @@ export function ChipMulti({
   options: ChipOption[];
   selected: string[];
   onChange: (v: string[]) => void;
-  /** Text für „nichts gewählt“ (z. B. „Alle Firmen“) */
+  /** Eintrag für „nichts gewählt“ (z. B. „Alle Firmen“) */
   allLabel?: string;
+  /** Schnellauswahl unter der Liste */
+  shortcut?: { label: string; values: string[] };
 }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLSpanElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
-    window.addEventListener("mousedown", onDown);
-    return () => window.removeEventListener("mousedown", onDown);
-  }, [open]);
-  const toggle = (v: string) => onChange(selected.includes(v) ? selected.filter((x) => x !== v) : [...selected, v]);
+  const ALL = "__all__";
+  const opts = allLabel ? [{ value: ALL, label: allLabel }, ...options] : options;
+  const sel = allLabel && selected.length === 0 ? [ALL] : selected;
+  const toggle = (v: string) => {
+    if (v === ALL) return onChange([]);
+    onChange(selected.includes(v) ? selected.filter((x) => x !== v) : [...selected, v]);
+  };
   return (
-    <span className="popover-anchor" ref={ref}>
-      <button type="button" className={`chip${empty ? " chip-empty" : ""}`} title={title} onClick={() => setOpen(!open)} aria-expanded={open}>
-        {icon}
-        <span className="chip-text">{label}</span>
-      </button>
-      {open && (
-        <div className="popover popover-list">
-          {allLabel && (
-            <label className="inline">
-              <input type="checkbox" className="check" checked={selected.length === 0} onChange={() => onChange([])} /> {allLabel}
-            </label>
-          )}
-          {options.map((o) => (
-            <label key={o.value} className="inline">
-              <input type="checkbox" className="check" checked={selected.includes(o.value)} onChange={() => toggle(o.value)} /> {o.label}
-            </label>
-          ))}
-        </div>
+    <Dropdown
+      value=""
+      selected={sel}
+      options={opts}
+      onChange={toggle}
+      title={title}
+      footer={
+        shortcut && (
+          <button type="button" className="link-btn small" onMouseDown={(e) => e.preventDefault()} onClick={() => onChange(shortcut.values)}>
+            {shortcut.label}
+          </button>
+        )
+      }
+    >
+      {(props) => (
+        <button type="button" {...props} className={`chip${empty ? " chip-empty" : ""}`} title={title}>
+          {icon}
+          <span className="chip-text">{label}</span>
+          <ChevronDown size={14} className="chip-caret" aria-hidden />
+        </button>
       )}
-    </span>
+    </Dropdown>
   );
 }
 

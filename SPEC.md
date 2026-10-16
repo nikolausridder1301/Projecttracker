@@ -140,7 +140,7 @@ Kopfzeile: globale Suche (Strg+K), Backup-Icon, „+ Neu“ (Taste N).
 - **Erledigte getrennt:** offene oben (gruppiert), darunter Trennlinie „Erledigt“ und die erledigten Aufgaben nach Erledigt-Datum, neueste zuerst.
 - **Detail-Panel:** Titel, Chips **Status · Firma · Verantwortlich · Fällig · Priorität**; „Blockiert“ nur mit Grund; Delegations-Box (6.6); Checkliste (eingeklappt, bis Punkte existieren).
 - **Keine neuen Beschreibungen und Link-Anhänge** mehr – vorhandene werden weiter angezeigt.
-- **„Für mehrere Firmen anlegen“** erzeugt je Firma eine eigene Aufgabe (ohne Firmen-Zähler); in der Zeile steht nur „x/y Punkte“, wenn die Aufgabe eine Checkliste hat; „Alle Gesellschaften“ ohne Holding und externe Partner.
+- **Mehrere Firmen:** In der Schnellerfassung ist „Firma“ eine Mehrfachauswahl. Eine Firma = eine Aufgabe, mehrere Firmen = je Firma eine eigene Aufgabe (ohne Firmen-Zähler); in der Zeile steht nur „x/y Punkte“, wenn die Aufgabe eine Checkliste hat; Schnellauswahl „Alle Gesellschaften“ (ohne Holding und externe Partner) unten in der Liste. Im Aufgaben-Panel bleibt die Firma eine Einzelauswahl, weil jede Aufgabe zu genau einer Firma gehört.
 - Löschen mit „Rückgängig“ und Papierkorb.
 
 ### 6.6 Delegiert und Nachhaken
@@ -180,7 +180,7 @@ Arten **Notiz · Meeting-Protokoll · Entscheidung**; Chips für Art, Firma, Dat
 
 ### 6.11 Schnellerfassung
 
-Taste **N** oder „+ Neu“: Typ (Aufgabe/Notiz/Link), Titel, Enter. Chips für Firma (aus dem Kontext vorbelegt), Mehrere Firmen, Verantwortlich, Fällig, Priorität bzw. Art/Kategorie. Entwürfe bleiben erhalten.
+Taste **N** oder „+ Neu“: Typ (Aufgabe/Notiz/Link), Titel, Enter. Chips für Firma (aus dem Kontext vorbelegt; bei Aufgaben Mehrfachauswahl), Verantwortlich, Fällig, Priorität bzw. Art/Kategorie. Entwürfe bleiben erhalten.
 
 ### 6.12 Suche
 
@@ -258,3 +258,4 @@ Seitenleiste als Menü; Heute, Abhaken, Schnellerfassung, Nachfrage notieren und
 | Aufgaben-Panel | Keine neuen Beschreibungen und Links |
 | Meeting-Seite | Ohne Kopfkarte und „Erledigt“-Bereich; neuer Leer-Zustand mit „Aufgabe anlegen“ |
 | Mehrere Firmen | Kein „x/y Firmen“-Zähler mehr; Fortschritt nur über Checklisten-Punkte |
+| Firmenauswahl | Ein Mehrfach-Dropdown statt Firma + „Mehrere Firmen“ |
