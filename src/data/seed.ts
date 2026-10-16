@@ -33,22 +33,6 @@ export function demoSeed(): Db {
     sort,
   }));
 
-  const topics = [
-    "Projektmanagement/Allgemein",
-    "Datentransfer: lesen",
-    "Datentransfer: schreiben",
-    "Warengruppen",
-    "Analytics",
-    "Einsparungen (Hinweise)",
-    "RFQs",
-    "Agenten",
-    "Lieferantenabfragen",
-    "Lieferantenbewertungen",
-    "Auftragsbestätigung",
-    "Schulung/Academy",
-    "Stammdaten",
-  ].map((name, sort) => ({ ...base(), name, sort, archived: false }));
-
   const link_categories = ["Konzept", "Vertrag/Angebot", "Schulung", "Technik", "Protokoll", "Sonstiges"].map(
     (name, sort) => ({ ...base(), name, sort }),
   );
@@ -80,15 +64,14 @@ export function demoSeed(): Db {
   });
 
   const tasks = [
-    task({ title: "Steuerkreis-Unterlage vorbereiten", due_date: today, priority: "high", topic_id: topics[0].id }),
-    task({ title: "Warengruppen-Mapping prüfen", company_ids: [alm.id], due_date: addDays(today, -2), topic_id: topics[3].id }),
+    task({ title: "Steuerkreis-Unterlage vorbereiten", due_date: today, priority: "high" }),
+    task({ title: "Warengruppen-Mapping prüfen", company_ids: [alm.id], due_date: addDays(today, -2) }),
     task({
       title: "Datenexport aus ERP bereitstellen",
       company_ids: [fest.id],
       assignee_person_ids: [people[1].id],
       follow_up_date: today,
       due_date: addDays(today, 3),
-      topic_id: topics[1].id,
       priority: "high",
     }),
     task({
@@ -96,7 +79,6 @@ export function demoSeed(): Db {
       company_ids: [haz.id],
       assignee_person_ids: [people[0].id],
       follow_up_date: addDays(today, 4),
-      topic_id: topics[11].id,
       checklist: [
         { text: "Grundlagen", done: true, milestone: true },
         { text: "Modul 1", done: true },
@@ -109,32 +91,8 @@ export function demoSeed(): Db {
       company_ids: [haz.id],
       status: "blocked",
       blocked_reason: "Warten auf Freigabe ERP-Anbieter",
-      topic_id: topics[2].id,
     }),
   ];
-
-  // Beispiel-Fortschritt: einige Meilensteine bei einigen Firmen
-  const demoMilestones = () => {
-    const [, hazC, almC, maxC, , festC] = companies;
-    const st = (topic: number, company: { id: string }, status: Db["milestone_status"][number]["status"], extra: object = {}) => ({
-      ...base(),
-      topic_id: topics[topic].id,
-      company_id: company.id,
-      status,
-      target_date: null,
-      comment: "",
-      ...extra,
-    });
-    return [
-      st(1, hazC, "done"),
-      st(1, almC, "done"),
-      st(1, festC, "delayed", { comment: "Nur Test-Datei empfangen, Ticket beim ERP-Anbieter", target_date: addDays(today, -5) }),
-      st(2, hazC, "at_risk", { comment: "Schreibfunktion in Arbeit", target_date: addDays(today, 14) }),
-      st(3, almC, "on_track"),
-      st(3, maxC, "on_track", { target_date: addDays(today, 30) }),
-      st(11, hazC, "on_track"),
-    ];
-  };
 
   const projects = [
     {
@@ -153,7 +111,6 @@ export function demoSeed(): Db {
   return {
     projects,
     companies,
-    topics,
     link_categories,
     people,
     notes: [],
@@ -163,6 +120,5 @@ export function demoSeed(): Db {
     attachments: [],
     app_meta: [{ ...meta(), last_export_at: null, nav_order: [] }],
     vendor_items: [],
-    milestone_status: demoMilestones(),
   };
 }

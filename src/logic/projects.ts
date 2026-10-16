@@ -1,11 +1,10 @@
 // Neues Projekt aus einem bestehenden ableiten: Stammdaten werden kopiert
 // (neue IDs, Firmenbezüge umgehängt), Arbeitsdaten wie Aufgaben nicht.
-import type { Company, Db, Id, LinkCategory, NewRow, Person, Topic } from "../data/types";
+import type { Company, Db, Id, LinkCategory, NewRow, Person } from "../data/types";
 
 export interface ProjectCopy {
   companies: NewRow<"companies">[];
   people: NewRow<"people">[];
-  topics: NewRow<"topics">[];
   link_categories: NewRow<"link_categories">[];
   /** neue ID der Anbieter-Firma, falls das Quellprojekt einen Anbieter-Bereich hat */
   vendorCompanyId: Id | null;
@@ -14,7 +13,7 @@ export interface ProjectCopy {
 const alive = <T extends { deleted_at: string | null }>(l: T[]) => l.filter((r) => r.deleted_at === null);
 
 export function copyProjectMasterData(
-  db: Pick<Db, "projects" | "companies" | "people" | "topics" | "link_categories">,
+  db: Pick<Db, "projects" | "companies" | "people" | "link_categories">,
   sourceProjectId: Id,
   newProjectId: Id,
   newId: () => Id = () => crypto.randomUUID(),
@@ -53,10 +52,6 @@ export function copyProjectMasterData(
       is_me: p.is_me,
     }));
 
-  const topics = inSource<Topic>(db.topics)
-    .filter((t) => !t.archived)
-    .map((t) => ({ id: newId(), project_id: newProjectId, name: t.name, sort: t.sort, archived: false }));
-
   const link_categories = inSource<LinkCategory>(db.link_categories).map((c) => ({
     id: newId(),
     project_id: newProjectId,
@@ -67,7 +62,7 @@ export function copyProjectMasterData(
   const source = db.projects.find((p) => p.id === sourceProjectId);
   const vendorCompanyId = source?.vendor_company_id ? (companyMap.get(source.vendor_company_id) ?? null) : null;
 
-  return { companies, people, topics, link_categories, vendorCompanyId };
+  return { companies, people, link_categories, vendorCompanyId };
 }
 
 /** Kürzel aus dem Projektnamen, z. B. „ERP-Einführung“ → „ERP“. */

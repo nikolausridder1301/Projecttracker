@@ -8,7 +8,7 @@ import { CompanyBadge, Empty } from "../ui/common";
 import { TaskRow } from "../ui/tasks";
 
 // „Delegiert“: alle offenen Delegationen nach Person – was zuerst fällig ist, steht oben
-// (nächster Termin aus Fälligkeit, Schritten und Meilenstein-Zielen).
+// (nächster Termin aus Fälligkeit und offenen Schritten).
 
 export function WaitingPage() {
   const { db } = useStore();

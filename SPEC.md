@@ -51,7 +51,7 @@ Mehrbenutzer/Zugang für Delegierte · Dateiuploads · E-Mail-/Push-Erinnerungen
 ### 4.1 Projekte
 
 - Oben links **Projekt-Umschalter**: aktuelles Projekt (Kürzel-Badge in Projektfarbe + Name), Liste aller Projekte, „Neues Projekt…“, „Projekteinstellungen“. **Bei nur einem Projekt** steht dort schlicht der Name; „Neues Projekt…“ liegt dann in den Einstellungen.
-- **Alles gehört zu einem Projekt** – auch Firmen und Personen. Ein neues Projekt kann Firmen, Personen, Meilensteine und Link-Kategorien eines bestehenden Projekts **als Kopie** übernehmen ; Aufgaben, Notizen, Links und Anbieter-Punkte werden nicht kopiert. Danach ist jedes Projekt unabhängig anpassbar.
+- **Alles gehört zu einem Projekt** – auch Firmen und Personen. Ein neues Projekt kann Firmen, Personen und Link-Kategorien eines bestehenden Projekts **als Kopie** übernehmen ; Aufgaben, Notizen, Links und Anbieter-Punkte werden nicht kopiert. Danach ist jedes Projekt unabhängig anpassbar.
 - Projekte lassen sich archivieren; das letzte aktive Projekt nicht.
 - Erstes Projekt: **„Tacto“** (Kürzel TAC) mit allen bisherigen Daten.
 
@@ -70,9 +70,9 @@ Mehrbenutzer/Zugang für Delegierte · Dateiuploads · E-Mail-/Push-Erinnerungen
 
 Logos aus dem Repo `tacto`, Tacto-Logo von Nikolaus. Externe Partner zählen nicht zu „Alle Gesellschaften“. Je Firma: Farbe, Kürzel. Es gibt **keine Firmen-Ampel** mehr – Status und Fortschritt stehen im externen Reporting.
 
-### 4.3 Meilensteine (früher „Themen“)
+### 4.3 Themen entfallen
 
-Die 13 Startthemen (10 tacto-Module plus Projektmanagement/Allgemein, Schulung/Academy, Stammdaten) sind jetzt **Meilensteine** je Firma (Reiter in der Firmen-Ansicht); ausgeblendet, sobald ein Reporting-Link gesetzt ist. In den Einstellungen umbenenn-, sortier-, ergänz- und archivierbar.
+Die früheren Themen bzw. **Firmen-Meilensteine** (Status je Thema und Firma) gibt es nicht mehr – Fortschritt steht im externen Reporting. Die Tabellen `topics` und `milestone_status` bleiben ungenutzt in der Datenbank. (Meilensteine gibt es nur noch als ◆ in einer Aufgabe, siehe 6.6.)
 
 ### 4.4 Personen
 
@@ -91,8 +91,8 @@ Alle Tabellen: `id`, `created_at`, `updated_at`, `deleted_at` (Papierkorb). Proj
 | `projects` | Name, Kürzel, Farbe, `vendor_company_id` (Anbieter-Bereich an/aus), Sortierung, archiviert |
 | `companies` | Name, Kürzel, Farbe, Logo-Schlüssel, übergreifend, **extern** (die früheren Ampel-Spalten bleiben ungenutzt in der Datenbank) |
 | `traffic_history` | Früherer Ampel-Verlauf – wird nicht mehr angezeigt oder beschrieben, Daten bleiben erhalten |
-| `topics` | **Meilensteine** (Name, Sortierung, archiviert) |
-| `milestone_status` | Stand je Meilenstein und Firma: Status, Zieldatum, Kommentar (eindeutig je Paar) |
+| `topics` | Früher Meilensteine/Themen – wird nicht mehr genutzt, Daten bleiben erhalten |
+| `milestone_status` | Früherer Stand je Thema und Firma – wird nicht mehr genutzt, Daten bleiben erhalten |
 | `people` | Personen je Projekt; `is_me` markiert die **eigene Person** („Ich“, z. B. Nikolaus Ridder bei der Holding) – je Projekt eine |
 | `tasks` | Titel, Firmen (`company_ids`, mindestens eine), Verantwortliche Personen (`assignee_person_ids`, leer = ich; mehrere möglich; `assignee_me` = ich zusätzlich zu den Personen), Status (offen/blockiert/erledigt), Grund bei „Blockiert“, Wichtig-Fahne (`priority` high/medium), fällig, Nächste Schritte (`checklist`: Text, erledigt, optional Personen und Datum – kein eigenes Objekt), Herkunfts-Protokoll; Beschreibung nur noch für Altbestand |
 | `task_followups` | Früherer **Verlauf** je Aufgabe (Datum, Text) – wird nicht mehr angezeigt oder beschrieben, Daten bleiben erhalten. Die Spalte `tasks.follow_up_date` wird nicht mehr genutzt. |
@@ -129,7 +129,6 @@ Kopfzeile: globale Suche (Strg+K), Backup-Icon, „+ Neu“ (Taste N). **Alles N
 
 - **Keine eigene Fortschritts-Seite mehr:** Der Fortschritt ist im **Tacto Reporting** dokumentiert (https://nikolausridder1301.github.io/tacto/). Der Menüpunkt **„Reporting“** öffnet es in einem neuen Tab.
 - Der Link ist eine Projekteinstellung („Reporting-Link im Menü“); leer = kein Menüpunkt. Für das Projekt Tacto ist er gesetzt.
-- Meilensteine je Firma gibt es weiterhin als Reiter in der Firmen-Ansicht.
 
 ### 6.5 Aufgaben
 
@@ -160,7 +159,7 @@ Kopfzeile: globale Suche (Strg+K), Backup-Icon, „+ Neu“ (Taste N). **Alles N
 
 - **Eine Detailansicht für Firmen und Personen**, auch auf der Meeting-Seite. Dahinter steht **eine gemeinsame Logik „was gehört zu X“** (`buildBriefing`); Detailansicht, Agenda und Protokoll nutzen sie alle.
   - **Kopf:** Logo bzw. Initialen, Name; bei Firmen ihre Personen (mit „+ Person“); bei Personen Firma, Rolle, E-Mail, Telefon und „Bearbeiten“ (Name, Firma, Rolle, Kontakt, aktiv, löschen). Rechts **„Agenda kopieren“** und **„Protokoll starten“**.
-  - **Reiter:** **Offen · Notizen · Links**, bei Firmen zusätzlich **Meilensteine · {Anbieter}**.
+  - **Reiter:** **Offen · Notizen · Links**, bei Firmen zusätzlich **{Anbieter}** (falls vorhanden).
   - **Offen:** bei Personen „Offen bei …“ (verantwortlich oder offener Schritt), dazu meine und weitere offene Punkte ihrer Firma; bei Firmen alles, was die Firma betrifft. Blockiertes zuerst; Schritte lassen sich über den Hinweis in der Karte aufklappen. Nichts offen: Karte mit „Aufgabe anlegen“. Erledigte auf Wunsch („x erledigte anzeigen“).
 - **Meeting** bleibt im Menü für den schnellen Zugriff: oben Person oder Firma wählen (Suche, letzte Auswahl bleibt), darunter genau diese Ansicht.
 - **„Protokoll starten“** öffnet das **heutige Protokoll** mit dieser Person/Firma oder legt es an (Teilnehmer, Firma, Datum). Im Protokoll steht **zuerst der Text, darunter** (damit viele offene Punkte die Texteingabe nicht verkleinern) die **Liste der offenen Punkte mit aufklappbaren Schritten** – was vereinbart wird, landet direkt als Schritt in der Aufgabe; der Text bleibt für freie Notizen (keine kopierte Agenda mehr). Das „Gegenüber“ ist die einzige Teilnehmerperson außer mir; sonst gilt die Firma des Protokolls.
@@ -201,7 +200,7 @@ Gelöschtes (Aufgaben, Notizen, Links, Anbieter-Punkte, Personen, Firmen) landet
 ### 6.14 Backup und Einstellungen
 
 - **Backup** per Download-Icon in der Kopfzeile (alle Projekte, JSON); oranger Punkt, wenn das letzte Backup älter als 14 Tage ist. Keine Banner-Leiste.
-- **Einstellungen:** Projekt (Name, Kürzel, Farbe, Reporting-Link – nur http(s) –, Anbieter-Bereich, Archivieren, bei nur einem Projekt „Neues Projekt…“) · Backup · Menü (Standard-Reihenfolge) · Firmen (inkl. „Partner“; neue Firma per Eingabezeile + Enter, Entfernen in den Papierkorb) · Meilensteine (nur ohne Reporting-Link) · Link-Kategorien.
+- **Einstellungen:** Projekt (Name, Kürzel, Farbe, Reporting-Link – nur http(s) –, Anbieter-Bereich, Archivieren, bei nur einem Projekt „Neues Projekt…“) · Backup · Menü (Standard-Reihenfolge) · Firmen (inkl. „Partner“; neue Firma per Eingabezeile + Enter, Entfernen in den Papierkorb) · Link-Kategorien.
 
 ### 6.15 Mobil
 
@@ -209,7 +208,7 @@ Seitenleiste als Menü; Heute, Abhaken, Schnellerfassung, Schritte und alle Dial
 
 ## 7. Technik und Betrieb
 
-- **Aufbau:** `src/data` (Typen, Backend Supabase/Demo, Store), `src/logic` (reine Logik mit Tests: Datum, Heute, Suche, Anbieter, Projekte, Menü, Meilensteine, Briefing), `src/ui` (gemeinsame Bausteine), `src/pages` (Ansichten), `supabase/migrations`.
+- **Aufbau:** `src/data` (Typen, Backend Supabase/Demo, Store), `src/logic` (reine Logik mit Tests: Datum, Heute, Suche, Anbieter, Projekte, Menü, Briefing), `src/ui` (gemeinsame Bausteine), `src/pages` (Ansichten), `supabase/migrations`.
 - **Store:** lädt alles einmal, aktualisiert optimistisch (Rücknahme bei Fehler); `db` = aktuelles Projekt, `allDb` = Gesamtbestand; `project_id` wird beim Anlegen automatisch gesetzt.
 - **Ablauf für Änderungen:** Feature-Branch → Pull Request → Merge auf `main` → GitHub Action baut, testet und veröffentlicht. Datenbankänderungen als Migration; bei neuen Pflichtspalten ein Übergangs-Standardwert, damit die laufende Version bis zum Deploy weiter speichert.
 - **Keep-alive:** GitHub Action alle 3 Tage ruft `ping()` auf.
@@ -230,12 +229,11 @@ Seitenleiste als Menü; Heute, Abhaken, Schnellerfassung, Schritte und alle Dial
 - Ohne Login und mit fremdem Konto sind keine Daten lesbar oder schreibbar; Registrierung ist aus.
 - Projekt anlegen mit Kopie; Daten strikt je Projekt getrennt; „Alle Projekte“ auf Heute.
 - Keine Firmen-Ampel nirgends (Heute, Kontakte, Firmen-Ansicht, Einstellungen).
-- Meilensteine je Firma: Status setzen/ändern ohne Duplikate; überschrittene Ziele markiert.
 - Schritte und Meilensteine je Aufgabe unabhängig voneinander (Meilensteine ohne Datum und Schritte); aktueller Meilenstein und nächster Schritt in der Zeile; „Delegiert“ sortiert nach nächstem Termin.
 - Meeting-Briefing zeigt nur die gewählte Person/Firma; Protokoll mit Agenda und Teilnehmer.
 - Erledigte Aufgaben unter Trennlinie nach Datum.
 - Menü per Ziehen sortierbar, ohne versehentlichen Seitenwechsel.
-- Keine Themen-Felder außerhalb der Meilensteine; keine neuen Beschreibungen/Links an Aufgaben.
+- Keine Themen-Felder; keine neuen Beschreibungen/Links an Aufgaben.
 - Alle Seiten ohne seitliches Scrollen bei 375 px und 1280 px.
 
 ## 10. Offene Punkte
@@ -260,7 +258,7 @@ Seitenleiste als Menü; Heute, Abhaken, Schnellerfassung, Schritte und alle Dial
 | Ampel | Entfällt komplett (steht im externen Reporting); Ampel-Leiste auf Heute, Dialog, Verlauf und Vorschlag entfernt; schlichtere Firmen-Karten |
 | Erledigte | Unter Trennlinie, nach Datum |
 | Meeting | Briefing zu Person/Firma mit Protokoll-Start |
-| Themen | Werden Meilensteine (je Firma); kein Thema-Feld mehr an Einträgen |
+| Themen | Entfallen komplett (erst Firmen-Meilensteine, dann gestrichen); kein Thema-Feld mehr an Einträgen |
 | Benennung | „Wartet auf…“ → „Delegiert“ |
 | Aufgaben-Panel | Keine neuen Beschreibungen und Links |
 | Meeting-Seite | Ohne Kopfkarte und „Erledigt“-Bereich; neuer Leer-Zustand mit „Aufgabe anlegen“ |
@@ -269,6 +267,7 @@ Seitenleiste als Menü; Heute, Abhaken, Schnellerfassung, Schritte und alle Dial
 | Firmenauswahl | Ein Mehrfach-Dropdown statt Firma + „Mehrere Firmen“ |
 | Meilensteine statt Verlauf | Verlauf entfällt (doppelte Einträge, wenig Nutzen); stattdessen **Schritte & Meilensteine** je Aufgabe; Listen zeigen aktuellen Meilenstein; Meeting legt Schritte an; Delegiert nach nächstem Termin |
 | Meilensteine einfach | Meilensteine ohne Datum und ohne eigene Schritte – nur Orientierung; Schritte und Meilensteine sind zwei unabhängige Listen mit gleicher Eingabe |
+| Firmen-Meilensteine | Reiter, Einstellungen und Tabellenzugriff entfernt (Fortschritt im externen Reporting); nur ◆-Meilensteine in Aufgaben bleiben |
 | Review mit Subagenten (16.10.2026) | 10 Fehler behoben (u. a. ein Termin überall, Delegiert inkl. Schritt-Personen, Gruppen je Person, Vorbelegung der Person, Speichern bei Esc, gleichzeitige Änderungen, Datum um Mitternacht, Ampel „seit“, Agenda-Anbieterpunkte, Verlauf löschen mit Rückgängig); Vereinfachungen: Blockiert-Schalter statt Status-Chip, schlanke Filterleiste, Schritte vor Verlauf, automatische Statuszeilen, Protokoll mit Live-Liste, Meilensteine ausgeblendet bei Reporting-Link, schlichter Projekt-Umschalter, Firmen per Eingabezeile, Links im Text statt Anhänge, toter Code entfernt; Ergänzungen: Schritt bearbeiten, Protokoll wiederverwenden, Suche über Verlauf und Firmen, Jour-fixe als Agenda der Anbieter-Firma |
 | Fortschritt | Menüpunkt „Fortschritt“ entfällt; stattdessen Link „Reporting“ zum Tacto Reporting (Projekteinstellung `report_url`) |
 | Kontakte-Übersicht | Firmen und Personen getrennt (Firmen oben, Personen darunter), einheitliche Karten mit Fußzeile auf gleicher Höhe, klare Zahlen statt „0 offen“ |

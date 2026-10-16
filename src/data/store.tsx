@@ -219,7 +219,6 @@ export function useLookups() {
   return useMemo(() => {
     const alive = <T extends { deleted_at: string | null }>(l: T[]) => l.filter((r) => r.deleted_at === null);
     const companies = alive(db.companies).sort((a, b) => a.sort - b.sort);
-    const topics = alive(db.topics).sort((a, b) => a.sort - b.sort);
     const people = alive(db.people).sort((a, b) => a.name.localeCompare(b.name, "de"));
     // die eigene Person („Ich“), falls im Projekt angelegt
     const me = people.find((p) => p.is_me && p.active);
@@ -228,12 +227,10 @@ export function useLookups() {
     const byId = <T extends { id: Id }>(l: T[]) => new Map(l.map((r) => [r.id, r]));
     return {
       companies,
-      topics,
       people,
       me,
       categories,
       companyById: byId(allDb.companies),
-      topicById: byId(allDb.topics),
       personById: byId(allDb.people),
       categoryById: byId(allDb.link_categories),
       noteById: byId(allDb.notes),

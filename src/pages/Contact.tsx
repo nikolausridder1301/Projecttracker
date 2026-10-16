@@ -9,7 +9,6 @@ import { isMine, isOpen, personRefs, stepPersons } from "../logic/tasks";
 import { ageLabel, categoryDef, jourFixeText, statusDef } from "../logic/vendor";
 import { Avatar, CompanyBadge, CompanyLogo, CompanySelect, Empty } from "../ui/common";
 import { LinkRow } from "../ui/links";
-import { CompanyMilestones } from "../ui/milestones";
 import { TaskList, TaskRow } from "../ui/tasks";
 import { NoteLink, useCaptureContext, useUi } from "../ui/uiState";
 import { useVendor } from "../ui/vendor";
@@ -19,7 +18,7 @@ import { CATEGORY_ICON } from "./Tacto";
 // Eine Ansicht für Firmen und Personen (auch auf der Meeting-Seite):
 // Kopf mit Eckdaten, „Protokoll starten“/„Agenda kopieren“, darunter gleiche Reiter.
 
-type Tab = "open" | "notes" | "links" | "ms" | "vendor";
+type Tab = "open" | "notes" | "links" | "vendor";
 
 export function CompanyDetailPage() {
   const { id } = useParams();
@@ -51,7 +50,7 @@ function DetailPage({ target }: { target: MeetingTarget }) {
 }
 
 export function ContactView({ target }: { target: MeetingTarget }) {
-  const { db, insert, toast, project } = useStore();
+  const { db, insert, toast } = useStore();
   const { companies, people, personById, me } = useLookups();
   const { openNote } = useUi();
   const vendor = useVendor();
@@ -112,8 +111,6 @@ export function ContactView({ target }: { target: MeetingTarget }) {
   const openCount = b.delegatedToPerson.length + b.myTasks.length + b.otherTasks.length;
   const company = target.kind === "company" ? b.company : undefined;
   const vendorItems = b.vendorItems;
-  // Fortschritt steht im externen Reporting – dann keine Meilensteine im Tool
-  const showMilestones = !project?.report_url?.trim();
 
   const tabs: [Tab, string][] = [
     ["open", `Offen (${openCount})`],
@@ -121,7 +118,6 @@ export function ContactView({ target }: { target: MeetingTarget }) {
     ["links", `Links (${b.links.length})`],
     ...(company
       ? ([
-          ...(showMilestones ? ([["ms", "Meilensteine"]] as [Tab, string][]) : []),
           ...(vendor ? ([["vendor", `${vendor.name} (${vendorItems.length})`]] as [Tab, string][]) : []),
         ] as [Tab, string][])
       : []),
@@ -212,11 +208,6 @@ export function ContactView({ target }: { target: MeetingTarget }) {
             })}
           </div>
         ))}
-      {tab === "ms" && company && (
-        <div className="card">
-          <CompanyMilestones company={company} />
-        </div>
-      )}
     </>
   );
 }
