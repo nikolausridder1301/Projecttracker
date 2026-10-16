@@ -66,9 +66,14 @@ export interface Person extends Base, InProject {
   active: boolean;
 }
 
+/** Nächster Schritt einer Aufgabe (gespeichert in tasks.checklist). */
 export interface ChecklistItem {
   text: string;
   done: boolean;
+  /** wer – optional */
+  person_id?: Id | null;
+  /** bis wann – optional */
+  due?: IsoDate | null;
 }
 
 export interface Task extends Base, InProject {

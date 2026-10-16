@@ -44,7 +44,7 @@ Leitfrage für jede Design-Entscheidung: *Was muss ich heute tun, wem muss ich h
 
 ### Bewusst nicht vorgesehen
 
-Mehrbenutzer/Zugang für Delegierte · Dateiuploads · E-Mail-/Push-Erinnerungen · Kalender-Export · Offline-Modus · echte Unteraufgaben (stattdessen Checkliste) · Import-Funktion · Dark Mode · Markdown-Darstellung · **Themen-Zuordnung an Aufgaben, Notizen, Links und Anbieter-Punkten** (Themen sind nur noch Meilensteine) · **neue Beschreibungen und Link-Anhänge an Aufgaben** · Verknüpfung zu tacto-/ERP-Daten.
+Mehrbenutzer/Zugang für Delegierte · Dateiuploads · E-Mail-/Push-Erinnerungen · Kalender-Export · Offline-Modus · eigene Unteraufgaben-Objekte (stattdessen „Nächste Schritte“ in der Aufgabe) · Import-Funktion · Dark Mode · Markdown-Darstellung · **Themen-Zuordnung an Aufgaben, Notizen, Links und Anbieter-Punkten** (Themen sind nur noch Meilensteine) · **neue Beschreibungen und Link-Anhänge an Aufgaben** · Verknüpfung zu tacto-/ERP-Daten.
 
 ## 4. Struktur und Stammdaten
 
@@ -94,7 +94,7 @@ Alle Tabellen: `id`, `created_at`, `updated_at`, `deleted_at` (Papierkorb). Proj
 | `topics` | **Meilensteine** (Name, Sortierung, archiviert) |
 | `milestone_status` | Stand je Meilenstein und Firma: Status, Zieldatum, Kommentar (eindeutig je Paar) |
 | `people` | Personen je Projekt |
-| `tasks` | Titel, Firma, Verantwortliche Personen (`assignee_person_ids`, leer = ich; mehrere möglich), Status (offen/blockiert/erledigt), Grund bei „Blockiert“, Wichtig-Fahne (`priority` high/medium), fällig, Checkliste, Gruppe (Mehrfirmen), Herkunfts-Protokoll; Beschreibung nur noch für Altbestand |
+| `tasks` | Titel, Firma, Verantwortliche Personen (`assignee_person_ids`, leer = ich; mehrere möglich), Status (offen/blockiert/erledigt), Grund bei „Blockiert“, Wichtig-Fahne (`priority` high/medium), fällig, Nächste Schritte (`checklist`: Text, erledigt, optional Person und Datum – kein eigenes Objekt), Gruppe (Mehrfirmen), Herkunfts-Protokoll; Beschreibung nur noch für Altbestand |
 | `task_followups` | **Verlauf** je Aufgabe: Datum, Text (ein Update je Eintrag; frühere Nachfragen sind die ersten Einträge). Die Spalte `tasks.follow_up_date` wird nicht mehr genutzt. |
 | `notes` | Notiz / Meeting-Protokoll / Entscheidung, Firma, Datum, Teilnehmer, Text |
 | `links`, `link_categories`, `attachments` | Link-Sammlung; Anhänge an Notizen (an Aufgaben nur Altbestand) |
@@ -111,7 +111,7 @@ Die Spalten `topic_id` an Aufgaben, Notizen, Links und Anbieter-Punkten bestehen
 - Eine Schrift (Inter), feste Größenskala (12/13/14/16/20/24 px), Icons statt Emojis.
 - **Nichts springt:** Aktiv/Hover ändern nur Farben, nie Schriftstärke oder Größe.
 - **Chips statt beschrifteter Felder:** Eigenschaften als kleine Pillen; leere Werte blass. Klick öffnet eine **eigene Auswahlliste im App-Design** (Haken an der Auswahl, Tastatur, Suche ab 9 Einträgen) statt des Browser-Menüs.
-- Nebensächliches eingeklappt (Checkliste, Verlauf); leere Bereiche ausgeblendet.
+- Nebensächliches eingeklappt (Nächste Schritte, solange leer); leere Bereiche ausgeblendet.
 
 ### 6.2 Navigation
 
@@ -138,14 +138,19 @@ Kopfzeile: globale Suche (Strg+K), Backup-Icon, „+ Neu“ (Taste N). **Alles N
 
 - Liste mit Schnellfilter **Alle | Meine | Delegiert**, Firmenfilter (Mehrfachauswahl, leer = alle) und „Filter“-Knopf (Person, Status, Fälligkeit, Gruppierung nach Firma/Person/Status, Nur wichtige, Erledigte zeigen).
 - **Erledigte getrennt:** offene oben (gruppiert), darunter Trennlinie „Erledigt“ und die erledigten Aufgaben nach Erledigt-Datum, neueste zuerst.
-- **Detail-Panel:** Titel, Chips **Status · Firma · Verantwortlich · Fällig · Wichtig**; Status nur **Offen · Blockiert · Erledigt** („Blockiert“ nur mit Grund); Priorität ist eine Fahne zum An-/Ausschalten statt Hoch/Mittel/Niedrig; Delegations-Box (6.6); Checkliste (eingeklappt, bis Punkte existieren).
+- **Detail-Panel:** Titel, Chips **Status · Firma · Verantwortlich · Fällig · Wichtig**; Status nur **Offen · Blockiert · Erledigt** („Blockiert“ nur mit Grund); Priorität ist eine Fahne zum An-/Ausschalten statt Hoch/Mittel/Niedrig; darunter **Verlauf** und **Nächste Schritte** (6.6).
 - **Keine neuen Beschreibungen und Link-Anhänge** mehr – vorhandene werden weiter angezeigt.
-- **Mehrere Firmen:** In der Schnellerfassung ist „Firma“ eine Mehrfachauswahl. Eine Firma = eine Aufgabe, mehrere Firmen = je Firma eine eigene Aufgabe (ohne Firmen-Zähler); in der Zeile steht nur „x/y Punkte“, wenn die Aufgabe eine Checkliste hat; Schnellauswahl „Alle Gesellschaften“ (ohne Holding und externe Partner) unten in der Liste. Im Aufgaben-Panel bleibt die Firma eine Einzelauswahl, weil jede Aufgabe zu genau einer Firma gehört.
+- **Mehrere Firmen:** In der Schnellerfassung ist „Firma“ eine Mehrfachauswahl. Eine Firma = eine Aufgabe, mehrere Firmen = je Firma eine eigene Aufgabe (ohne Firmen-Zähler); in der Zeile steht der nächste offene Schritt; Schnellauswahl „Alle Gesellschaften“ (ohne Holding und externe Partner) unten in der Liste. Im Aufgaben-Panel bleibt die Firma eine Einzelauswahl, weil jede Aufgabe zu genau einer Firma gehört.
 - Löschen mit „Rückgängig“ und Papierkorb.
 
 ### 6.6 Verlauf und Delegiert
 
-- **Verlauf statt Nachhaken:** Jede Aufgabe hat im Panel den Bereich **„Verlauf“** – ein Feld „Update hinzufügen…“, Enter speichert den Satz mit heutigem Datum. Darunter alle Updates als Zeitleiste, neueste oben, einzeln löschbar. Kein Nachhak-Datum, keine Nachfrage-Box, kein Mail-Button.
+- **Zwei klare Bereiche je Aufgabe:** **Nächste Schritte = was noch zu tun ist (wer, bis wann)**, **Verlauf = was passiert ist**.
+- **Nächste Schritte** (früher „Checkliste“): Text, optional **Person** („Wer?“) und **Datum** („Bis?“); leere Wer/Bis-Chips erscheinen erst beim Darüberfahren. Abhaken schreibt automatisch „✓ …“ in den Verlauf. Kein eigenes Objekt – die Schritte gehören zur Aufgabe.
+  - In Listen steht der **nächste offene Schritt** („→ Liefertermin klären · Arman · 23.10. (1/3)“, rot wenn überfällig).
+  - Ein fälliger Schritt bringt die Aufgabe auf **Heute** („Fällig“ zählt das früheste Datum aus Aufgabe und offenen Schritten).
+  - Hat eine Person einen offenen Schritt, erscheint die Aufgabe in **ihrem Meeting-Briefing**; die Agenda listet offene Schritte mit Person und Datum.
+- **Verlauf statt Nachhaken:** Jede Aufgabe hat im Panel den Bereich **„Verlauf“** – ein Feld „Update hinzufügen…“, Enter speichert den Satz; **Datum vorbelegt mit heute, änderbar** (z. B. Mail von gestern). Darunter alle Updates als Zeitleiste, neueste oben, einzeln löschbar. Kein Nachhak-Datum, keine Nachfrage-Box, kein Mail-Button.
 - **Letzter Stand in allen Listen:** unter dem Titel offener Aufgaben steht gekürzt „Stand 12.10.: …“.
 - Menüpunkt **„Delegiert“** (früher „Wartet auf…“): offene Delegationen nach Person, **am längsten ohne Update zuerst**; rechts „seit 23 T. kein Update“ (rot ab 14 Tagen), ohne Update zählt das Anlagedatum. Ersetzt die Erinnerung, ohne Datumspflege.
 - Delegieren bleibt einfach der Chip **„Verantwortlich“** – Mehrfachauswahl wie bei Firmen: „Ich“ oder eine bzw. mehrere Personen (eine Aufgabe, mehrere Verantwortliche). Eine Aufgabe mit mehreren Personen steht unter „Delegiert“ bei jeder von ihnen und im Meeting-Briefing jeder Person.
@@ -256,7 +261,8 @@ Seitenleiste als Menü; Heute, Abhaken, Schnellerfassung, Updates und alle Dialo
 | Benennung | „Wartet auf…“ → „Delegiert“ |
 | Aufgaben-Panel | Keine neuen Beschreibungen und Links |
 | Meeting-Seite | Ohne Kopfkarte und „Erledigt“-Bereich; neuer Leer-Zustand mit „Aufgabe anlegen“ |
-| Mehrere Firmen | Kein „x/y Firmen“-Zähler mehr; Fortschritt nur über Checklisten-Punkte |
+| Mehrere Firmen | Kein „x/y Firmen“-Zähler mehr; Fortschritt nur über Nächste Schritte |
+| Nächste Schritte | Checkliste wird zu „Nächste Schritte“ mit optional Person und Datum (Unteraufgabe ohne eigenes Objekt); fällige Schritte auf Heute und im Meeting; Abhaken schreibt in den Verlauf; Verlauf-Datum änderbar |
 | Firmenauswahl | Ein Mehrfach-Dropdown statt Firma + „Mehrere Firmen“ |
 | Verantwortlich | Mehrfachauswahl: mehrere Personen je Aufgabe (eine Aufgabe, keine Kopien); „Ich“ = niemand sonst |
 | Filterleisten | Firmenfilter als Mehrfach-Dropdown auf Aufgaben, Notizen, Links, Tacto; keine Browser-Auswahlfelder mehr in Filtern |

@@ -101,7 +101,7 @@ export function demoSeed(): Db {
       topic_id: topics[11].id,
       checklist: [
         { text: "Modul 1", done: true },
-        { text: "Modul 2", done: false },
+        { text: "Modul 2", done: false, person_id: people[0].id, due: addDays(today, -1) },
       ],
     }),
     task({

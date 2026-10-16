@@ -1,4 +1,4 @@
-import type { Company, Id, IsoDate, Priority, Task, TaskFollowup } from "../data/types";
+import type { ChecklistItem, Company, Id, IsoDate, Priority, Task, TaskFollowup } from "../data/types";
 import { endOfWeek } from "./dates";
 
 const PRIO_RANK: Record<Priority, number> = { high: 0, medium: 1 };
@@ -27,11 +27,13 @@ export interface TodayView {
 export function todayView(tasks: Task[], today: IsoDate): TodayView {
   const open = tasks.filter((t) => isActive(t) && isOpen(t));
   const weekEnd = endOfWeek(today);
-  const due = open.filter((t) => t.status !== "blocked" && t.due_date);
+  // Fällig ist, was selbst fällig ist oder einen fälligen nächsten Schritt hat
+  const due = open.filter((t) => t.status !== "blocked" && effectiveDue(t));
+  const d = (t: Task) => effectiveDue(t)!;
   return {
-    overdue: due.filter((t) => t.due_date! < today).sort(compareTasks),
-    today: due.filter((t) => t.due_date === today).sort(compareTasks),
-    week: due.filter((t) => t.due_date! > today && t.due_date! <= weekEnd).sort(compareTasks),
+    overdue: due.filter((t) => d(t) < today).sort(compareTasks),
+    today: due.filter((t) => d(t) === today).sort(compareTasks),
+    week: due.filter((t) => d(t) > today && d(t) <= weekEnd).sort(compareTasks),
     blocked: open.filter((t) => t.status === "blocked").sort(compareTasks),
   };
 }
@@ -56,6 +58,22 @@ export function groupProgress(tasks: Task[], groupId: Id): GroupProgress {
     openCompanyIds: members.filter((t) => t.status !== "done").map((t) => t.company_id),
   };
 }
+
+/** Nächster offener Schritt: zuerst der mit dem frühesten Datum, sonst der erste offene. */
+export function nextStep(t: Pick<Task, "checklist">): ChecklistItem | undefined {
+  const open = t.checklist.filter((c) => !c.done);
+  const dated = open.filter((c) => c.due).sort((a, b) => (a.due! < b.due! ? -1 : 1));
+  return dated[0] ?? open[0];
+}
+
+/** Frühestes Datum aus Aufgabe und offenen Schritten. */
+export function effectiveDue(t: Pick<Task, "due_date" | "checklist">): IsoDate | null {
+  const dates = [t.due_date, ...t.checklist.filter((c) => !c.done).map((c) => c.due ?? null)].filter((x): x is IsoDate => !!x);
+  return dates.length ? dates.sort()[0] : null;
+}
+
+/** Hat die Person einen offenen Schritt in der Aufgabe? */
+export const hasStepFor = (t: Pick<Task, "checklist">, personId: Id) => t.checklist.some((c) => !c.done && c.person_id === personId);
 
 export function checklistProgress(t: Task): { done: number; total: number } {
   return { done: t.checklist.filter((c) => c.done).length, total: t.checklist.length };

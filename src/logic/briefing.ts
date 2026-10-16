@@ -1,7 +1,7 @@
 // Meeting-Briefing: alles Relevante für ein Gespräch mit einer Person bzw. Firma.
 import type { Company, Db, Id, IsoDate, Note, Person, Task, TaskFollowup, VendorItem } from "../data/types";
 import { addDays, formatDate } from "./dates";
-import { compareTasks, isActive, latestUpdates, standText } from "./tasks";
+import { compareTasks, hasStepFor, isActive, latestUpdates, standText } from "./tasks";
 import { affectsCompany, isOpenItem, statusDef } from "./vendor";
 
 export type MeetingTarget = { kind: "person"; id: Id } | { kind: "company"; id: Id };
@@ -39,7 +39,8 @@ export function buildBriefing(db: Db, target: MeetingTarget, today: IsoDate, top
   const tasks = db.tasks.filter(isActive);
   const open = tasks.filter((t) => t.status !== "done");
 
-  const delegatedToPerson = person ? open.filter((t) => t.assignee_person_ids.includes(person.id)) : [];
+  // Bei der Person offen: ihr zugeordnet oder sie hat einen offenen nächsten Schritt
+  const delegatedToPerson = person ? open.filter((t) => t.assignee_person_ids.includes(person.id) || hasStepFor(t, person.id)) : [];
   const delegatedIds = new Set(delegatedToPerson.map((t) => t.id));
   const myTasks = companyId ? open.filter((t) => t.company_id === companyId && t.assignee_person_ids.length === 0) : [];
   const otherTasks = companyId
@@ -107,7 +108,14 @@ export function agendaText(b: Briefing, personName: (id: Id) => string): string 
         .join(", "),
     ].filter(Boolean);
     const stand = b.lastUpdate.get(t.id);
-    return `- [ ] ${t.title}${extra.length ? ` (${extra.join(", ")})` : ""}${stand ? `\n  ${standText(stand)}` : ""}`;
+    const steps = t.checklist
+      .filter((c) => !c.done)
+      .map((c) => {
+        const info = [c.person_id ? personName(c.person_id) : "", c.due ? `bis ${formatDate(c.due)}` : ""].filter(Boolean);
+        return `\n  - [ ] ${c.text}${info.length ? ` (${info.join(", ")})` : ""}`;
+      })
+      .join("");
+    return `- [ ] ${t.title}${extra.length ? ` (${extra.join(", ")})` : ""}${stand ? `\n  ${standText(stand)}` : ""}${steps}`;
   };
   const parts: string[] = [];
   const section = (title: string, rows: string[]) => {
