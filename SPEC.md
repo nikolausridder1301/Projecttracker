@@ -140,7 +140,7 @@ Kopfzeile: globale Suche (Strg+K), Backup-Icon, „+ Neu“ (Taste N).
 - **Erledigte getrennt:** offene oben (gruppiert), darunter Trennlinie „Erledigt“ und die erledigten Aufgaben nach Erledigt-Datum, neueste zuerst.
 - **Detail-Panel:** Titel, Chips **Status · Firma · Verantwortlich · Fällig · Priorität**; „Blockiert“ nur mit Grund; Delegations-Box (6.6); Checkliste (eingeklappt, bis Punkte existieren).
 - **Keine neuen Beschreibungen und Link-Anhänge** mehr – vorhandene werden weiter angezeigt.
-- **„Für mehrere Firmen anlegen“** erzeugt je Firma eine Aufgabe als Gruppe („2/6 Firmen“); „Alle Gesellschaften“ ohne Holding und externe Partner.
+- **„Für mehrere Firmen anlegen“** erzeugt je Firma eine eigene Aufgabe (ohne Firmen-Zähler); in der Zeile steht nur „x/y Punkte“, wenn die Aufgabe eine Checkliste hat; „Alle Gesellschaften“ ohne Holding und externe Partner.
 - Löschen mit „Rückgängig“ und Papierkorb.
 
 ### 6.6 Delegiert und Nachhaken
@@ -257,3 +257,4 @@ Seitenleiste als Menü; Heute, Abhaken, Schnellerfassung, Nachfrage notieren und
 | Benennung | „Wartet auf…“ → „Delegiert“ |
 | Aufgaben-Panel | Keine neuen Beschreibungen und Links |
 | Meeting-Seite | Ohne Kopfkarte und „Erledigt“-Bereich; neuer Leer-Zustand mit „Aufgabe anlegen“ |
+| Mehrere Firmen | Kein „x/y Firmen“-Zähler mehr; Fortschritt nur über Checklisten-Punkte |

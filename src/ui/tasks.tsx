@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useLookups, useStore } from "../data/store";
 import { PRIORITY_LABEL, STATUS_LABEL, type Priority, type Task, type TaskStatus } from "../data/types";
 import { addWorkdays, formatDate, relativeLabel, todayIso } from "../logic/dates";
-import { checklistProgress, groupProgress, validateTask } from "../logic/tasks";
+import { checklistProgress, validateTask } from "../logic/tasks";
 import { AttachedLinks } from "./links";
 import { AutoText, Avatar, ChipDate, ChipSelect, CompanyBadge, Disclosure } from "./common";
 import { ProjectBadge } from "./ProjectSwitcher";
@@ -71,14 +71,13 @@ export function TaskRow({
   /** zusätzliche Angabe in der zweiten Zeile */
   subExtra?: React.ReactNode;
 }) {
-  const { allDb: db, project: currentProject, setProject } = useStore();
-  const { personById, companyById, projectById } = useLookups();
+  const { project: currentProject, setProject } = useStore();
+  const { personById, projectById } = useLookups();
   const { openTask } = useUi();
   const taskProject = projectById.get(task.project_id);
   const { setDone } = useTaskActions();
   const today = todayIso();
   const cl = checklistProgress(task);
-  const group = task.group_id ? groupProgress(db.tasks, task.group_id) : null;
   const person = task.assignee_person_id ? personById.get(task.assignee_person_id) : undefined;
   const done = task.status === "done";
   const overdue = !done && task.due_date !== null && task.due_date < today;
@@ -87,12 +86,6 @@ export function TaskRow({
   if (task.status === "blocked") sub.push(<span key="b" className="tone-red">Blockiert: {task.blocked_reason}</span>);
   if (task.status === "in_progress") sub.push(<span key="i" className="tone-blue">In Arbeit</span>);
   if (cl.total > 0) sub.push(<span key="c">{cl.done}/{cl.total} Punkte</span>);
-  if (group && group.total > 1)
-    sub.push(
-      <span key="g" title={`Offen: ${group.openCompanyIds.map((id) => companyById.get(id)?.short).join(", ") || "–"}`}>
-        {group.done}/{group.total} Firmen
-      </span>,
-    );
   if (subExtra) sub.push(<span key="x">{subExtra}</span>);
 
   return (
@@ -297,7 +290,7 @@ export function TaskPanel() {
 
 function TaskEditor({ task, onClose }: { task: Task; onClose: () => void }) {
   const { db, update, trash, toast } = useStore();
-  const { companies, people, companyById, noteById, personById } = useLookups();
+  const { companies, people, noteById, personById } = useLookups();
   const { mailto, setDone } = useTaskActions();
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description);
@@ -311,7 +304,6 @@ function TaskEditor({ task, onClose }: { task: Task; onClose: () => void }) {
   const save = (patch: Parameters<typeof update<"tasks">>[2]) => void update("tasks", task.id, patch).catch(() => {});
 
   const attachedCount = db.attachments.filter((a) => a.deleted_at === null && a.task_id === task.id).length;
-  const group = task.group_id ? groupProgress(db.tasks, task.group_id) : null;
   const sourceNote = task.source_note_id ? noteById.get(task.source_note_id) : undefined;
   const delegated = task.assignee_person_id !== null;
   const person = delegated ? personById.get(task.assignee_person_id!) : undefined;
@@ -528,13 +520,6 @@ function TaskEditor({ task, onClose }: { task: Task; onClose: () => void }) {
       <p className="meta-line">
         Angelegt {formatDate(task.created_at.slice(0, 10))}
         {task.done_at && ` · erledigt ${formatDate(task.done_at.slice(0, 10))}`}
-        {group && group.total > 1 && (
-          <>
-            {" · "}
-            {group.done}/{group.total} Firmen erledigt
-            {group.openCompanyIds.length > 0 && ` (offen: ${group.openCompanyIds.map((id) => companyById.get(id)?.short).join(", ")})`}
-          </>
-        )}
         {sourceNote && (
           <>
             {" · aus "}
