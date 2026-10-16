@@ -24,6 +24,8 @@ create table projects (
   color text not null default '#2563c9',
   -- Firma (externer Partner), deren Anbieter-Bereich im Menü erscheint; null = aus
   vendor_company_id uuid,
+  -- Link zum externen Reporting (Menüpunkt „Reporting“); leer = aus
+  report_url text not null default '',
   sort integer not null default 0,
   archived boolean not null default false,
   created_at timestamptz not null default now(),

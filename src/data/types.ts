@@ -28,6 +28,8 @@ export interface Project extends Base {
   color: string;
   /** Firma (externer Partner), deren Anbieter-Bereich im Menü erscheint; null = aus */
   vendor_company_id: Id | null;
+  /** Link zum externen Reporting (erscheint im Menü); leer = aus */
+  report_url: string;
   sort: number;
   archived: boolean;
 }

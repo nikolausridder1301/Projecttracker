@@ -116,7 +116,7 @@ Die Spalten `topic_id` an Aufgaben, Notizen, Links und Anbieter-Punkten bestehen
 ### 6.2 Navigation
 
 Seitenleiste (Reihenfolge per **Drag-and-Drop** änderbar, gilt für alle Projekte und Geräte; zurücksetzbar in den Einstellungen):
-**Heute · Fortschritt · Aufgaben · Delegiert · Meeting · Notizen · {Anbieter, z. B. Tacto} · Links · Kontakte** (Firmen & Personen) – unten Papierkorb, Einstellungen, Abmelden.
+**Heute · Reporting (externer Link) · Aufgaben · Delegiert · Meeting · Notizen · {Anbieter, z. B. Tacto} · Links · Kontakte** (Firmen & Personen) – unten Papierkorb, Einstellungen, Abmelden.
 Kopfzeile: globale Suche (Strg+K), Backup-Icon, „+ Neu“ (Taste N). **Alles Neue entsteht nur über „+ Neu“** – Seiten haben keine eigenen Neu-Buttons.
 
 ### 6.3 Heute
@@ -126,13 +126,11 @@ Kopfzeile: globale Suche (Strg+K), Backup-Icon, „+ Neu“ (Taste N). **Alles N
 3. Bei mehreren Projekten: Umschalter **„Dieses Projekt | Alle Projekte“**; in der Gesamtansicht trägt jede Aufgabe ihr Projekt-Kürzel, ein Klick wechselt ins Projekt.
 4. Tab-Titel und Menü-Zähler zeigen die Anzahl überfälliger und heute fälliger Aufgaben.
 
-### 6.4 Fortschritt (Meilensteine)
+### 6.4 Fortschritt → externes Reporting
 
-- **Matrix:** Meilensteine (Zeilen) × Gesellschaften (Spalten, ohne externe Partner).
-- **Zelle:** Status *Nicht gestartet · Läuft · Kritisch · Verzögert · Abgeschlossen · Nicht relevant*, optional Zieldatum und Kommentar; Klick öffnet einen Dialog.
-- Überschrittenes Zieldatum → Zelle rot umrandet, Hinweis mit Anzahl oben.
-- Spaltenkopf: Fortschritt je Firma (abgeschlossen von relevant).
-- Auf der Firmenseite dieselben Meilensteine als Liste.
+- **Keine eigene Fortschritts-Seite mehr:** Der Fortschritt ist im **Tacto Reporting** dokumentiert (https://nikolausridder1301.github.io/tacto/). Der Menüpunkt **„Reporting“** öffnet es in einem neuen Tab.
+- Der Link ist eine Projekteinstellung („Reporting-Link im Menü“); leer = kein Menüpunkt. Für das Projekt Tacto ist er gesetzt.
+- Meilensteine je Firma gibt es weiterhin als Reiter in der Firmen-Ansicht; sie speisen auch den Ampel-Vorschlag.
 
 ### 6.5 Aufgaben
 
@@ -202,7 +200,7 @@ Gelöschtes landet im Papierkorb (je Projekt), wiederherstellbar oder endgültig
 
 ### 6.15 Mobil
 
-Seitenleiste als Menü; Heute, Abhaken, Schnellerfassung, Updates und alle Dialoge ohne seitliches Scrollen; breite Tabellen (Fortschritt) scrollen in sich.
+Seitenleiste als Menü; Heute, Abhaken, Schnellerfassung, Updates und alle Dialoge ohne seitliches Scrollen; breite Tabellen scrollen in sich.
 
 ## 7. Technik und Betrieb
 
@@ -227,7 +225,7 @@ Seitenleiste als Menü; Heute, Abhaken, Schnellerfassung, Updates und alle Dialo
 - Ohne Login und mit fremdem Konto sind keine Daten lesbar oder schreibbar; Registrierung ist aus.
 - Projekt anlegen mit Kopie; Daten strikt je Projekt getrennt; „Alle Projekte“ auf Heute.
 - Ampel ändert sich nicht per Einzelklick; Gelb/Rot nur mit Begründung; Verlauf mit von/nach.
-- Fortschritts-Matrix: Zelle setzen/ändern ohne Duplikate; überschrittene Ziele markiert; Ampel-Vorschlag passend.
+- Meilensteine je Firma: Status setzen/ändern ohne Duplikate; überschrittene Ziele markiert; Ampel-Vorschlag passend.
 - Updates bleiben alle im Verlauf; der letzte Stand steht in der Zeile; „Delegiert“ sortiert nach Tagen ohne Update.
 - Meeting-Briefing zeigt nur die gewählte Person/Firma; Protokoll mit Agenda und Teilnehmer.
 - Erledigte Aufgaben unter Trennlinie nach Datum.
@@ -264,6 +262,7 @@ Seitenleiste als Menü; Heute, Abhaken, Schnellerfassung, Updates und alle Dialo
 | Mehrere Firmen | Kein „x/y Firmen“-Zähler mehr; Fortschritt nur über Nächste Schritte |
 | Nächste Schritte | Checkliste wird zu „Nächste Schritte“ mit optional Person und Datum (Unteraufgabe ohne eigenes Objekt); fällige Schritte auf Heute und im Meeting; Abhaken schreibt in den Verlauf; Verlauf-Datum änderbar |
 | Firmenauswahl | Ein Mehrfach-Dropdown statt Firma + „Mehrere Firmen“ |
+| Fortschritt | Menüpunkt „Fortschritt“ entfällt; stattdessen Link „Reporting“ zum Tacto Reporting (Projekteinstellung `report_url`) |
 | Kontakte-Übersicht | Firmen und Personen getrennt (Firmen oben, Personen darunter), einheitliche Karten mit Fußzeile auf gleicher Höhe, klare Zahlen statt „0 offen“ |
 | Kontakte | Menüpunkt „Kontakte“ (kurz, passt in eine Zeile) für Firmen & Personen; ein Bereich statt zwei Seiten; gemeinsame Detailansicht und Logik für Firma, Person und Meeting; Meeting bleibt als Menüpunkt für den schnellen Zugriff |
 | Mehrfachauswahl überall | Firmen und Personen überall Mehrfachauswahl in derselben Liste; mehrere Firmen = eine Aufgabe (keine Kopien mehr); auch Notizen, Links, Teilnehmer, Schritte, Tacto-Ansprechpartner |

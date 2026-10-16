@@ -53,9 +53,9 @@ function ProjectSettings() {
   const { companies } = useLookups();
   const [v, setV] = useState(project);
   if (!project || !v) return null;
-  const save = (k: "name" | "short") => () => {
+  const save = (k: "name" | "short" | "report_url") => () => {
     const val = k === "short" ? v[k].trim().toUpperCase() : v[k].trim();
-    if (!val) return setV(project);
+    if (!val && k !== "report_url") return setV(project);
     if (val !== project[k]) void update("projects", project.id, { [k]: val }).catch(() => {});
   };
   const activeCount = projects.filter((p) => !p.archived).length;
@@ -78,6 +78,16 @@ function ProjectSettings() {
             value={v.color}
             onChange={(e) => setV({ ...v, color: e.target.value })}
             onBlur={() => v.color !== project.color && void update("projects", project.id, { color: v.color }).catch(() => {})}
+          />
+        </label>
+        <label className="field">
+          <span className="muted small">Reporting-Link im Menü</span>
+          <input
+            type="url"
+            placeholder="https://… (leer = kein Menüpunkt)"
+            value={v.report_url ?? ""}
+            onChange={(e) => setV({ ...v, report_url: e.target.value })}
+            onBlur={save("report_url")}
           />
         </label>
         <label className="field">

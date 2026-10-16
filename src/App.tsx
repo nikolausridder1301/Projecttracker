@@ -7,7 +7,6 @@ import { CompaniesPage } from "./pages/Companies";
 import { CompanyDetailPage, PersonDetailPage } from "./pages/Contact";
 import { LinksPage } from "./pages/Links";
 import { MeetingPage } from "./pages/Meeting";
-import { ProgressPage } from "./pages/Progress";
 import { NoteDetailPage, NotesPage } from "./pages/Notes";
 import { SettingsPage } from "./pages/Settings";
 import { TactoPage } from "./pages/Tacto";
@@ -72,7 +71,6 @@ function DataGate({ backend, email }: { backend: Backend; email: string }) {
               <Route path="delegiert" element={<WaitingPage />} />
               <Route path="wartet" element={<WaitingPage />} />
               <Route path="meeting" element={<MeetingPage />} />
-              <Route path="fortschritt" element={<ProgressPage />} />
               <Route path="notizen" element={<NotesPage />} />
               <Route path="notizen/:id" element={<NoteDetailPage />} />
               <Route path="anbieter" element={<TactoPage />} />
