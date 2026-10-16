@@ -1,9 +1,9 @@
 import { ChevronDown, Flag, MessageSquarePlus, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useLookups, useStore } from "../data/store";
-import { STATUS_LABEL, type Task, type TaskStatus } from "../data/types";
+import { STATUS_LABEL, type ChecklistItem, type Task, type TaskStatus } from "../data/types";
 import { formatDate, relativeLabel, todayIso } from "../logic/dates";
-import { checklistProgress, latestUpdates, standText, validateTask } from "../logic/tasks";
+import { checklistProgress, latestUpdates, nextStep, standText, validateTask } from "../logic/tasks";
 import { AttachedLinks } from "./links";
 import { AutoText, Avatar, ChipDate, ChipSelect, CompanyBadge, Disclosure, Dropdown, ImportantChip } from "./common";
 import { ProjectBadge } from "./ProjectSwitcher";
@@ -20,9 +20,9 @@ export function useTaskActions() {
     update("tasks", t.id, done ? { status: "done", done_at: new Date().toISOString() } : { status: "open", done_at: null });
 
   /** Neuen Stand in den Verlauf schreiben (nichts wird überschrieben). */
-  const addUpdate = async (taskId: string, note: string) => {
-    await insert("task_followups", [{ task_id: taskId, date: todayIso(), note }]);
-    toast("Update gespeichert");
+  const addUpdate = async (taskId: string, note: string, date: string = todayIso(), quiet = false) => {
+    await insert("task_followups", [{ task_id: taskId, date, note }]);
+    if (!quiet) toast("Update gespeichert");
   };
 
   return { setDone, addUpdate };
@@ -73,7 +73,19 @@ export function TaskRow({
 
   const sub: React.ReactNode[] = [];
   if (task.status === "blocked") sub.push(<span key="b" className="tone-red">Blockiert: {task.blocked_reason}</span>);
-  if (cl.total > 0) sub.push(<span key="c">{cl.done}/{cl.total} Punkte</span>);
+  const next = done ? undefined : nextStep(task);
+  if (next) {
+    const who = next.person_id ? personById.get(next.person_id)?.name.split(" ")[0] : undefined;
+    const late = !!next.due && next.due < today;
+    sub.push(
+      <span key="c" className={`task-next${late ? " tone-red" : ""}`} title="Nächster Schritt">
+        → {next.text}
+        {who ? ` · ${who}` : ""}
+        {next.due ? ` · ${ddmm(next.due)}` : ""}
+        {cl.total > 1 ? ` (${cl.done}/${cl.total})` : ""}
+      </span>,
+    );
+  } else if (cl.total > 0) sub.push(<span key="c">{cl.done}/{cl.total} Schritte</span>);
   if (subExtra) sub.push(<span key="x">{subExtra}</span>);
   const stand = !hideStand && !done ? latest.get(task.id) : undefined;
   if (stand) sub.push(<span key="s" className="task-stand" title={stand.note}>{standText(stand)}</span>);
@@ -168,6 +180,92 @@ export function AssigneeChip({ value, onChange }: { value: string[]; onChange: (
 // Verlauf
 // ---------------------------------------------------------------------------
 
+/** „23.10.“ */
+export const ddmm = (iso: string) => `${iso.slice(8, 10)}.${iso.slice(5, 7)}.`;
+
+/**
+ * Nächste Schritte: Unterpunkte mit optional Person und Datum.
+ * Abhaken schreibt automatisch einen Eintrag in den Verlauf.
+ */
+function StepsEditor({ task, save }: { task: Task; save: (patch: { checklist: ChecklistItem[] }) => void }) {
+  const { people, personById } = useLookups();
+  const { addUpdate } = useTaskActions();
+  const today = todayIso();
+  const [text, setText] = useState("");
+  const [person, setPerson] = useState("");
+  const [due, setDue] = useState<string | null>(null);
+  const cl = checklistProgress(task);
+  const personOptions = (current?: string | null) => [
+    { value: "", label: "– niemand –" },
+    ...people.filter((p) => p.active || p.id === current).map((p) => ({ value: p.id, label: p.name })),
+  ];
+  const setItem = (i: number, patch: Partial<ChecklistItem>) =>
+    save({ checklist: task.checklist.map((c, j) => (j === i ? { ...c, ...patch } : c)) });
+
+  const toggle = (i: number) => {
+    const item = task.checklist[i];
+    setItem(i, { done: !item.done });
+    if (!item.done) {
+      const who = item.person_id ? personById.get(item.person_id)?.name : undefined;
+      void addUpdate(task.id, `✓ ${item.text}${who ? ` (${who})` : ""}`, today, true).catch(() => {});
+    }
+  };
+
+  return (
+    <Disclosure title="Nächste Schritte" meta={cl.total > 0 ? `${cl.done}/${cl.total}` : undefined} defaultOpen={cl.total > 0}>
+      <ul className="checklist steps">
+        {task.checklist.map((item, i) => (
+          <li key={i} className="step-row">
+            <input type="checkbox" className="check" checked={item.done} onChange={() => toggle(i)} aria-label="Schritt erledigt" />
+            <span className={`grow${item.done ? " is-done-text" : ""}`}>{item.text}</span>
+            {!item.done && (
+              <>
+                <ChipSelect
+                  title="Wer?"
+                  value={item.person_id ?? ""}
+                  placeholder="Wer?"
+                  options={personOptions(item.person_id)}
+                  onChange={(v) => setItem(i, { person_id: v || null })}
+                />
+                <ChipDate
+                  title="Bis wann?"
+                  value={item.due ?? null}
+                  onChange={(v) => setItem(i, { due: v })}
+                  placeholder="Bis?"
+                  format={(v) => `bis ${ddmm(v)}`}
+                  tone={item.due && item.due < today ? "red" : undefined}
+                />
+              </>
+            )}
+            <button
+              className="icon-btn hover-only"
+              aria-label="Schritt entfernen"
+              onClick={() => save({ checklist: task.checklist.filter((_, j) => j !== i) })}
+            >
+              <X size={14} />
+            </button>
+          </li>
+        ))}
+      </ul>
+      <form
+        className="step-row step-new"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!text.trim()) return;
+          save({ checklist: [...task.checklist, { text: text.trim(), done: false, person_id: person || null, due }] });
+          setText("");
+          setPerson("");
+          setDue(null);
+        }}
+      >
+        <input className="plain-input grow" value={text} onChange={(e) => setText(e.target.value)} placeholder="Nächsten Schritt hinzufügen… (Enter)" />
+        <ChipSelect title="Wer?" value={person} placeholder="Wer?" options={personOptions()} onChange={setPerson} />
+        <ChipDate title="Bis wann?" value={due} onChange={setDue} placeholder="Bis?" format={(v) => `bis ${ddmm(v)}`} />
+      </form>
+    </Disclosure>
+  );
+}
+
 /** Wochentag + Datum, z. B. „Di, 20.10.“ */
 export function shortDay(iso: string): string {
   const [y, m, d] = iso.split("-").map(Number);
@@ -178,7 +276,10 @@ export function shortDay(iso: string): string {
 /** Ein Satz, Enter – landet mit heutigem Datum im Verlauf. */
 export function UpdateInput({ taskId, compact = false }: { taskId: string; compact?: boolean }) {
   const { addUpdate } = useTaskActions();
+  const today = todayIso();
   const [text, setText] = useState("");
+  // Datum vorbelegt mit heute – änderbar, z. B. für die Mail von gestern
+  const [date, setDate] = useState(today);
   const [busy, setBusy] = useState(false);
   return (
     <form
@@ -189,8 +290,9 @@ export function UpdateInput({ taskId, compact = false }: { taskId: string; compa
         if (!note || busy) return;
         setBusy(true);
         try {
-          await addUpdate(taskId, note);
+          await addUpdate(taskId, note, date);
           setText("");
+          setDate(today);
         } catch {
           /* Fehler wurde gemeldet; Text bleibt stehen */
         } finally {
@@ -205,6 +307,15 @@ export function UpdateInput({ taskId, compact = false }: { taskId: string; compa
         placeholder={compact ? "Update notieren…" : "Update hinzufügen… (Enter)"}
         aria-label="Update hinzufügen"
       />
+      {!compact && (
+        <ChipDate
+          title="Datum des Updates"
+          value={date === today ? null : date}
+          onChange={(v) => setDate(v ?? today)}
+          placeholder="heute"
+          format={shortDay}
+        />
+      )}
     </form>
   );
 }
@@ -277,13 +388,11 @@ function TaskEditor({ task, onClose }: { task: Task; onClose: () => void }) {
   const [hasDescription] = useState(task.description.trim() !== "");
   const [blockedReason, setBlockedReason] = useState(task.blocked_reason);
   const [pendingBlocked, setPendingBlocked] = useState(false);
-  const [newItem, setNewItem] = useState("");
 
   const save = (patch: Parameters<typeof update<"tasks">>[2]) => void update("tasks", task.id, patch).catch(() => {});
 
   const attachedCount = db.attachments.filter((a) => a.deleted_at === null && a.task_id === task.id).length;
   const sourceNote = task.source_note_id ? noteById.get(task.source_note_id) : undefined;
-  const cl = checklistProgress(task);
   const today = todayIso();
 
   const setStatus = (status: TaskStatus) => {
@@ -402,38 +511,7 @@ function TaskEditor({ task, onClose }: { task: Task; onClose: () => void }) {
         />
       )}
 
-      <Disclosure title="Checkliste" meta={cl.total > 0 ? `${cl.done}/${cl.total}` : undefined} defaultOpen={cl.total > 0}>
-        <ul className="checklist">
-          {task.checklist.map((item, i) => (
-            <li key={i}>
-              <input
-                type="checkbox"
-                className="check"
-                checked={item.done}
-                onChange={() => save({ checklist: task.checklist.map((c, j) => (j === i ? { ...c, done: !c.done } : c)) })}
-              />
-              <span className={item.done ? "is-done-text" : ""}>{item.text}</span>
-              <button
-                className="icon-btn hover-only"
-                aria-label="Punkt entfernen"
-                onClick={() => save({ checklist: task.checklist.filter((_, j) => j !== i) })}
-              >
-                <X size={14} />
-              </button>
-            </li>
-          ))}
-        </ul>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (!newItem.trim()) return;
-            save({ checklist: [...task.checklist, { text: newItem.trim(), done: false }] });
-            setNewItem("");
-          }}
-        >
-          <input className="plain-input" value={newItem} onChange={(e) => setNewItem(e.target.value)} placeholder="Punkt hinzufügen…" />
-        </form>
-      </Disclosure>
+      <StepsEditor task={task} save={save} />
 
       {/* Links nur noch anzeigen, wenn früher welche angehängt wurden */}
       {attachedCount > 0 && (

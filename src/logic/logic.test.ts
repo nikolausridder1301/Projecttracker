@@ -12,6 +12,8 @@ import { affectsCompany, ageLabel, isOpenItem, jourFixeText, newVendorItem, show
 import {
   compareTasks,
   daysSinceUpdate,
+  effectiveDue,
+  nextStep,
   groupProgress,
   isValidUrl,
   latestUpdates,
@@ -270,6 +272,36 @@ describe("nav", () => {
   });
 });
 
+describe("Nächste Schritte", () => {
+  const today = "2026-10-15";
+  it("nächster Schritt: frühestes Datum vor undatierten", () => {
+    const t = T({
+      checklist: [
+        { text: "a", done: false },
+        { text: "b", done: false, due: "2026-10-20" },
+        { text: "c", done: true, due: "2026-10-01" },
+        { text: "d", done: false, due: "2026-10-18" },
+      ],
+    });
+    expect(nextStep(t)?.text).toBe("d");
+    expect(nextStep(T({ checklist: [{ text: "x", done: false }] }))?.text).toBe("x");
+    expect(nextStep(T({ checklist: [{ text: "x", done: true }] }))).toBeUndefined();
+  });
+  it("fälliger Schritt bringt die Aufgabe auf Heute", () => {
+    const v = todayView(
+      [
+        T({ title: "Schritt überfällig", checklist: [{ text: "s", done: false, due: "2026-10-12" }] }),
+        T({ title: "Schritt erledigt", checklist: [{ text: "s", done: true, due: "2026-10-12" }] }),
+        T({ title: "Frist später, Schritt heute", due_date: "2026-11-01", checklist: [{ text: "s", done: false, due: today }] }),
+      ],
+      today,
+    );
+    expect(v.overdue.map((t) => t.title)).toEqual(["Schritt überfällig"]);
+    expect(v.today.map((t) => t.title)).toEqual(["Frist später, Schritt heute"]);
+    expect(effectiveDue(T({ due_date: null, checklist: [] }))).toBeNull();
+  });
+});
+
 describe("Verlauf", () => {
   const today = "2026-10-15";
   const U = (task_id: string, date: string, note: string, created_at = `${date}T10:00:00Z`, deleted_at: string | null = null) => ({
@@ -350,6 +382,7 @@ describe("briefing", () => {
       T({ title: "Max bei HAZ", company_id: haz.id, assignee_person_ids: [max.id] }),
       T({ title: "Meins FEST", company_id: fest.id }),
       T({ title: "Anna und Max", company_id: fest.id, assignee_person_ids: [max.id, anna.id] }),
+      T({ title: "Schritt für Anna", company_id: fest.id, checklist: [{ text: "Termin klären", done: false, person_id: anna.id }] }),
       T({ title: "Erledigt neu", company_id: haz.id, status: "done", done_at: "2026-10-14T10:00:00Z" }),
       T({ title: "Erledigt alt", company_id: haz.id, status: "done", done_at: "2026-09-01T10:00:00Z" }),
     ];
@@ -360,7 +393,7 @@ describe("briefing", () => {
     const { db, anna } = setup();
     const b = buildBriefing(db, { kind: "person", id: anna.id }, today);
     expect(b.company?.short).toBe("HAZ");
-    expect(b.delegatedToPerson.map((t) => t.title)).toEqual(["Anna blockiert", "Anna offen", "Anna und Max"]);
+    expect(b.delegatedToPerson.map((t) => t.title)).toEqual(["Anna blockiert", "Anna offen", "Anna und Max", "Schritt für Anna"]);
     expect(b.myTasks.map((t) => t.title)).toEqual(["Meins HAZ"]);
     expect(b.otherTasks.map((t) => t.title)).toEqual(["Max bei HAZ"]);
   });

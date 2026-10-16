@@ -2475,3 +2475,53 @@ button.traffic-tile:hover {
   color: var(--text-muted);
   margin-left: 4px;
 }
+
+/* Nächste Schritte */
+.step-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+}
+.step-row .chip {
+  height: 26px;
+  font-size: var(--fs-sm);
+  flex-shrink: 0;
+}
+/* leere Wer/Bis-Chips erst beim Darüberfahren zeigen – ruhigeres Bild */
+.steps .step-row .chip-empty {
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.steps .step-row:hover .chip-empty,
+.steps .step-row:focus-within .chip-empty {
+  opacity: 1;
+}
+@media (hover: none) {
+  .steps .step-row .chip-empty {
+    opacity: 1;
+  }
+}
+.step-new {
+  margin-top: 2px;
+}
+.step-new .chip-empty {
+  opacity: 0.8;
+}
+.task-next {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.update-input .chip {
+  height: 26px;
+  font-size: var(--fs-sm);
+  flex-shrink: 0;
+}
+
+/* Chips in Schritten nicht strecken (die Liste lässt den Text wachsen) */
+.checklist li span.chip,
+.checklist li .chip span {
+  flex: none;
+}
