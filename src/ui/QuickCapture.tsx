@@ -1,16 +1,16 @@
-import { CalendarDays, Users } from "lucide-react";
+import { X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useLookups, useStore } from "../data/store";
-import type { Id, NoteKind, Priority } from "../data/types";
-import { formatDate, relativeLabel, todayIso } from "../logic/dates";
-import { isValidUrl, overarchingCompany } from "../logic/tasks";
-import { AutoText, ChipDate, ChipSelect, CompaniesChip, ImportantChip, PeopleChip, useDraft } from "./common";
+import type { Id, Link, Note, NoteKind, Task } from "../data/types";
+import { formatDate, todayIso } from "../logic/dates";
+import { isValidUrl, overarchingCompany, validateTask } from "../logic/tasks";
+import { ChipSelect, CompaniesChip } from "./common";
 import { useUi, type CaptureType } from "./uiState";
-import { ProtocolOpenItems } from "../pages/Notes";
-import { AssigneeChip, type Assignees } from "./tasks";
+import { NoteForm } from "../pages/Notes";
+import { TaskForm } from "./tasks";
 
-// Schnellerfassung (SPEC 6.5): Titel + Enter genügt, alles andere optional.
-// Aufgabe, Notiz, Protokoll, Entscheidung und Link bleiben im selben Fenster – nur der Reiter wechselt.
+// „+ Neu“ (SPEC 6.5): dasselbe Formular wie beim Öffnen eines Eintrags – nur mit Reitern für die Art
+// und „Speichern“ statt sofortigem Speichern. Alle Arten bleiben im selben Fenster.
 
 const TYPES: [CaptureType, string][] = [
   ["task", "Aufgabe"],
@@ -22,16 +22,25 @@ const TYPES: [CaptureType, string][] = [
 
 const DEFAULT_TITLE: Record<NoteKind, string> = { note: "Notiz", meeting: "Meeting", decision: "Entscheidung" };
 const SAVED_LABEL: Record<NoteKind, string> = { note: "Notiz gespeichert", meeting: "Protokoll gespeichert", decision: "Entscheidung gespeichert" };
-
-const PLACEHOLDER: Record<CaptureType, string> = {
-  task: "Was ist zu tun?",
-  note: "Titel der Notiz (optional)",
-  meeting: "Worum ging es im Meeting? (optional)",
-  decision: "Was wurde entschieden? (optional)",
-  link: "Titel des Links",
-};
+const DRAFT_TITLE_KEY = "projecttracker-draft:capture-title";
 
 const isNoteType = (t: CaptureType): t is NoteKind => t === "note" || t === "meeting" || t === "decision";
+
+const readDraftTitle = () => {
+  try {
+    return localStorage.getItem(DRAFT_TITLE_KEY) ?? "";
+  } catch {
+    return "";
+  }
+};
+const writeDraftTitle = (v: string) => {
+  try {
+    if (v) localStorage.setItem(DRAFT_TITLE_KEY, v);
+    else localStorage.removeItem(DRAFT_TITLE_KEY);
+  } catch {
+    /* ignorieren */
+  }
+};
 
 export function QuickCapture() {
   const { capture, closeCapture, context } = useUi();
@@ -48,40 +57,88 @@ function CaptureDialog({
   context: ReturnType<typeof useUi>["context"];
   onClose: () => void;
 }) {
-  const { insert, toast } = useStore();
-  const { companies, categories, me } = useLookups();
-  const { openTask } = useUi();
+  const { insert, toast, project } = useStore();
+  const { companies, me } = useLookups();
+  const { openNote, openCapture } = useUi();
 
   const defaultCompany = prefill.companyId ?? context.companyId ?? overarchingCompany(companies)?.id ?? "";
-  const [type, setType] = useState<CaptureType>(prefill.type ?? "task");
-  const [title, setTitle, clearTitle] = useDraft("capture-title", "", prefill.title);
-  // Eine oder mehrere Firmen – für Aufgaben, Notizen und Links gleich
-  const [companyIds, setCompanyIds] = useState<Id[]>(prefill.companyIds ?? (defaultCompany ? [defaultCompany] : []));
-  const initialAssignees = prefill.assigneeIds ?? (context.personId ? [context.personId] : []);
-  const [assignees, setAssignees] = useState<Assignees>({ ids: initialAssignees, me: initialAssignees.length === 0 });
-  const [due, setDue] = useState("");
-  const [priority, setPriority] = useState<Priority>("medium");
-  const [url, setUrl] = useState("");
-  const [categoryId, setCategoryId] = useState<Id | "">("");
-  // Notiz, Protokoll, Entscheidung
-  const [body, setBody] = useState("");
-  const [participants, setParticipants] = useState<Id[]>(me ? [me.id] : []);
-  const [noteDate, setNoteDate] = useState("");
-  const [busy, setBusy] = useState(false);
-  // Rückfrage bei ungespeichertem Text: Ziel-Reiter bzw. null = Fenster schließen
-  const [pending, setPending] = useState<{ to: CaptureType | null } | null>(null);
-  const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const startCompanies: Id[] = prefill.companyIds ?? (defaultCompany ? [defaultCompany] : []);
+  const startAssignees = prefill.assigneeIds ?? (context.personId ? [context.personId] : []);
+  const startTitle = prefill.title ?? readDraftTitle();
 
-  const isNote = isNoteType(type);
-  const dirty = isNote && body.trim() !== "";
-  // Protokoll und Entscheidung gelten für heute, solange kein anderes Datum gewählt ist
-  const effectiveDate = noteDate || (type === "note" ? "" : todayIso());
+  const newTask = (title: string): Task => ({
+    id: "draft",
+    project_id: project?.id ?? "",
+    created_at: "",
+    updated_at: "",
+    deleted_at: null,
+    title,
+    description: "",
+    company_ids: startCompanies,
+    topic_id: null,
+    assignee_person_ids: startAssignees,
+    assignee_me: false,
+    status: "open",
+    blocked_reason: "",
+    priority: "medium",
+    due_date: null,
+    follow_up_date: null,
+    done_at: null,
+    checklist: [],
+    source_note_id: prefill.sourceNoteId ?? null,
+  });
+  const newNote = (kind: NoteKind, title: string): Note => ({
+    id: "draft",
+    project_id: project?.id ?? "",
+    created_at: "",
+    updated_at: "",
+    deleted_at: null,
+    title,
+    body: "",
+    kind,
+    company_ids: startCompanies,
+    topic_id: null,
+    meeting_date: kind === "note" ? null : todayIso(),
+    participant_ids: kind === "meeting" && me ? [me.id] : [],
+    participants_text: "",
+  });
+  const newLink = (title: string): Pick<Link, "title" | "url" | "company_ids" | "category_id" | "description"> => ({
+    title,
+    url: "",
+    company_ids: startCompanies,
+    category_id: null,
+    description: "",
+  });
+
+  const [type, setType] = useState<CaptureType>(prefill.type ?? "task");
+  const [task, setTask] = useState<Task>(() => newTask(startTitle));
+  const [note, setNote] = useState<Note>(() => newNote(isNoteType(prefill.type ?? "task") ? (prefill.type as NoteKind) : "note", startTitle));
+  const [link, setLink] = useState(() => newLink(startTitle));
+  const [busy, setBusy] = useState(false);
+  // Rückfrage bei ungespeicherten Änderungen: Ziel-Reiter bzw. null = Fenster schließen
+  const [pending, setPending] = useState<{ to: CaptureType | null } | null>(null);
+  const [formKey, setFormKey] = useState(0);
+
+  const activeTitle = type === "task" ? task.title : type === "link" ? link.title : note.title;
+  // Titel als Entwurf merken (überlebt versehentliches Schließen)
+  useEffect(() => writeDraftTitle(activeTitle), [activeTitle]);
+
+  // Was beim Wechseln verloren ginge: Text einer Notiz bzw. Schritte/Meilensteine einer Aufgabe
+  const dirty = (isNoteType(type) && note.body.trim() !== "") || (type === "task" && task.checklist.length > 0);
+
+  const reset = (to: CaptureType, title = "") => {
+    setTask(newTask(title));
+    setNote(newNote(isNoteType(to) ? to : "note", title));
+    setLink(newLink(title));
+    setType(to);
+    setFormKey((k) => k + 1);
+  };
 
   const requestClose = () => (dirty ? setPending({ to: null }) : onClose());
   const switchTo = (t: CaptureType) => {
     if (t === type) return;
-    if (dirty) setPending({ to: t });
-    else setType(t);
+    if (dirty) return setPending({ to: t });
+    reset(t, activeTitle);
   };
 
   const closeRef = useRef(requestClose);
@@ -92,43 +149,76 @@ function CaptureDialog({
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const resetNoteForm = () => {
-    clearTitle();
-    setBody("");
-    setParticipants(me ? [me.id] : []);
-    setNoteDate("");
-  };
-
-  /** Notiz, Protokoll oder Entscheidung speichern; danach schließen oder (beim Wechseln) im Fenster zum nächsten Reiter. */
-  const saveNote = async (next?: CaptureType): Promise<boolean> => {
-    if (!isNoteType(type)) return false;
-    if (!title.trim() && !body.trim()) {
-      toast("Bitte einen Titel oder Text eingeben.", "error");
+  /** Speichern; `next`: danach im Fenster zum Reiter wechseln, sonst schließen. Liefert die neue Notiz (für „Aufgabe hinzufügen“). */
+  const save = async (next?: CaptureType): Promise<Note | boolean> => {
+    const fail = (msg: string) => {
+      toast(msg, "error");
       return false;
-    }
-    if (companyIds.length === 0) {
-      toast("Bitte mindestens eine Firma wählen.", "error");
-      return false;
-    }
+    };
     setBusy(true);
     try {
-      await insert("notes", [
-        {
-          title: title.trim() || `${DEFAULT_TITLE[type]} – ${formatDate(todayIso())}`,
-          body,
-          kind: type,
-          company_ids: companyIds,
-          topic_id: null,
-          meeting_date: effectiveDate || null,
-          participant_ids: type === "meeting" ? participants : [],
-          participants_text: "",
-        },
-      ]);
-      toast(SAVED_LABEL[type]);
-      resetNoteForm();
-      if (next) setType(next);
+      let created: Note | undefined;
+      if (type === "task") {
+        const err = validateTask({ title: task.title, status: task.status, blocked_reason: task.blocked_reason });
+        if (err) return fail(err);
+        if (task.company_ids.length === 0) return fail("Bitte mindestens eine Firma wählen.");
+        await insert("tasks", [
+          {
+            title: task.title.trim(),
+            description: "",
+            company_ids: task.company_ids,
+            topic_id: null,
+            assignee_person_ids: task.assignee_person_ids,
+            assignee_me: task.assignee_person_ids.length > 0 && task.assignee_me,
+            status: task.status,
+            blocked_reason: task.blocked_reason,
+            priority: task.priority,
+            due_date: task.due_date,
+            follow_up_date: null,
+            done_at: null,
+            checklist: task.checklist,
+            source_note_id: prefill.sourceNoteId ?? null,
+          },
+        ]);
+        toast("Aufgabe angelegt", "info");
+      } else if (isNoteType(type)) {
+        if (!note.title.trim() && !note.body.trim()) return fail("Bitte einen Titel oder Text eingeben.");
+        if (note.company_ids.length === 0) return fail("Bitte mindestens eine Firma wählen.");
+        [created] = await insert("notes", [
+          {
+            title: note.title.trim() || `${DEFAULT_TITLE[type]} – ${formatDate(todayIso())}`,
+            body: note.body,
+            kind: type,
+            company_ids: note.company_ids,
+            topic_id: null,
+            meeting_date: note.meeting_date,
+            participant_ids: type === "meeting" ? note.participant_ids : [],
+            participants_text: note.participants_text,
+          },
+        ]);
+        toast(SAVED_LABEL[type]);
+      } else {
+        if (!link.title.trim()) return fail("Bitte einen Titel eingeben.");
+        if (!isValidUrl(link.url)) return fail("Bitte eine gültige Adresse mit http:// oder https:// eingeben.");
+        const [l] = await insert("links", [
+          {
+            title: link.title.trim(),
+            url: link.url.trim(),
+            company_ids: link.company_ids,
+            topic_id: null,
+            category_id: link.category_id,
+            description: link.description,
+          },
+        ]);
+        if (prefill.attachTo) {
+          await insert("attachments", [{ link_id: l.id, task_id: prefill.attachTo.taskId ?? null, note_id: prefill.attachTo.noteId ?? null }]);
+        }
+        toast("Link gespeichert");
+      }
+      writeDraftTitle("");
+      if (next) reset(next);
       else onClose();
-      return true;
+      return created ?? true;
     } catch {
       /* Fehler wurde gemeldet; Entwurf bleibt erhalten */
       return false;
@@ -137,168 +227,94 @@ function CaptureDialog({
     }
   };
 
-  const submit = async () => {
-    if (isNote) return void saveNote();
-    if (!title.trim()) return toast("Bitte einen Titel eingeben.", "error");
-    setBusy(true);
-    try {
-      if (type === "task") {
-        if (companyIds.length === 0) return toast("Bitte mindestens eine Firma wählen.", "error");
-        // Eine Aufgabe – auch bei mehreren Firmen (wie bei mehreren Personen)
-        const created = await insert("tasks", [
-          {
-            title: title.trim(),
-            description: "",
-            company_ids: companyIds,
-            topic_id: null,
-            assignee_person_ids: assignees.ids,
-            assignee_me: assignees.ids.length > 0 && assignees.me,
-            status: "open" as const,
-            blocked_reason: "",
-            priority,
-            due_date: due || null,
-            follow_up_date: null,
-            done_at: null,
-            checklist: [],
-            source_note_id: prefill.sourceNoteId ?? null,
-          },
-        ]);
-        toast("Aufgabe angelegt", "info");
-        // Das Neue öffnet sich – außer beim Mitschreiben im Protokoll
-        if (!prefill.sourceNoteId && created[0]) openTask(created[0].id);
-      } else {
-        if (!isValidUrl(url)) return toast("Bitte eine gültige Adresse mit http:// oder https:// eingeben.", "error");
-        const [l] = await insert("links", [
-          {
-            title: title.trim(),
-            url: url.trim(),
-            company_ids: companyIds,
-            topic_id: null,
-            category_id: categoryId || null,
-            description: "",
-          },
-        ]);
-        if (prefill.attachTo) {
-          await insert("attachments", [
-            { link_id: l.id, task_id: prefill.attachTo.taskId ?? null, note_id: prefill.attachTo.noteId ?? null },
-          ]);
-        }
-        toast("Link gespeichert");
-      }
-      clearTitle();
-      onClose();
-    } catch {
-      /* Fehler wurde bereits gemeldet; Entwurf bleibt erhalten */
-    } finally {
-      setBusy(false);
+  // „Aufgabe hinzufügen“ im Protokoll-Entwurf: Protokoll speichern, öffnen und die Aufgabe daran erfassen
+  const addTaskToNote = async () => {
+    if (!isNoteType(type)) return;
+    const others = note.participant_ids.filter((id) => id !== me?.id);
+    const companyIds = note.company_ids;
+    const res = await save();
+    if (typeof res === "object") {
+      openNote(res.id);
+      openCapture({ type: "task", title: "", companyIds, assigneeIds: others.length === 1 ? others : undefined, sourceNoteId: res.id });
     }
   };
 
   const confirmSave = async () => {
-    await saveNote(pending?.to ?? undefined);
+    await save(pending?.to ?? undefined);
     setPending(null);
   };
   const confirmDiscard = () => {
     const to = pending?.to;
-    resetNoteForm();
+    writeDraftTitle("");
     setPending(null);
-    if (to) setType(to);
+    if (to) reset(to);
     else onClose();
   };
 
   return (
-    <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && requestClose()}>
-      <form
-        className={`modal capture${isNote ? " wide" : ""}`}
-        onSubmit={(e) => {
-          e.preventDefault();
-          void submit();
-        }}
+    <>
+      <div className="panel-backdrop capture-layer" onClick={requestClose} />
+      <aside
+        className="panel wide capture-layer"
+        aria-label="Neu anlegen"
         onKeyDown={(e) => {
-          // Strg+Enter speichert auch aus dem Textfeld
+          // Strg+Enter speichert aus jedem Feld
           if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
             e.preventDefault();
-            void submit();
+            void save();
           }
         }}
       >
-        <div className="seg-group">
-          {TYPES.map(([t, label]) => (
-            <button type="button" key={t} className={`seg${type === t ? " active" : ""}`} onClick={() => switchTo(t)}>
-              {label}
+        <div className="editor">
+          <div className="panel-head">
+            <div className="seg-group">
+              {TYPES.map(([t, label]) => (
+                <button type="button" key={t} className={`seg${type === t ? " active" : ""}`} onClick={() => switchTo(t)}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            <span className="spacer" />
+            <button className="icon-btn" onClick={requestClose} aria-label="Schließen" title="Schließen (Esc)">
+              <X size={18} />
             </button>
-          ))}
-        </div>
-        <input
-          autoFocus
-          className="capture-input"
-          placeholder={PLACEHOLDER[type]}
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          onKeyDown={(e) => {
-            // Bei Notizen führt Enter in den Text statt zu speichern
-            if (isNote && e.key === "Enter" && !e.ctrlKey && !e.metaKey) {
-              e.preventDefault();
-              bodyRef.current?.focus();
-            }
-          }}
-        />
-        {type === "link" && (
-          <input placeholder="https://…sharepoint.com/…" value={url} onChange={(e) => setUrl(e.target.value)} />
-        )}
+          </div>
 
-        <div className="chips">
-          <CompaniesChip value={companyIds} onChange={setCompanyIds} />
           {type === "task" && (
-            <>
-              <AssigneeChip value={assignees} onChange={setAssignees} />
-              <ChipDate title="Fällig" value={due || null} onChange={(v) => setDue(v ?? "")} placeholder="Fällig" format={(v) => `fällig ${relativeLabel(v, todayIso())}`} />
-              <ImportantChip value={priority === "high"} onChange={(v) => setPriority(v ? "high" : "medium")} />
-            </>
-          )}
-          {type === "meeting" && (
-            <PeopleChip title="Teilnehmer" emptyLabel="Teilnehmer" icon={<Users size={14} />} value={participants} onChange={setParticipants} />
-          )}
-          {isNote && (
-            <ChipDate
-              icon={<CalendarDays size={14} />}
-              title="Datum"
-              value={effectiveDate || null}
-              onChange={(v) => setNoteDate(v ?? "")}
-              placeholder="Datum"
-              format={formatDate}
+            <TaskForm
+              key={`task-${formKey}`}
+              draft
+              task={task}
+              onPatch={(p) => setTask((t) => ({ ...t, ...p }) as Task)}
+              onTitleEnter={() => void save()}
             />
           )}
-          {type === "link" && (
-            <ChipSelect
-              title="Kategorie"
-              value={categoryId}
-              placeholder="Kategorie"
-              options={[{ value: "", label: "Keine Kategorie" }, ...categories.map((c) => ({ value: c.id, label: c.name }))]}
-              onChange={setCategoryId}
+          {isNoteType(type) && (
+            <NoteForm
+              key={`note-${formKey}`}
+              draft
+              note={note}
+              onPatch={(p) => setNote((n) => ({ ...n, ...p }) as Note)}
+              onAddTask={() => void addTaskToNote()}
             />
           )}
-        </div>
+          {type === "link" && <LinkDraftForm key={`link-${formKey}`} link={link} onChange={(p) => setLink((l) => ({ ...l, ...p }))} onEnter={() => void save()} />}
 
-        {isNote && <AutoText textRef={bodyRef} value={body} onChange={setBody} minRows={8} placeholder="Schreiben…" />}
-        {type === "meeting" && <ProtocolOpenItems participantIds={participants} companyIds={companyIds} />}
-
-        <div className="row">
-          {isNote && <span className="muted small">Strg+Enter speichert</span>}
-          <span className="spacer" />
-          <button className="btn primary" type="submit" disabled={busy}>
-            Speichern
-          </button>
+          <div className="capture-foot">
+            <span className="muted small">Strg+Enter speichert</span>
+            <span className="spacer" />
+            <button type="button" className="btn primary" onClick={() => void save()} disabled={busy}>
+              Speichern
+            </button>
+          </div>
         </div>
-      </form>
+      </aside>
 
       {pending && (
         <div className="modal-backdrop confirm-layer" onMouseDown={(e) => e.target === e.currentTarget && setPending(null)}>
           <div className="modal confirm" role="alertdialog" aria-label="Änderungen speichern?">
             <h2>Änderungen speichern?</h2>
-            <p className="muted">
-              {pending.to ? "Dein Text ist noch nicht gespeichert, bevor du die Art wechselst." : "Dein Text ist noch nicht gespeichert."}
-            </p>
+            <p className="muted">{pending.to ? "Deine Eingaben sind noch nicht gespeichert, bevor du die Art wechselst." : "Deine Eingaben sind noch nicht gespeichert."}</p>
             <div className="row">
               <button type="button" className="btn ghost" onClick={() => setPending(null)}>
                 Zurück
@@ -314,6 +330,44 @@ function CaptureDialog({
           </div>
         </div>
       )}
-    </div>
+    </>
+  );
+}
+
+/** Link-Entwurf: Titel, Adresse, Firma, Kategorie. */
+function LinkDraftForm({
+  link,
+  onChange,
+  onEnter,
+}: {
+  link: Pick<Link, "title" | "url" | "company_ids" | "category_id" | "description">;
+  onChange: (p: Partial<Pick<Link, "title" | "url" | "company_ids" | "category_id" | "description">>) => void;
+  onEnter: () => void;
+}) {
+  const { categories } = useLookups();
+  const enter = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      onEnter();
+    }
+  };
+  return (
+    <>
+      <div className="title-field">
+        <input autoFocus className="capture-input" placeholder="Titel des Links" value={link.title} onChange={(e) => onChange({ title: e.target.value })} onKeyDown={enter} />
+      </div>
+      <input placeholder="https://…sharepoint.com/…" value={link.url} onChange={(e) => onChange({ url: e.target.value })} onKeyDown={enter} />
+      <div className="chips">
+        <CompaniesChip value={link.company_ids} onChange={(ids) => onChange({ company_ids: ids })} />
+        <ChipSelect
+          title="Kategorie"
+          value={link.category_id ?? ""}
+          placeholder="Kategorie"
+          options={[{ value: "", label: "Keine Kategorie" }, ...categories.map((c) => ({ value: c.id, label: c.name }))]}
+          onChange={(c) => onChange({ category_id: c || null })}
+        />
+      </div>
+      <input placeholder="Beschreibung (optional)" value={link.description} onChange={(e) => onChange({ description: e.target.value })} onKeyDown={enter} />
+    </>
   );
 }

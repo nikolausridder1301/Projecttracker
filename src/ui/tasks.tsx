@@ -1,7 +1,7 @@
 import { Ban, ChevronRight, Diamond, Flag, ListPlus, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useLookups, useStore } from "../data/store";
-import type { ChecklistItem, Task } from "../data/types";
+import type { ChecklistItem, Patch, Task } from "../data/types";
 import { formatDate, localDate, relativeLabel, todayIso } from "../logic/dates";
 import { checklistProgress, effectiveDue, isMine, isStep, stepPersons, taskCounts, validateTask } from "../logic/tasks";
 import { AttachedLinks } from "./links";
@@ -13,19 +13,21 @@ import { NoteLink, useUi } from "./uiState";
 // Aktionen
 // ---------------------------------------------------------------------------
 
+/** Änderungen als Patch – beim Ansehen direkt gespeichert, beim Anlegen im Entwurf. */
+export const blockedPatch = (reason: string | null): Patch<"tasks"> =>
+  reason ? { status: "blocked", blocked_reason: reason, done_at: null } : { status: "open", blocked_reason: "" };
+export const assigneesPatch = (a: { ids: string[]; me: boolean }): Patch<"tasks"> => ({
+  assignee_person_ids: a.ids,
+  assignee_me: a.ids.length > 0 && a.me,
+});
+
 export function useTaskActions() {
   const { update } = useStore();
 
   const setDone = (t: Task, done: boolean) =>
     update("tasks", t.id, done ? { status: "done", done_at: new Date().toISOString() } : { status: "open", done_at: null });
 
-  /** Blockieren (mit Grund) bzw. wieder freigeben. */
-  const setBlocked = (t: Task, reason: string | null) =>
-    update("tasks", t.id, reason ? { status: "blocked", blocked_reason: reason, done_at: null } : { status: "open", blocked_reason: "" });
-
-  const setAssignees = (t: Task, a: Assignees) => update("tasks", t.id, { assignee_person_ids: a.ids, assignee_me: a.ids.length > 0 && a.me });
-
-  return { setDone, setBlocked, setAssignees };
+  return { setDone };
 }
 
 // ---------------------------------------------------------------------------
@@ -404,13 +406,14 @@ export function TaskPanel() {
   return (
     <>
       <div className="panel-backdrop task-layer" onClick={() => close.current()} />
-      <aside className="panel task-layer" aria-label="Aufgabe">
+      <aside className="panel wide task-layer" aria-label="Aufgabe">
         <TaskEditor key={task.id} task={task} onClose={() => close.current()} beforeClose={beforeClose} />
       </aside>
     </>
   );
 }
 
+/** Gespeicherte Aufgabe: Kopfzeile (erledigt, Papierkorb, Schließen) und das gemeinsame Formular. */
 function TaskEditor({
   task,
   onClose,
@@ -420,52 +423,8 @@ function TaskEditor({
   onClose: () => void;
   beforeClose: React.MutableRefObject<(() => void) | null>;
 }) {
-  const { db, update, trash, toast } = useStore();
-  const { noteById } = useLookups();
-  const { setDone, setBlocked, setAssignees } = useTaskActions();
-  const [title, setTitle] = useState(task.title);
-  const [description, setDescription] = useState(task.description);
-  // Nur zeigen, wenn beim Öffnen schon eine Beschreibung da war
-  const [hasDescription] = useState(task.description.trim() !== "");
-  const [blockedReason, setBlockedReason] = useState(task.blocked_reason);
-  const [pendingBlocked, setPendingBlocked] = useState(false);
-
-  const save = (patch: Parameters<typeof update<"tasks">>[2]) => void update("tasks", task.id, patch).catch(() => {});
-
-  const attachedCount = db.attachments.filter((a) => a.deleted_at === null && a.task_id === task.id).length;
-  const sourceNote = task.source_note_id ? noteById.get(task.source_note_id) : undefined;
-  const today = todayIso();
-
-  // Beim Schließen (auch Esc) noch nicht per Blur gespeicherte Eingaben sichern
-  beforeClose.current = () => {
-    const patch: Parameters<typeof update<"tasks">>[2] = {};
-    if (title.trim() && title.trim() !== task.title) patch.title = title.trim();
-    if (task.status === "blocked" && blockedReason.trim() && blockedReason.trim() !== task.blocked_reason) patch.blocked_reason = blockedReason.trim();
-    if (hasDescription && description !== task.description) patch.description = description;
-    if (Object.keys(patch).length > 0) save(patch);
-  };
-
-  const blocked = task.status === "blocked";
-  // „Blockiert“ als Schalter: an = Grund abfragen (immer frisch), aus = wieder offen
-  const toggleBlocked = () => {
-    if (blocked) {
-      setBlockedReason("");
-      void setBlocked(task, null).catch(() => {});
-    } else if (pendingBlocked) {
-      setPendingBlocked(false);
-    } else {
-      setBlockedReason("");
-      setPendingBlocked(true);
-    }
-  };
-
-  const confirmBlocked = () => {
-    const err = validateTask({ title, status: "blocked", blocked_reason: blockedReason });
-    if (err) return toast(err, "error");
-    void setBlocked(task, blockedReason.trim()).catch(() => {});
-    setPendingBlocked(false);
-  };
-
+  const { update, trash } = useStore();
+  const { setDone } = useTaskActions();
   return (
     <div className="editor">
       <div className="panel-head">
@@ -488,20 +447,98 @@ function TaskEditor({
           <X size={18} />
         </button>
       </div>
+      <TaskForm task={task} onPatch={(p) => void update("tasks", task.id, p).catch(() => {})} beforeClose={beforeClose} />
+    </div>
+  );
+}
 
+/**
+ * Das Aufgaben-Formular – dasselbe beim Anlegen (Entwurf, `draft`) und beim Ansehen einer
+ * gespeicherten Aufgabe: Titel, Chips, Blockiert, Schritte & Meilensteine.
+ */
+export function TaskForm({
+  task,
+  onPatch,
+  beforeClose,
+  draft = false,
+  onTitleEnter,
+}: {
+  task: Task;
+  onPatch: (patch: Patch<"tasks">) => void;
+  beforeClose?: React.MutableRefObject<(() => void) | null>;
+  draft?: boolean;
+  /** Enter im Titel (beim Anlegen: speichern) */
+  onTitleEnter?: () => void;
+}) {
+  const { db, toast } = useStore();
+  const { noteById } = useLookups();
+  const [title, setTitle] = useState(task.title);
+  const [description, setDescription] = useState(task.description);
+  // Nur zeigen, wenn beim Öffnen schon eine Beschreibung da war
+  const [hasDescription] = useState(task.description.trim() !== "");
+  const [blockedReason, setBlockedReason] = useState(task.blocked_reason);
+  const [pendingBlocked, setPendingBlocked] = useState(false);
+
+  const save = onPatch;
+
+  const attachedCount = db.attachments.filter((a) => a.deleted_at === null && a.task_id === task.id).length;
+  const sourceNote = task.source_note_id ? noteById.get(task.source_note_id) : undefined;
+  const today = todayIso();
+
+  // Beim Schließen (auch Esc) noch nicht per Blur gespeicherte Eingaben sichern
+  if (beforeClose) {
+    beforeClose.current = () => {
+      const patch: Patch<"tasks"> = {};
+      if (title.trim() && title.trim() !== task.title) patch.title = title.trim();
+      if (task.status === "blocked" && blockedReason.trim() && blockedReason.trim() !== task.blocked_reason) patch.blocked_reason = blockedReason.trim();
+      if (hasDescription && description !== task.description) patch.description = description;
+      if (Object.keys(patch).length > 0) save(patch);
+    };
+  }
+
+  const blocked = task.status === "blocked";
+  // „Blockiert“ als Schalter: an = Grund abfragen (immer frisch), aus = wieder offen
+  const toggleBlocked = () => {
+    if (blocked) {
+      setBlockedReason("");
+      save(blockedPatch(null));
+    } else if (pendingBlocked) {
+      setPendingBlocked(false);
+    } else {
+      setBlockedReason("");
+      setPendingBlocked(true);
+    }
+  };
+
+  const confirmBlocked = () => {
+    const err = validateTask({ title: task.title || title, status: "blocked", blocked_reason: blockedReason });
+    if (err) return toast(err, "error");
+    save(blockedPatch(blockedReason.trim()));
+    setPendingBlocked(false);
+  };
+
+  return (
+    <>
       <div className="title-field">
         <AutoText
+          autoFocus={draft}
           value={title}
-          onChange={(v) => setTitle(v.replace(/\n/g, " "))}
+          onChange={(v) => {
+            const t = v.replace(/\n/g, " ");
+            setTitle(t);
+            // Beim Anlegen steht der Titel sofort im Entwurf (Speichern per Tastatur)
+            if (draft) save({ title: t });
+          }}
           onBlur={() => (title.trim() ? title !== task.title && save({ title: title.trim() }) : setTitle(task.title))}
+          onSubmit={draft ? onTitleEnter : undefined}
           minRows={1}
-          placeholder="Titel"
+          placeholder={draft ? "Was ist zu tun?" : "Titel"}
         />
       </div>
 
       <div className="chips">
         <CompaniesChip value={task.company_ids} onChange={(ids) => save({ company_ids: ids })} />
-        <AssigneeChip value={{ ids: task.assignee_person_ids, me: isMine(task) }} onChange={(a) => void setAssignees(task, a).catch(() => {})} />
+        <AssigneeChip value={{ ids: task.assignee_person_ids, me: isMine(task) }} onChange={(a) => save(assigneesPatch(a))} />
         <ChipDate
           title="Fällig"
           value={task.due_date}
@@ -532,15 +569,15 @@ function TaskEditor({
             value={blockedReason}
             onChange={(e) => setBlockedReason(e.target.value)}
             onBlur={() => blocked && blockedReason.trim() && blockedReason !== task.blocked_reason && save({ blocked_reason: blockedReason.trim() })}
-            onKeyDown={(e) => e.key === "Enter" && pendingBlocked && confirmBlocked()}
+            onKeyDown={(e) => e.key === "Enter" && pendingBlocked && (e.preventDefault(), confirmBlocked())}
             placeholder="Woran hängt es?"
           />
           {pendingBlocked && (
             <>
-              <button className="btn primary" onClick={confirmBlocked}>
+              <button type="button" className="btn primary" onClick={confirmBlocked}>
                 Blockieren
               </button>
-              <button className="icon-btn" onClick={() => setPendingBlocked(false)} aria-label="Abbrechen">
+              <button type="button" className="icon-btn" onClick={() => setPendingBlocked(false)} aria-label="Abbrechen">
                 <X size={16} />
               </button>
             </>
@@ -568,17 +605,19 @@ function TaskEditor({
         </Disclosure>
       )}
 
-      <p className="meta-line">
-        Angelegt {formatDate(localDate(task.created_at))}
-        {task.done_at && ` · erledigt ${formatDate(localDate(task.done_at))}`}
-        {sourceNote && (
-          <>
-            {" · aus "}
-            <NoteLink id={sourceNote.id}>{sourceNote.title}</NoteLink>
-          </>
-        )}
-      </p>
-    </div>
+      {!draft && (
+        <p className="meta-line">
+          Angelegt {formatDate(localDate(task.created_at))}
+          {task.done_at && ` · erledigt ${formatDate(localDate(task.done_at))}`}
+          {sourceNote && (
+            <>
+              {" · aus "}
+              <NoteLink id={sourceNote.id}>{sourceNote.title}</NoteLink>
+            </>
+          )}
+        </p>
+      )}
+    </>
   );
 }
 
