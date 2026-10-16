@@ -17,6 +17,7 @@ import {
   personRefs,
   personsOf,
   effectiveDue,
+  isMine,
   taskCounts,
   isValidUrl,
   splitDone,
@@ -36,6 +37,7 @@ const T = (o: Partial<Task>): Task => ({
   company_ids: ["c1"],
   topic_id: null,
   assignee_person_ids: [],
+  assignee_me: false,
   status: "open",
   blocked_reason: "",
   priority: "medium",
@@ -440,6 +442,14 @@ describe("Überarbeitung: Fälligkeit, Personen, Anbieter-Punkte", () => {
     expect(buildBriefing(db, { kind: "person", id: anna.id }, "2026-10-16").todayMeeting).toBeUndefined();
     expect(sectionTitles({ person: anna }).delegated).toBe("Offen bei Anna");
     expect(sectionTitles({}).other).toBe("Delegiert");
+  });
+});
+
+describe("Verantwortlich: Ich und andere", () => {
+  it("ohne Personen bin ich es; mit Personen nur, wenn „Ich“ dazugewählt ist", () => {
+    expect(isMine(T({}))).toBe(true);
+    expect(isMine(T({ assignee_person_ids: ["p1"] }))).toBe(false);
+    expect(isMine(T({ assignee_person_ids: ["p1"], assignee_me: true }))).toBe(true);
   });
 });
 

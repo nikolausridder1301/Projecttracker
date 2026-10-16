@@ -94,6 +94,7 @@ function demoBackend(): Backend {
   type Legacy = { assignee_person_id?: string | null; company_id?: string | null; contact_person_id?: string | null };
   for (const t of db.tasks as (Db["tasks"][number] & Legacy)[]) {
     t.assignee_person_ids ??= t.assignee_person_id ? [t.assignee_person_id] : [];
+    t.assignee_me ??= false;
     t.company_ids ??= t.company_id ? [t.company_id] : [];
     delete t.assignee_person_id;
     delete t.company_id;

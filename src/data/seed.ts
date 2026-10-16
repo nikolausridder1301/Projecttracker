@@ -69,6 +69,7 @@ export function demoSeed(): Db {
     company_ids: [sk.id],
     topic_id: null,
     assignee_person_ids: [] as string[],
+    assignee_me: false,
     status: "open" as const,
     blocked_reason: "",
     priority: "medium" as const,
