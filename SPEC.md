@@ -145,7 +145,7 @@ Kopfzeile: globale Suche (Strg+K), Backup-Icon, „+ Neu“ (Taste N). **Alles N
 ### 6.6 Verlauf und Delegiert
 
 - **Zwei klare Bereiche je Aufgabe:** **Nächste Schritte = was noch zu tun ist (wer, bis wann)**, **Verlauf = was passiert ist**.
-- **Nächste Schritte** (früher „Checkliste“): Text, optional **Person** („Wer?“) und **Datum** („Bis?“); leere Wer/Bis-Chips erscheinen erst beim Darüberfahren. Abhaken schreibt automatisch „✓ …“ in den Verlauf; der Text eines Schritts lässt sich per Klick bearbeiten. Kein eigenes Objekt – die Schritte gehören zur Aufgabe.
+- **Nächste Schritte** (früher „Checkliste“): Text, optional **Person** („Wer?“) und **Datum** („Bis?“); Wer/Bis stehen unter dem Text, damit lange Schritte die volle Breite haben; leere Wer/Bis-Chips erscheinen erst beim Darüberfahren. In Listen werden lange Schritte und Updates mit „…“ gekürzt (voller Text als Tooltip), Person und Datum bleiben sichtbar; lange Titel brechen um. Abhaken schreibt automatisch „✓ …“ in den Verlauf; der Text eines Schritts lässt sich per Klick bearbeiten. Kein eigenes Objekt – die Schritte gehören zur Aufgabe.
   - In Listen steht der **nächste offene Schritt** („→ Liefertermin klären · Arman · 23.10. (1/3)“, rot wenn überfällig).
   - Ein fälliger Schritt bringt die Aufgabe auf **Heute** („Fällig“ zählt das früheste Datum aus Aufgabe und offenen Schritten).
   - Hat eine Person einen offenen Schritt, erscheint die Aufgabe in **ihrem Meeting-Briefing**; die Agenda listet offene Schritte mit Person und Datum.
