@@ -95,6 +95,8 @@ export interface Task extends Base, InProject {
   topic_id: Id | null;
   /** Verantwortliche Personen; leer = ich selbst */
   assignee_person_ids: Id[];
+  /** ich bin zusätzlich zu den Personen verantwortlich (ohne Personen immer „ich“) */
+  assignee_me: boolean;
   status: TaskStatus;
   blocked_reason: string;
   priority: Priority;

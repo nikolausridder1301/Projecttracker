@@ -2,7 +2,7 @@
 // Detailansicht, Meeting-Seite, Agenda und Protokoll nutzen alle buildBriefing.
 import type { Company, Db, Id, IsoDate, Link, Note, Person, Task, VendorItem } from "../data/types";
 import { formatDate, localDate } from "./dates";
-import { compareTasks, hasStepFor, isActive, isStep, stepPersons } from "./tasks";
+import { compareTasks, hasStepFor, isActive, isMine, isStep, stepPersons } from "./tasks";
 import { affectsCompany, isOpenItem, statusDef } from "./vendor";
 
 export type MeetingTarget = { kind: "person"; id: Id } | { kind: "company"; id: Id };
@@ -55,9 +55,9 @@ export function buildBriefing(db: Db, target: MeetingTarget, today: IsoDate): Br
   // Bei der Person offen: ihr zugeordnet oder sie hat einen offenen nächsten Schritt
   const delegatedToPerson = person ? open.filter((t) => t.assignee_person_ids.includes(person.id) || hasStepFor(t, person.id)) : [];
   const delegatedIds = new Set(delegatedToPerson.map((t) => t.id));
-  const myTasks = companyId ? open.filter((t) => t.company_ids.includes(companyId) && t.assignee_person_ids.length === 0 && !delegatedIds.has(t.id)) : [];
+  const myTasks = companyId ? open.filter((t) => t.company_ids.includes(companyId) && isMine(t) && !delegatedIds.has(t.id)) : [];
   const otherTasks = companyId
-    ? open.filter((t) => t.company_ids.includes(companyId) && t.assignee_person_ids.length > 0 && !delegatedIds.has(t.id))
+    ? open.filter((t) => t.company_ids.includes(companyId) && !isMine(t) && !delegatedIds.has(t.id))
     : [];
 
   // Anbieter-Punkte: Anbieter-Firma bzw. deren Leute → alle offenen; Firma → was sie betrifft;

@@ -94,7 +94,7 @@ Alle Tabellen: `id`, `created_at`, `updated_at`, `deleted_at` (Papierkorb). Proj
 | `topics` | **Meilensteine** (Name, Sortierung, archiviert) |
 | `milestone_status` | Stand je Meilenstein und Firma: Status, Zieldatum, Kommentar (eindeutig je Paar) |
 | `people` | Personen je Projekt |
-| `tasks` | Titel, Firmen (`company_ids`, mindestens eine), Verantwortliche Personen (`assignee_person_ids`, leer = ich; mehrere möglich), Status (offen/blockiert/erledigt), Grund bei „Blockiert“, Wichtig-Fahne (`priority` high/medium), fällig, Nächste Schritte (`checklist`: Text, erledigt, optional Personen und Datum – kein eigenes Objekt), Herkunfts-Protokoll; Beschreibung nur noch für Altbestand |
+| `tasks` | Titel, Firmen (`company_ids`, mindestens eine), Verantwortliche Personen (`assignee_person_ids`, leer = ich; mehrere möglich; `assignee_me` = ich zusätzlich zu den Personen), Status (offen/blockiert/erledigt), Grund bei „Blockiert“, Wichtig-Fahne (`priority` high/medium), fällig, Nächste Schritte (`checklist`: Text, erledigt, optional Personen und Datum – kein eigenes Objekt), Herkunfts-Protokoll; Beschreibung nur noch für Altbestand |
 | `task_followups` | Früherer **Verlauf** je Aufgabe (Datum, Text) – wird nicht mehr angezeigt oder beschrieben, Daten bleiben erhalten. Die Spalte `tasks.follow_up_date` wird nicht mehr genutzt. |
 | `notes` | Notiz / Meeting-Protokoll / Entscheidung, Firmen (`company_ids`), Datum, Teilnehmer, Text |
 | `links`, `link_categories`, `attachments` | Link-Sammlung mit Firmen (`company_ids`); Anhänge an Notizen (an Aufgaben nur Altbestand) |
@@ -148,12 +148,12 @@ Kopfzeile: globale Suche (Strg+K), Backup-Icon, „+ Neu“ (Taste N). **Alles N
   - **Schritte:** Text, optional **Wer?** (mehrere) und **Bis?**; Wer/Bis stehen unter dem Text (lange Texte haben die volle Breite), leer erst beim Darüberfahren. Häkchen = erledigt. Texte per Klick bearbeitbar. **Farben:** Person blau, Datum violett (rot, wenn überfällig).
   - **Meilensteine (◆):** die Etappen, auf die hingearbeitet wird – **nur Text, kein Datum, keine Schritte**; Klick auf ◆ = „erreicht“. Sie dienen der Orientierung und zählen nicht zum Fortschritt oder zu Terminen.
   - **Hinzufügen:** je Liste eine gleich aufgebaute Eingabezeile mit Enter – „Schritt hinzufügen…“ (Wer?, Bis?) unter den Schritten, „Meilenstein hinzufügen…“ unter den Meilensteinen; das Feld bleibt für den nächsten Eintrag offen. Ältere Aufgaben mit verschachtelten Schritten oder Meilenstein-Daten werden in diese zwei Listen aufgeteilt (alte Meilenstein-Daten bleiben unbenutzt gespeichert).
-  - **Einfaches Markdown** in Schritten und Meilensteinen: **Enter speichert, Umschalt+Enter = neue Zeile**; „- “/„* “/„1. “ werden Aufzählungen (Enter bzw. Umschalt+Enter setzt den nächsten Punkt, ein leerer Punkt beendet die Liste, Tab/Umschalt+Tab rückt ein); `**fett**`, `*kursiv*`, `` `Code` `` und Links werden dargestellt. In Listen erscheint nur die erste Zeile ohne Zeichen.
+  - **Einfaches Markdown** in Schritten und Meilensteinen: **Enter speichert, Umschalt+Enter = neue Zeile**; „- “/„* “/„1. “ werden Aufzählungen (Enter bzw. Umschalt+Enter setzt den nächsten Punkt, ein leerer Punkt beendet die Liste, Tab/Umschalt+Tab rückt ein); `**fett**`, `*kursiv*`, `` `Code` `` und Links werden dargestellt.
 - **In Listen (Aufgabenkarte, überall gleich):** nur ein kurzer Hinweis unter dem Titel – **Zahl der Meilensteine und der offenen Schritte** („2 Meilensteine · 3 offene Schritte“); keine Texte, Personen oder Daten. Details stehen im Detail-Panel.
 - **Termine:** Fälligkeit und offene Schritte bilden den **nächsten Termin** (Heute, Sortierung, Zeile rechts, Firmenkarten).
 - **Meeting:** unter jeder offenen Aufgabe „Schritt notieren…“ – der vereinbarte Schritt kommt als neuer Schritt in die Aufgabe.
 - Menüpunkt **„Delegiert“**: offene Aufgaben nach Person (verantwortlich **oder mit offenem Schritt**), **zuerst fällig oben**; Kopf „x offen · y überfällig“.
-- Delegieren bleibt der Chip **„Verantwortlich“** – Mehrfachauswahl: „Ich“ oder eine bzw. mehrere Personen (eine Aufgabe). Eine Aufgabe mit mehreren Personen steht unter „Delegiert“ bei jeder von ihnen und im Meeting jeder Person.
+- Delegieren bleibt der Chip **„Verantwortlich“** – Mehrfachauswahl: „Ich“ und/oder eine bzw. mehrere Personen (eine Aufgabe); „Ich“ bleibt gewählt, wenn Personen dazukommen, und lässt sich abwählen. Ohne Auswahl bin immer ich verantwortlich. Eine Aufgabe mit mehreren Personen steht unter „Delegiert“ bei jeder von ihnen und im Meeting jeder Person; ist „Ich“ dabei, steht sie auch unter „Meine“.
 - **Kein Verlauf mehr:** keine Update-Zeitleiste, keine „Stand“-Zeile, keine automatischen Statuszeilen. Frühere Updates bleiben in der Datenbank, werden aber nicht angezeigt.
 
 ### 6.7 Meeting und Kontakte – eine Ansicht
@@ -275,7 +275,7 @@ Seitenleiste als Menü; Heute, Abhaken, Schnellerfassung, Schritte und alle Dial
 | Kontakte-Übersicht | Firmen und Personen getrennt (Firmen oben, Personen darunter), einheitliche Karten mit Fußzeile auf gleicher Höhe, klare Zahlen statt „0 offen“ |
 | Kontakte | Menüpunkt „Kontakte“ (kurz, passt in eine Zeile) für Firmen & Personen; ein Bereich statt zwei Seiten; gemeinsame Detailansicht und Logik für Firma, Person und Meeting; Meeting bleibt als Menüpunkt für den schnellen Zugriff |
 | Mehrfachauswahl überall | Firmen und Personen überall Mehrfachauswahl in derselben Liste; mehrere Firmen = eine Aufgabe (keine Kopien mehr); auch Notizen, Links, Teilnehmer, Schritte, Tacto-Ansprechpartner |
-| Verantwortlich | Mehrfachauswahl: mehrere Personen je Aufgabe (eine Aufgabe, keine Kopien); „Ich“ = niemand sonst |
+| Verantwortlich | Mehrfachauswahl: „Ich“ und mehrere Personen je Aufgabe (eine Aufgabe, keine Kopien); ohne Auswahl = ich |
 | Filterleisten | Firmenfilter als Mehrfach-Dropdown auf Aufgaben, Notizen, Links, Tacto; keine Browser-Auswahlfelder mehr in Filtern |
 | Priorität | Nur noch Fahne „Wichtig“ (an/aus); „Niedrig“ entfällt |
 | Status | Offen · Blockiert · Erledigt; „In Arbeit“ entfällt |

@@ -4,7 +4,8 @@ import { endOfWeek } from "./dates";
 const PRIO_RANK: Record<Priority, number> = { high: 0, medium: 1 };
 
 export const isActive = <T extends { deleted_at: string | null }>(r: T) => r.deleted_at === null;
-export const isDelegated = (t: Task) => t.assignee_person_ids.length > 0;
+/** Bin ich verantwortlich? Ohne Personen immer; sonst nur, wenn „Ich“ dazugewählt ist. */
+export const isMine = (t: Pick<Task, "assignee_person_ids" | "assignee_me">) => t.assignee_person_ids.length === 0 || t.assignee_me;
 export const isOpen = (t: Task) => t.status !== "done";
 
 /** Sortierung: nächster Termin (Aufgabe oder offener Schritt; ohne Datum zuletzt), dann Wichtig, dann Titel. */

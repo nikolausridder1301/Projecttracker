@@ -111,6 +111,7 @@ create table tasks (
   company_ids uuid[] not null default '{}',
   topic_id uuid references topics (id),
   assignee_person_ids uuid[] not null default '{}', -- leer = ich selbst
+  assignee_me boolean not null default false, -- ich zusätzlich zu den Personen
   status text not null default 'open' check (status in ('open', 'blocked', 'done')),
   blocked_reason text not null default '',
   priority text not null default 'medium' check (priority in ('high', 'medium')),

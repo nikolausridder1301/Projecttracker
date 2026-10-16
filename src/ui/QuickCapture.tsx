@@ -6,7 +6,7 @@ import { isValidUrl, overarchingCompany } from "../logic/tasks";
 import { ChipDate, ChipSelect, CompaniesChip, ImportantChip, useDraft } from "./common";
 import { useUi, type CaptureType } from "./uiState";
 import { freshNotes } from "../pages/Notes";
-import { AssigneeChip } from "./tasks";
+import { AssigneeChip, type Assignees } from "./tasks";
 
 // Schnellerfassung (SPEC 6.5): Titel + Enter genügt, alles andere optional.
 
@@ -52,7 +52,8 @@ function CaptureDialog({
   const [title, setTitle, clearTitle] = useDraft("capture-title", "", prefill.title);
   // Eine oder mehrere Firmen – für Aufgaben, Notizen und Links gleich
   const [companyIds, setCompanyIds] = useState<Id[]>(prefill.companyIds ?? (defaultCompany ? [defaultCompany] : []));
-  const [assignees, setAssignees] = useState<Id[]>(prefill.assigneeIds ?? (context.personId ? [context.personId] : []));
+  const initialAssignees = prefill.assigneeIds ?? (context.personId ? [context.personId] : []);
+  const [assignees, setAssignees] = useState<Assignees>({ ids: initialAssignees, me: initialAssignees.length === 0 });
   const [due, setDue] = useState("");
   const [priority, setPriority] = useState<Priority>("medium");
   const [url, setUrl] = useState("");
@@ -110,7 +111,8 @@ function CaptureDialog({
             description: "",
             company_ids: companyIds,
             topic_id: null,
-            assignee_person_ids: assignees,
+            assignee_person_ids: assignees.ids,
+            assignee_me: assignees.ids.length > 0 && assignees.me,
             status: "open" as const,
             blocked_reason: "",
             priority,

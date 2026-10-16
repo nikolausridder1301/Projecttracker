@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useLookups, useStore } from "../data/store";
 import type { Id, Task } from "../data/types";
 import { formatDate, localDate } from "../logic/dates";
-import { compareTasks, isActive, personsOf, splitDone } from "../logic/tasks";
+import { compareTasks, isActive, isMine, personsOf, splitDone } from "../logic/tasks";
 import { CompanyFilter, Empty, FilterSelect, usePersisted } from "../ui/common";
 import { TaskList, TaskRow } from "../ui/tasks";
 import { useCaptureContext } from "../ui/uiState";
@@ -38,7 +38,7 @@ export function applyFilter(tasks: Task[], f: TaskFilter): Task[] {
     .filter((t) => f.showDone || t.status !== "done")
     .filter((t) => f.companies.length === 0 || t.company_ids.some((c) => f.companies.includes(c)))
     .filter((t) =>
-      f.assignee === "me" ? t.assignee_person_ids.length === 0 : f.assignee === "delegated" ? personsOf(t).length > 0 : true,
+      f.assignee === "me" ? isMine(t) : f.assignee === "delegated" ? personsOf(t).length > 0 : true,
     )
     .sort(compareTasks);
 }

@@ -3,9 +3,9 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useLookups, useStore } from "../data/store";
 import type { ChecklistItem, Task } from "../data/types";
 import { formatDate, localDate, relativeLabel, todayIso } from "../logic/dates";
-import { checklistProgress, effectiveDue, isStep, stepPersons, taskCounts, validateTask } from "../logic/tasks";
+import { checklistProgress, effectiveDue, isMine, isStep, stepPersons, taskCounts, validateTask } from "../logic/tasks";
 import { AttachedLinks } from "./links";
-import { AutoText, Avatar, ChipDate, CompaniesChip, CompanyBadges, Disclosure, ImportantChip, MarkdownText, PeopleChip } from "./common";
+import { AutoText, Avatar, ChipDate, ChipMulti, CompaniesChip, CompanyBadges, Disclosure, ImportantChip, MarkdownText, PeopleChip } from "./common";
 import { ProjectBadge } from "./ProjectSwitcher";
 import { NoteLink, useUi } from "./uiState";
 
@@ -23,7 +23,7 @@ export function useTaskActions() {
   const setBlocked = (t: Task, reason: string | null) =>
     update("tasks", t.id, reason ? { status: "blocked", blocked_reason: reason, done_at: null } : { status: "open", blocked_reason: "" });
 
-  const setAssignees = (t: Task, ids: string[]) => update("tasks", t.id, { assignee_person_ids: ids });
+  const setAssignees = (t: Task, a: Assignees) => update("tasks", t.id, { assignee_person_ids: a.ids, assignee_me: a.ids.length > 0 && a.me });
 
   return { setDone, setBlocked, setAssignees };
 }
@@ -119,8 +119,37 @@ export function TaskRow({
 // Verantwortlich: „Ich“ oder eine bzw. mehrere Personen
 // ---------------------------------------------------------------------------
 
-export function AssigneeChip({ value, onChange }: { value: string[]; onChange: (ids: string[]) => void }) {
-  return <PeopleChip title="Verantwortlich – mehrere möglich" emptyLabel="Ich" noneOption="Ich" value={value} onChange={onChange} />;
+/** Verantwortliche: „Ich“ und/oder Personen. `me` ist nur mit Personen frei wählbar – ohne Personen bin immer ich es. */
+export interface Assignees {
+  ids: string[];
+  me: boolean;
+}
+
+const ME = "__me__";
+
+export function AssigneeChip({ value, onChange }: { value: Assignees; onChange: (v: Assignees) => void }) {
+  const { people, personById, companyById } = useLookups();
+  const me = value.ids.length === 0 || value.me;
+  const names = value.ids.map((id) => personById.get(id)?.name ?? "?");
+  const parts = [...(me ? ["Ich"] : []), ...names];
+  const label = parts.length === 1 ? parts[0] : parts.length === 2 ? parts.map((n) => n.split(" ")[0]).join(", ") : `${parts.length} Personen`;
+  const list = people.filter((p) => p.active || value.ids.includes(p.id));
+  return (
+    <ChipMulti
+      title={`Verantwortlich – ${parts.join(", ")}`}
+      label={label}
+      options={[
+        { value: ME, label: "Ich" },
+        ...list.map((p) => ({ value: p.id, label: `${p.name}${p.company_id ? ` · ${companyById.get(p.company_id)?.short ?? ""}` : ""}` })),
+      ]}
+      selected={[...(me ? [ME] : []), ...value.ids]}
+      onChange={(sel) => {
+        const ids = sel.filter((x) => x !== ME);
+        // Ohne Person bin immer ich verantwortlich
+        onChange({ ids, me: ids.length === 0 ? true : sel.includes(ME) });
+      }}
+    />
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -464,7 +493,7 @@ function TaskEditor({
 
       <div className="chips">
         <CompaniesChip value={task.company_ids} onChange={(ids) => save({ company_ids: ids })} />
-        <AssigneeChip value={task.assignee_person_ids} onChange={(ids) => void setAssignees(task, ids).catch(() => {})} />
+        <AssigneeChip value={{ ids: task.assignee_person_ids, me: isMine(task) }} onChange={(a) => void setAssignees(task, a).catch(() => {})} />
         <ChipDate
           title="Fällig"
           value={task.due_date}
