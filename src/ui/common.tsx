@@ -1,6 +1,6 @@
 import { Check, ChevronDown, ChevronRight, Flag } from "lucide-react";
 import { createPortal } from "react-dom";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import allmineral from "../assets/logos/allmineral.png";
 import fest from "../assets/logos/fest.jpg";
 import hazemag from "../assets/logos/hazemag.jpg";
@@ -10,6 +10,7 @@ import perforator from "../assets/logos/perforator.png";
 import sk from "../assets/logos/sk.jpg";
 import tacto from "../assets/logos/tacto.png";
 import { useLookups } from "../data/store";
+import { listIndent, listNewline, parseBlocks, parseInline, type Edit } from "../logic/markdown";
 import { TRAFFIC_LABEL, type Company, type Id, type TrafficLight } from "../data/types";
 
 export const LOGOS: Record<string, string> = {
@@ -554,7 +555,8 @@ export function AutoText({
   minRows = 2,
   textRef,
   autoFocus,
-  onKeyDown,
+  onSubmit,
+  onEscape,
   className,
   ariaLabel,
 }: {
@@ -565,7 +567,9 @@ export function AutoText({
   minRows?: number;
   textRef?: React.RefObject<HTMLTextAreaElement>;
   autoFocus?: boolean;
-  onKeyDown?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+  /** Enter speichert (Umschalt+Enter = neue Zeile); ohne: Enter = neue Zeile */
+  onSubmit?: () => void;
+  onEscape?: () => void;
   className?: string;
   ariaLabel?: string;
 }) {
@@ -586,10 +590,85 @@ export function AutoText({
       placeholder={placeholder}
       onChange={(e) => onChange(e.target.value)}
       onBlur={onBlur}
-      onKeyDown={onKeyDown}
+      onKeyDown={(e) => {
+        const el = e.currentTarget;
+        const apply = (r: Edit) => {
+          e.preventDefault();
+          onChange(r.value);
+          requestAnimationFrame(() => el.setSelectionRange(r.caret, r.caret));
+        };
+        if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+          if (onSubmit && !e.shiftKey) {
+            e.preventDefault();
+            onSubmit();
+            return;
+          }
+          // In Aufzählungen den nächsten Punkt beginnen
+          const r = listNewline(el.value, el.selectionStart);
+          if (r) apply(r);
+        } else if (e.key === "Tab") {
+          const r = listIndent(el.value, el.selectionStart, e.shiftKey);
+          if (r) apply(r);
+        } else if (e.key === "Escape" && onEscape) {
+          e.stopPropagation();
+          onEscape();
+        }
+      }}
       autoFocus={autoFocus}
       aria-label={ariaLabel}
     />
+  );
+}
+
+/** Text mit einfachem Markdown anzeigen: Aufzählungen, Absätze, **fett**, *kursiv*, `Code`, Links. */
+export function MarkdownText({ text, className, onClick, title }: { text: string; className?: string; onClick?: () => void; title?: string }) {
+  const inline = (t: string) =>
+    parseInline(t).map((tok, i) =>
+      tok.kind === "bold" ? (
+        <strong key={i}>{tok.text}</strong>
+      ) : tok.kind === "italic" ? (
+        <em key={i}>{tok.text}</em>
+      ) : tok.kind === "code" ? (
+        <code key={i}>{tok.text}</code>
+      ) : tok.kind === "link" ? (
+        <a key={i} href={tok.href} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
+          {tok.text}
+        </a>
+      ) : (
+        <Fragment key={i}>{tok.text}</Fragment>
+      ),
+    );
+  return (
+    <div className={`md${className ? ` ${className}` : ""}`} onClick={onClick} title={title}>
+      {parseBlocks(text).map((b, i) =>
+        b.kind === "para" ? (
+          <p key={i}>
+            {b.lines.map((l, j) => (
+              <Fragment key={j}>
+                {j > 0 && <br />}
+                {inline(l)}
+              </Fragment>
+            ))}
+          </p>
+        ) : b.ordered ? (
+          <ol key={i}>
+            {b.items.map((it, j) => (
+              <li key={j} style={it.level ? { marginLeft: it.level * 16 } : undefined}>
+                {inline(it.text)}
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <ul key={i}>
+            {b.items.map((it, j) => (
+              <li key={j} style={it.level ? { marginLeft: it.level * 16 } : undefined}>
+                {inline(it.text)}
+              </li>
+            ))}
+          </ul>
+        ),
+      )}
+    </div>
   );
 }
 

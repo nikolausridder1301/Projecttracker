@@ -121,7 +121,7 @@ export function agendaText(b: Briefing, personName: (id: Id) => string, vendorNa
     const stepLine = (i: number) => {
       const c = t.checklist[i];
       const info = [stepPersons(c).map(personName).join(", "), c.due ? `bis ${formatDate(c.due)}` : ""].filter(Boolean);
-      return `\n  - [ ] ${c.text}${info.length ? ` (${info.join(", ")})` : ""}`;
+      return `\n  - [ ] ${c.text.replace(/\n/g, "\n      ")}${info.length ? ` (${info.join(", ")})` : ""}`;
     };
     const steps = groupSteps(t.checklist)
       .map((g) => {
