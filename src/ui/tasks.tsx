@@ -101,12 +101,11 @@ export function TaskRow({
       .filter(Boolean)
       .join(", ");
     const late = !!next.due && next.due < today;
+    const meta = [who, next.due ? ddmm(next.due) : "", cl.total > 1 ? `${cl.done}/${cl.total}` : ""].filter(Boolean).join(" · ");
     sub.push(
-      <span key="c" className={`task-next${late ? " tone-red" : ""}`} title="Nächster Schritt">
-        → {next.text}
-        {who ? ` · ${who}` : ""}
-        {next.due ? ` · ${ddmm(next.due)}` : ""}
-        {cl.total > 1 ? ` (${cl.done}/${cl.total})` : ""}
+      <span key="c" className={`task-next${late ? " tone-red" : ""}`} title={`Nächster Schritt: ${next.text}`}>
+        <span className="task-next-text">→ {next.text}</span>
+        {meta && <span className="task-next-meta">· {meta}</span>}
       </span>,
     );
   } else if (cl.total > 0) sub.push(<span key="c">{cl.done}/{cl.total} Schritte</span>);
@@ -188,6 +187,13 @@ function StepsEditor({ task, save }: { task: Task; save: (patch: { checklist: Ch
   const [persons, setPersons] = useState<string[]>([]);
   const [due, setDue] = useState<string | null>(null);
   const [editing, setEditing] = useState<{ i: number; text: string } | null>(null);
+  const addStep = () => {
+    if (!text.trim()) return;
+    save({ checklist: [...task.checklist, { text: text.trim(), done: false, person_ids: persons, due }] });
+    setText("");
+    setPersons([]);
+    setDue(null);
+  };
   const cl = checklistProgress(task);
   const saveText = () => {
     if (!editing) return;
@@ -213,71 +219,93 @@ function StepsEditor({ task, save }: { task: Task; save: (patch: { checklist: Ch
   return (
     <Disclosure title="Nächste Schritte" meta={cl.total > 0 ? `${cl.done}/${cl.total}` : undefined} defaultOpen={cl.total > 0}>
       <ul className="checklist steps">
-        {task.checklist.map((item, i) => (
-          <li key={i} className="step-row">
-            <input type="checkbox" className="check" checked={item.done} onChange={() => toggle(i)} aria-label="Schritt erledigt" />
-            {editing?.i === i ? (
-              <input
-                autoFocus
-                className="plain-input grow"
-                value={editing.text}
-                onChange={(e) => setEditing({ i, text: e.target.value })}
-                onBlur={saveText}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") saveText();
-                  if (e.key === "Escape") {
-                    e.stopPropagation();
-                    setEditing(null);
-                  }
-                }}
-                aria-label="Schritt bearbeiten"
-              />
-            ) : (
-              <span
-                className={`grow step-text${item.done ? " is-done-text" : ""}`}
-                title="Klicken zum Bearbeiten"
-                onClick={() => setEditing({ i, text: item.text })}
+        {task.checklist.map((item, i) => {
+          const persons = stepPersons(item);
+          const hasMeta = persons.length > 0 || !!item.due;
+          return (
+            <li key={i} className="step-item">
+              <input type="checkbox" className="check" checked={item.done} onChange={() => toggle(i)} aria-label="Schritt erledigt" />
+              <div className="step-body">
+                {editing?.i === i ? (
+                  <AutoText
+                    autoFocus
+                    minRows={1}
+                    className="step-edit"
+                    ariaLabel="Schritt bearbeiten"
+                    value={editing.text}
+                    onChange={(v) => setEditing({ i, text: v.replace(/\n/g, " ") })}
+                    onBlur={saveText}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        saveText();
+                      }
+                      if (e.key === "Escape") {
+                        e.stopPropagation();
+                        setEditing(null);
+                      }
+                    }}
+                  />
+                ) : (
+                  <span
+                    className={`step-text${item.done ? " is-done-text" : ""}`}
+                    title="Klicken zum Bearbeiten"
+                    onClick={() => setEditing({ i, text: item.text })}
+                  >
+                    {item.text}
+                  </span>
+                )}
+                {/* Wer/Bis unter dem Text – leer erst beim Darüberfahren, damit lange Texte die volle Breite haben */}
+                {!item.done && (
+                  <div className={`step-meta${hasMeta ? "" : " empty"}`}>
+                    <PeopleChip title="Wer?" emptyLabel="Wer?" value={persons} onChange={(ids) => setItem(i, { person_ids: ids, person_id: undefined })} />
+                    <ChipDate
+                      title="Bis wann?"
+                      value={item.due ?? null}
+                      onChange={(v) => setItem(i, { due: v })}
+                      placeholder="Bis?"
+                      format={(v) => `bis ${ddmm(v)}`}
+                      tone={item.due && item.due < today ? "red" : undefined}
+                    />
+                  </div>
+                )}
+              </div>
+              <button
+                className="icon-btn hover-only"
+                aria-label="Schritt entfernen"
+                onClick={() => save({ checklist: task.checklist.filter((_, j) => j !== i) })}
               >
-                {item.text}
-              </span>
-            )}
-            {!item.done && (
-              <>
-                <PeopleChip title="Wer?" emptyLabel="Wer?" value={stepPersons(item)} onChange={(ids) => setItem(i, { person_ids: ids, person_id: undefined })} />
-                <ChipDate
-                  title="Bis wann?"
-                  value={item.due ?? null}
-                  onChange={(v) => setItem(i, { due: v })}
-                  placeholder="Bis?"
-                  format={(v) => `bis ${ddmm(v)}`}
-                  tone={item.due && item.due < today ? "red" : undefined}
-                />
-              </>
-            )}
-            <button
-              className="icon-btn hover-only"
-              aria-label="Schritt entfernen"
-              onClick={() => save({ checklist: task.checklist.filter((_, j) => j !== i) })}
-            >
-              <X size={14} />
-            </button>
-          </li>
-        ))}
+                <X size={14} />
+              </button>
+            </li>
+          );
+        })}
       </ul>
       <form
-        className="step-row step-new"
+        className="step-new"
         onSubmit={(e) => {
           e.preventDefault();
-          if (!text.trim()) return;
-          save({ checklist: [...task.checklist, { text: text.trim(), done: false, person_ids: persons, due }] });
-          setText("");
-          setPersons([]);
-          setDue(null);
+          addStep();
         }}
       >
-        <input className="plain-input grow" value={text} onChange={(e) => setText(e.target.value)} placeholder="Nächsten Schritt hinzufügen… (Enter)" />
-        <PeopleChip title="Wer?" emptyLabel="Wer?" value={persons} onChange={setPersons} />
-        <ChipDate title="Bis wann?" value={due} onChange={setDue} placeholder="Bis?" format={(v) => `bis ${ddmm(v)}`} />
+        <AutoText
+          minRows={1}
+          className="step-edit"
+          ariaLabel="Nächsten Schritt hinzufügen"
+          value={text}
+          onChange={(v) => setText(v.replace(/\n/g, " "))}
+          placeholder="Nächsten Schritt hinzufügen… (Enter)"
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              addStep();
+            }
+          }}
+        />
+        <div className="step-meta">
+          <PeopleChip title="Wer?" emptyLabel="Wer?" value={persons} onChange={setPersons} />
+          <ChipDate title="Bis wann?" value={due} onChange={setDue} placeholder="Bis?" format={(v) => `bis ${ddmm(v)}`} />
+        </div>
       </form>
     </Disclosure>
   );

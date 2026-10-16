@@ -554,6 +554,9 @@ export function AutoText({
   minRows = 2,
   textRef,
   autoFocus,
+  onKeyDown,
+  className,
+  ariaLabel,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -562,6 +565,9 @@ export function AutoText({
   minRows?: number;
   textRef?: React.RefObject<HTMLTextAreaElement>;
   autoFocus?: boolean;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+  className?: string;
+  ariaLabel?: string;
 }) {
   const own = useRef<HTMLTextAreaElement>(null);
   const ref = textRef ?? own;
@@ -574,13 +580,15 @@ export function AutoText({
   return (
     <textarea
       ref={ref}
-      className="autotext"
+      className={`autotext${className ? ` ${className}` : ""}`}
       rows={minRows}
       value={value}
       placeholder={placeholder}
       onChange={(e) => onChange(e.target.value)}
       onBlur={onBlur}
+      onKeyDown={onKeyDown}
       autoFocus={autoFocus}
+      aria-label={ariaLabel}
     />
   );
 }

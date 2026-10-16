@@ -2479,3 +2479,134 @@ button.traffic-tile:hover {
 .project-current.static {
   cursor: default;
 }
+
+/* Lange Texte: Zeilen bleiben im Rahmen */
+.task-main {
+  align-items: stretch;
+  overflow: hidden;
+}
+.task-title {
+  display: flex;
+  align-items: flex-start;
+  overflow-wrap: anywhere;
+}
+.task-title .flag {
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+.task-sub > span {
+  min-width: 0;
+  max-width: 100%;
+}
+.task-next {
+  display: inline-flex;
+  gap: 4px;
+}
+.task-next-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.task-next-meta {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.task-right {
+  flex-shrink: 0;
+}
+
+/* Nächste Schritte im Panel: Text über die volle Breite, Wer/Bis darunter */
+.step-item {
+  display: flex;
+  align-items: flex-start !important;
+  gap: 10px;
+  padding: 6px 0;
+}
+.step-item + .step-item {
+  border-top: 1px solid var(--surface-3);
+}
+.step-item > .check {
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+.step-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.step-text {
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  cursor: text;
+}
+.step-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.step-meta .chip {
+  height: 26px;
+  font-size: var(--fs-sm);
+}
+.steps .step-meta .chip-empty {
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.steps .step-item:hover .chip-empty,
+.steps .step-item:focus-within .chip-empty {
+  opacity: 1;
+}
+/* Ohne Person/Datum nimmt die Zeile keinen Platz ein, bis man darüberfährt */
+.steps .step-meta.empty {
+  height: 0;
+  overflow: hidden;
+  margin-top: -6px;
+}
+.steps .step-item:hover .step-meta.empty,
+.steps .step-item:focus-within .step-meta.empty {
+  height: auto;
+  overflow: visible;
+  margin-top: 0;
+}
+@media (hover: none) {
+  .steps .step-meta .chip-empty {
+    opacity: 1;
+  }
+  .steps .step-meta.empty {
+    height: auto;
+    overflow: visible;
+    margin-top: 0;
+  }
+}
+.step-item > .icon-btn {
+  flex-shrink: 0;
+}
+.step-edit {
+  border: 1px solid var(--border) !important;
+  background: var(--surface) !important;
+  padding: 4px 8px !important;
+  min-height: 0 !important;
+  line-height: 1.45;
+  resize: none;
+}
+.step-new {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 0 2px 30px;
+  border-top: 1px solid var(--surface-3);
+}
+.step-new .step-edit {
+  border-color: transparent !important;
+  background: transparent !important;
+}
+.step-new .step-edit:focus {
+  border-color: var(--border) !important;
+  background: var(--surface) !important;
+}
+.step-new .chip-empty {
+  opacity: 0.8;
+}
