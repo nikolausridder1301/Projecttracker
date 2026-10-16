@@ -50,6 +50,7 @@ export function copyProjectMasterData(
       email: p.email,
       phone: p.phone,
       active: true,
+      is_me: p.is_me,
     }));
 
   const topics = inSource<Topic>(db.topics)

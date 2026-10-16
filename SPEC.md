@@ -93,7 +93,7 @@ Alle Tabellen: `id`, `created_at`, `updated_at`, `deleted_at` (Papierkorb). Proj
 | `traffic_history` | Früherer Ampel-Verlauf – wird nicht mehr angezeigt oder beschrieben, Daten bleiben erhalten |
 | `topics` | **Meilensteine** (Name, Sortierung, archiviert) |
 | `milestone_status` | Stand je Meilenstein und Firma: Status, Zieldatum, Kommentar (eindeutig je Paar) |
-| `people` | Personen je Projekt |
+| `people` | Personen je Projekt; `is_me` markiert die **eigene Person** („Ich“, z. B. Nikolaus Ridder bei der Holding) – je Projekt eine |
 | `tasks` | Titel, Firmen (`company_ids`, mindestens eine), Verantwortliche Personen (`assignee_person_ids`, leer = ich; mehrere möglich; `assignee_me` = ich zusätzlich zu den Personen), Status (offen/blockiert/erledigt), Grund bei „Blockiert“, Wichtig-Fahne (`priority` high/medium), fällig, Nächste Schritte (`checklist`: Text, erledigt, optional Personen und Datum – kein eigenes Objekt), Herkunfts-Protokoll; Beschreibung nur noch für Altbestand |
 | `task_followups` | Früherer **Verlauf** je Aufgabe (Datum, Text) – wird nicht mehr angezeigt oder beschrieben, Daten bleiben erhalten. Die Spalte `tasks.follow_up_date` wird nicht mehr genutzt. |
 | `notes` | Notiz / Meeting-Protokoll / Entscheidung, Firmen (`company_ids`), Datum, Teilnehmer, Text |
@@ -152,7 +152,8 @@ Kopfzeile: globale Suche (Strg+K), Backup-Icon, „+ Neu“ (Taste N). **Alles N
 - **Termine:** Fälligkeit und offene Schritte bilden den **nächsten Termin** (Heute, Sortierung, Zeile rechts, Firmenkarten).
 - **Meeting:** Schritte werden in der aufgeklappten Aufgabenkarte erfasst (kein eigenes „Schritt notieren…“-Feld mehr).
 - Menüpunkt **„Delegiert“**: offene Aufgaben nach Person (verantwortlich **oder mit offenem Schritt**), **zuerst fällig oben**; Kopf „x offen · y überfällig“.
-- Delegieren bleibt der Chip **„Verantwortlich“** – Mehrfachauswahl: „Ich“ und/oder eine bzw. mehrere Personen (eine Aufgabe); „Ich“ bleibt gewählt, wenn Personen dazukommen, und lässt sich abwählen. Ohne Auswahl bin immer ich verantwortlich. Eine Aufgabe mit mehreren Personen steht unter „Delegiert“ bei jeder von ihnen und im Meeting jeder Person; ist „Ich“ dabei, steht sie auch unter „Meine“.
+- Delegieren bleibt der Chip **„Verantwortlich“** – Mehrfachauswahl: **die eigene Person** (statt eines Eintrags „Ich“; steht ganz oben) und/oder eine bzw. mehrere weitere Personen (eine Aufgabe); die eigene Person bleibt gewählt, wenn andere dazukommen, und lässt sich abwählen. Ohne Auswahl bin immer ich verantwortlich. Eine Aufgabe mit mehreren Personen steht unter „Delegiert“ bei jeder anderen Person und im Meeting jeder Person; ist die eigene Person dabei, steht sie auch unter „Meine“. „Delegiert“ zeigt die eigene Person nie. Gibt es im Projekt keine eigene Person, heißt der Eintrag weiter „Ich“.
+- **Eigene Person:** erscheint wie jede Person unter Kontakte (ihre Ansicht zeigt alles, wofür ich verantwortlich bin) und ist bei neuen Meeting-Protokollen automatisch Teilnehmer. Neue Projekte übernehmen sie.
 - **Kein Verlauf mehr:** keine Update-Zeitleiste, keine „Stand“-Zeile, keine automatischen Statuszeilen. Frühere Updates bleiben in der Datenbank, werden aber nicht angezeigt.
 
 ### 6.7 Meeting und Kontakte – eine Ansicht
@@ -162,14 +163,14 @@ Kopfzeile: globale Suche (Strg+K), Backup-Icon, „+ Neu“ (Taste N). **Alles N
   - **Reiter:** **Offen · Notizen · Links**, bei Firmen zusätzlich **Meilensteine · {Anbieter}**.
   - **Offen:** bei Personen „Offen bei …“ (verantwortlich oder offener Schritt), dazu meine und weitere offene Punkte ihrer Firma; bei Firmen alles, was die Firma betrifft. Blockiertes zuerst; Schritte lassen sich über den Hinweis in der Karte aufklappen. Nichts offen: Karte mit „Aufgabe anlegen“. Erledigte auf Wunsch („x erledigte anzeigen“).
 - **Meeting** bleibt im Menü für den schnellen Zugriff: oben Person oder Firma wählen (Suche, letzte Auswahl bleibt), darunter genau diese Ansicht.
-- **„Protokoll starten“** öffnet das **heutige Protokoll** mit dieser Person/Firma oder legt es an (Teilnehmer, Firma, Datum). Im Protokoll stehen die **offenen Punkte als Liste mit aufklappbaren Schritten** – was vereinbart wird, landet direkt als Schritt in der Aufgabe; der Text bleibt für freie Notizen (keine kopierte Agenda mehr).
+- **„Protokoll starten“** öffnet das **heutige Protokoll** mit dieser Person/Firma oder legt es an (Teilnehmer, Firma, Datum). Im Protokoll steht **zuerst der Text, darunter** (damit viele offene Punkte die Texteingabe nicht verkleinern) die **Liste der offenen Punkte mit aufklappbaren Schritten** – was vereinbart wird, landet direkt als Schritt in der Aufgabe; der Text bleibt für freie Notizen (keine kopierte Agenda mehr). Das „Gegenüber“ ist die einzige Teilnehmerperson außer mir; sonst gilt die Firma des Protokolls.
 - **„Agenda kopieren“** in die Zwischenablage (mit offenen Schritten); für die Anbieter-Firma selbst der Jour-fixe-Text.
 - **Anbieter-Punkte:** Firma → was sie betrifft (inkl. „Alle Firmen“); Anbieter-Firma und ihre Leute → alle offenen; Person einer Gesellschaft → wo sie Ansprechpartner ist oder ihre Firma ausdrücklich genannt ist. Bei Personen stehen sie im Reiter „Offen“.
-- **„Aufgabe anlegen“ / „+ Neu“ in einer Personen-Ansicht** belegt diese Person als Verantwortliche vor (ebenso „Aufgabe daraus“ bei genau einem Teilnehmer).
+- **„Aufgabe anlegen“ / „+ Neu“ in einer Personen-Ansicht** belegt diese Person als Verantwortliche vor (ebenso „Aufgabe hinzufügen“ im Protokoll bei genau einer anderen Teilnehmerperson).
 
 ### 6.8 Notizen
 
-Arten **Notiz · Meeting-Protokoll · Entscheidung** (Entscheidungen bewusst getrennt). Notizen öffnen sich – wie Aufgaben – als **Pop-up-Panel** über der aktuellen Seite (aus der Liste, der Suche, dem Meeting, der Firmen-/Personenseite); Direktlinks `/notizen/:id` öffnen ebenfalls das Panel. Chips für Art, Firma, Datum; Teilnehmer bei Protokollen; Text als mitwachsendes Feld (kein Wechsel zwischen Bearbeiten und Vorschau); Aufzählungen mit „- “ setzen sich bei Enter fort, Tab rückt ein. **„Aufgabe daraus“** übernimmt markierten Text als Aufgabe, verknüpft in beide Richtungen; Bereiche klappen auf, sobald sie Inhalt bekommen. **Adressen im Text werden automatisch als klickbare Links** darunter gezeigt; früher angehängte Links bleiben sichtbar, neue Anhänge gibt es nicht mehr.
+Arten **Notiz · Meeting-Protokoll · Entscheidung** (Entscheidungen bewusst getrennt). Notizen öffnen sich – wie Aufgaben – als **Pop-up-Panel** über der aktuellen Seite (aus der Liste, der Suche, dem Meeting, der Firmen-/Personenseite); Direktlinks `/notizen/:id` öffnen ebenfalls das Panel. Chips für Art, Firma, Datum; Teilnehmer bei Protokollen; Text als mitwachsendes Feld (kein Wechsel zwischen Bearbeiten und Vorschau); Aufzählungen mit „- “ setzen sich bei Enter fort, Tab rückt ein. Unten steht **„Aufgabe hinzufügen“** (öffnet die übliche Aufgaben-Erfassung mit Firma und Person vorbelegt, verknüpft mit dem Eintrag); bei Protokollen erscheinen die Aufgaben unter „Offene Punkte“, bei Notizen und Entscheidungen steht darunter – nur wenn es welche gibt – der Bereich „Aufgaben“. **Adressen im Text werden automatisch als klickbare Links** darunter gezeigt; früher angehängte Links bleiben sichtbar, neue Anhänge gibt es nicht mehr.
 
 ### 6.9 Anbieter-Bereich (bei Tacto: „Tacto“)
 
@@ -187,7 +188,7 @@ Arten **Notiz · Meeting-Protokoll · Entscheidung** (Entscheidungen bewusst get
 
 ### 6.11 Schnellerfassung
 
-Taste **N** oder „+ Neu“: Typ **Aufgabe · Notiz · Protokoll · Entscheidung · Link**. **Notiz, Protokoll und Entscheidung öffnen sich mit einem Klick direkt im Pop-up** (Titel „Meeting – TT.MM.JJJJ“ o. ä. vorbelegt und markiert, Datum heute, ggf. schon getippter Titel übernommen); wird so ein Eintrag unverändert geschlossen, verschwindet er wieder. Aufgaben und Links: Titel, Enter – Aufgaben öffnen sich danach ebenfalls im Pop-up. Ausnahme: „Aufgabe daraus“ im Protokoll bleibt im Protokoll (die Aufgabe erscheint dort unter „Aufgaben“). Links werden nur gespeichert. Chips für Firma (aus dem Kontext vorbelegt; bei Aufgaben Mehrfachauswahl), Verantwortlich, Fällig, Wichtig bzw. Kategorie. Entwürfe bleiben erhalten.
+Taste **N** oder „+ Neu“: Typ **Aufgabe · Notiz · Protokoll · Entscheidung · Link**. **Notiz, Protokoll und Entscheidung öffnen sich mit einem Klick direkt im Pop-up** (Titel „Meeting – TT.MM.JJJJ“ o. ä. vorbelegt und markiert, Datum heute, ggf. schon getippter Titel übernommen); wird so ein Eintrag unverändert geschlossen, verschwindet er wieder. Aufgaben und Links: Titel, Enter – Aufgaben öffnen sich danach ebenfalls im Pop-up. Ausnahme: „Aufgabe hinzufügen“ im Protokoll bleibt im Protokoll (die Aufgabe erscheint dort unter „Offene Punkte“). Links werden nur gespeichert. Chips für Firma (aus dem Kontext vorbelegt; bei Aufgaben Mehrfachauswahl), Verantwortlich, Fällig, Wichtig bzw. Kategorie. Entwürfe bleiben erhalten.
 
 ### 6.12 Suche
 
@@ -273,7 +274,9 @@ Seitenleiste als Menü; Heute, Abhaken, Schnellerfassung, Schritte und alle Dial
 | Kontakte-Übersicht | Firmen und Personen getrennt (Firmen oben, Personen darunter), einheitliche Karten mit Fußzeile auf gleicher Höhe, klare Zahlen statt „0 offen“ |
 | Kontakte | Menüpunkt „Kontakte“ (kurz, passt in eine Zeile) für Firmen & Personen; ein Bereich statt zwei Seiten; gemeinsame Detailansicht und Logik für Firma, Person und Meeting; Meeting bleibt als Menüpunkt für den schnellen Zugriff |
 | Mehrfachauswahl überall | Firmen und Personen überall Mehrfachauswahl in derselben Liste; mehrere Firmen = eine Aufgabe (keine Kopien mehr); auch Notizen, Links, Teilnehmer, Schritte, Tacto-Ansprechpartner |
-| Verantwortlich | Mehrfachauswahl: „Ich“ und mehrere Personen je Aufgabe (eine Aufgabe, keine Kopien); ohne Auswahl = ich |
+| Verantwortlich | Mehrfachauswahl: eigene Person und mehrere Personen je Aufgabe (eine Aufgabe, keine Kopien); ohne Auswahl = ich |
+| Eigene Person | „Ich“ ist ein echter Kontakt (`people.is_me`, Nikolaus Ridder bei der Holding) statt eines Sondereintrags; Teilnehmer in Protokollen, Auswahl bei Verantwortlich |
+| Protokoll-Ansicht | Text zuerst, offene Punkte darunter; „Aufgabe hinzufügen“ statt „Aufgabe daraus“; kein eigener Aufgaben-Block im Protokoll |
 | Filterleisten | Firmenfilter als Mehrfach-Dropdown auf Aufgaben, Notizen, Links, Tacto; keine Browser-Auswahlfelder mehr in Filtern |
 | Priorität | Nur noch Fahne „Wichtig“ (an/aus); „Niedrig“ entfällt |
 | Status | Offen · Blockiert · Erledigt; „In Arbeit“ entfällt |

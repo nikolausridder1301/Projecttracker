@@ -62,6 +62,8 @@ export interface Person extends Base, InProject {
   email: string;
   phone: string;
   active: boolean;
+  /** die eigene Person („Ich“) – höchstens eine je Projekt */
+  is_me: boolean;
 }
 
 /**

@@ -44,7 +44,7 @@ function CaptureDialog({
   onClose: () => void;
 }) {
   const { insert, toast } = useStore();
-  const { companies, categories } = useLookups();
+  const { companies, categories, me } = useLookups();
   const { openTask, openNote } = useUi();
 
   const defaultCompany = prefill.companyId ?? context.companyId ?? overarchingCompany(companies)?.id ?? "";
@@ -83,7 +83,7 @@ function CaptureDialog({
           company_ids: companyIds,
           topic_id: null,
           meeting_date: kind === "note" ? null : todayIso(),
-          participant_ids: [],
+          participant_ids: kind === "meeting" && me ? [me.id] : [],
           participants_text: "",
         },
       ]);

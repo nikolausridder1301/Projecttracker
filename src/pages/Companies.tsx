@@ -16,7 +16,7 @@ const tasksLabel = (n: number) => (n === 1 ? "1 offen" : `${n} offen`);
 
 export function CompaniesPage() {
   const { db, insert } = useStore();
-  const { companies, people, companyById } = useLookups();
+  const { companies, people, companyById, me } = useLookups();
   const today = todayIso();
   const [q, setQ] = useState("");
   const [view, setView] = usePersisted<{ inactive: boolean }>("companies", { inactive: false });
@@ -40,7 +40,7 @@ export function CompaniesPage() {
     return m;
   }, [db.tasks, today]);
   // Person: Aufgaben, für die sie verantwortlich ist oder einen offenen Schritt hat
-  const personOpen = useMemo(() => openPerPerson(db.tasks), [db.tasks]);
+  const personOpen = useMemo(() => openPerPerson(db.tasks, me?.id), [db.tasks, me?.id]);
 
   const query = norm(q.trim());
   const shownCompanies = companies.filter((c) => !query || norm(`${c.name} ${c.short}`).includes(query));
@@ -57,7 +57,7 @@ export function CompaniesPage() {
   const addPerson = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newName.trim()) return;
-    await insert("people", [{ name: newName.trim(), company_id: newCompany || null, role: "", email: "", phone: "", active: true }]).catch(() => {});
+    await insert("people", [{ name: newName.trim(), company_id: newCompany || null, role: "", email: "", phone: "", active: true, is_me: false }]).catch(() => {});
     setNewName("");
   };
 

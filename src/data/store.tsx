@@ -221,6 +221,8 @@ export function useLookups() {
     const companies = alive(db.companies).sort((a, b) => a.sort - b.sort);
     const topics = alive(db.topics).sort((a, b) => a.sort - b.sort);
     const people = alive(db.people).sort((a, b) => a.name.localeCompare(b.name, "de"));
+    // die eigene Person („Ich“), falls im Projekt angelegt
+    const me = people.find((p) => p.is_me && p.active);
     const categories = alive(db.link_categories).sort((a, b) => a.sort - b.sort);
     // Nachschlagen über alle Projekte (z. B. „Heute – Alle Projekte“)
     const byId = <T extends { id: Id }>(l: T[]) => new Map(l.map((r) => [r.id, r]));
@@ -228,6 +230,7 @@ export function useLookups() {
       companies,
       topics,
       people,
+      me,
       categories,
       companyById: byId(allDb.companies),
       topicById: byId(allDb.topics),

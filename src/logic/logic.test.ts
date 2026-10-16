@@ -313,6 +313,15 @@ describe("briefing", () => {
     return { db, haz, anna };
   };
 
+  it("Eigene Person: alles, wofür ich verantwortlich bin", () => {
+    const { db, anna, haz } = setup();
+    db.people.push({ ...anna, id: "me", name: "Nikolaus Ridder", company_id: haz.id, is_me: true });
+    const b = buildBriefing(db, { kind: "person", id: "me" }, "2026-10-16");
+    const titles = b.delegatedToPerson.map((t) => t.title);
+    expect(titles).toContain("Meins HAZ");
+    expect(titles).toContain("Meins FEST");
+    expect(titles).not.toContain("Anna offen");
+  });
   it("Person: delegiert an sie, meine + weitere Punkte ihrer Firma", () => {
     const { db, anna } = setup();
     const b = buildBriefing(db, { kind: "person", id: anna.id }, today);

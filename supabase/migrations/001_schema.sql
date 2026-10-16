@@ -82,6 +82,7 @@ create table people (
   email text not null default '',
   phone text not null default '',
   active boolean not null default true,
+  is_me boolean not null default false, -- die eigene Person („Ich“)
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   deleted_at timestamptz

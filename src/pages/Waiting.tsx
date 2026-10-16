@@ -12,20 +12,22 @@ import { TaskRow } from "../ui/tasks";
 
 export function WaitingPage() {
   const { db } = useStore();
-  const { personById } = useLookups();
+  const { personById, me } = useLookups();
   const today = todayIso();
   const dueKey = (t: Task) => effectiveDue(t) ?? "9999-99-99";
 
   const groups = useMemo(() => {
-    const open = db.tasks.filter((t) => isActive(t) && isOpen(t) && personsOf(t).length > 0);
+    // Delegiert = an andere; die eigene Person zählt nicht
+    const others = (t: Task) => personsOf(t).filter((id) => id !== me?.id);
+    const open = db.tasks.filter((t) => isActive(t) && isOpen(t) && others(t).length > 0);
     const m = new Map<string, Task[]>();
     // Bei jeder Person, die verantwortlich ist oder einen offenen Schritt hat
-    for (const t of open) for (const pid of personsOf(t)) m.set(pid, [...(m.get(pid) ?? []), t]);
+    for (const t of open) for (const pid of others(t)) m.set(pid, [...(m.get(pid) ?? []), t]);
     return [...m.entries()]
       .map(([pid, tasks]) => ({ pid, tasks: tasks.sort(compareTasks) }))
       .sort((a, b) => (dueKey(a.tasks[0]) < dueKey(b.tasks[0]) ? -1 : dueKey(a.tasks[0]) > dueKey(b.tasks[0]) ? 1 : 0));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [db.tasks]);
+  }, [db.tasks, me?.id]);
 
   // Aufgaben mit mehreren Personen nur einmal zählen
   const total = new Set(groups.flatMap((g) => g.tasks.map((t) => t.id))).size;
