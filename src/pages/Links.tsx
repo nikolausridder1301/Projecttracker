@@ -3,7 +3,7 @@ import { useLookups, useStore } from "../data/store";
 import type { Id, Link } from "../data/types";
 import { isActive, isValidUrl } from "../logic/tasks";
 import { LinkRow } from "../ui/links";
-import { CompanyFilter, CompanySelect, Empty, FilterSelect, usePersisted } from "../ui/common";
+import { ChipSelect, CompaniesChip, CompanyFilter, Empty, FilterSelect, usePersisted } from "../ui/common";
 import { useCaptureContext } from "../ui/uiState";
 
 interface LinkFilter {
@@ -27,7 +27,7 @@ export function LinksPage() {
     const q = f.q.toLowerCase();
     return db.links
       .filter(isActive)
-      .filter((l) => f.companies.length === 0 || f.companies.includes(l.company_id))
+      .filter((l) => f.companies.length === 0 || l.company_ids.some((c) => f.companies.includes(c)))
       .filter((l) => !f.category || l.category_id === f.category)
       .filter((l) => !q || `${l.title} ${l.url} ${l.description}`.toLowerCase().includes(q))
       .sort((a, b) => a.title.localeCompare(b.title, "de"));
@@ -85,7 +85,7 @@ function LinkEditor({ link, onDone }: { link: Link; onDone: () => void }) {
     await update("links", link.id, {
       title: v.title.trim(),
       url: v.url.trim(),
-      company_id: v.company_id,
+      company_ids: v.company_ids,
       topic_id: v.topic_id,
       category_id: v.category_id,
       description: v.description,
@@ -97,15 +97,16 @@ function LinkEditor({ link, onDone }: { link: Link; onDone: () => void }) {
       <div className="grid2">
         <input value={v.title} onChange={(e) => setV({ ...v, title: e.target.value })} placeholder="Titel" />
         <input value={v.url} onChange={(e) => setV({ ...v, url: e.target.value })} placeholder="https://…" />
-        <CompanySelect value={v.company_id} onChange={(c) => setV({ ...v, company_id: c })} />
-        <select value={v.category_id ?? ""} onChange={(e) => setV({ ...v, category_id: e.target.value || null })}>
-          <option value="">– keine Kategorie –</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
+        <div className="chips">
+          <CompaniesChip value={v.company_ids} onChange={(ids) => setV({ ...v, company_ids: ids })} />
+          <ChipSelect
+            title="Kategorie"
+            value={v.category_id ?? ""}
+            placeholder="Kategorie"
+            options={[{ value: "", label: "Keine Kategorie" }, ...categories.map((c) => ({ value: c.id, label: c.name }))]}
+            onChange={(c) => setV({ ...v, category_id: c || null })}
+          />
+        </div>
         <input value={v.description} onChange={(e) => setV({ ...v, description: e.target.value })} placeholder="Beschreibung (optional)" />
       </div>
       <div className="row">

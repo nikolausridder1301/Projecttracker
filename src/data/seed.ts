@@ -66,7 +66,7 @@ export function demoSeed(): Db {
     ...base(),
     title: "",
     description: "",
-    company_id: sk.id,
+    company_ids: [sk.id],
     topic_id: null,
     assignee_person_ids: [] as string[],
     status: "open" as const,
@@ -76,17 +76,16 @@ export function demoSeed(): Db {
     follow_up_date: null,
     done_at: null,
     checklist: [],
-    group_id: null,
     source_note_id: null,
     ...o,
   });
 
   const tasks = [
     task({ title: "Steuerkreis-Unterlage vorbereiten", due_date: today, priority: "high", topic_id: topics[0].id }),
-    task({ title: "Warengruppen-Mapping prüfen", company_id: alm.id, due_date: addDays(today, -2), topic_id: topics[3].id }),
+    task({ title: "Warengruppen-Mapping prüfen", company_ids: [alm.id], due_date: addDays(today, -2), topic_id: topics[3].id }),
     task({
       title: "Datenexport aus ERP bereitstellen",
-      company_id: fest.id,
+      company_ids: [fest.id],
       assignee_person_ids: [people[1].id],
       follow_up_date: today,
       due_date: addDays(today, 3),
@@ -95,18 +94,18 @@ export function demoSeed(): Db {
     }),
     task({
       title: "Academy-Schulung abschließen",
-      company_id: haz.id,
+      company_ids: [haz.id],
       assignee_person_ids: [people[0].id],
       follow_up_date: addDays(today, 4),
       topic_id: topics[11].id,
       checklist: [
         { text: "Modul 1", done: true },
-        { text: "Modul 2", done: false, person_id: people[0].id, due: addDays(today, -1) },
+        { text: "Modul 2", done: false, person_ids: [people[0].id], due: addDays(today, -1) },
       ],
     }),
     task({
       title: "Schreibschnittstelle ERP",
-      company_id: haz.id,
+      company_ids: [haz.id],
       status: "blocked",
       blocked_reason: "Warten auf Freigabe ERP-Anbieter",
       topic_id: topics[2].id,

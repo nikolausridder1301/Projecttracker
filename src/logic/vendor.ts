@@ -98,7 +98,7 @@ export function newVendorItem(category: VendorCategory, title: string, companyId
     company_ids: companyIds,
     topic_id: null,
     priority: "medium" as const,
-    contact_person_id: null,
+    contact_person_ids: [],
     ticket: "",
     answer: "",
     promised: "",
@@ -178,7 +178,7 @@ export function jourFixeText(
         companiesLabel(i.company_ids, companies),
         i.priority === "high" ? "Prio hoch" : "",
         i.ticket ? `Ticket ${i.ticket}` : "",
-        i.contact_person_id ? people.find((p) => p.id === i.contact_person_id)?.name : "",
+        i.contact_person_ids.map((id) => people.find((p) => p.id === id)?.name ?? "").join(", "),
         ageLabel(i, today, vendorName),
       ].filter(Boolean);
       lines.push(`- ${i.title} (${meta.join(" · ")})`);

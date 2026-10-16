@@ -23,11 +23,13 @@ export function CompaniesPage() {
     const m = new Map<string, { open: number; overdue: number; blocked: number }>();
     for (const t of db.tasks) {
       if (!isActive(t) || !isOpen(t)) continue;
-      const s = m.get(t.company_id) ?? { open: 0, overdue: 0, blocked: 0 };
-      s.open++;
-      if (t.due_date && t.due_date < today) s.overdue++;
-      if (t.status === "blocked") s.blocked++;
-      m.set(t.company_id, s);
+      for (const cid of t.company_ids) {
+        const s = m.get(cid) ?? { open: 0, overdue: 0, blocked: 0 };
+        s.open++;
+        if (t.due_date && t.due_date < today) s.overdue++;
+        if (t.status === "blocked") s.blocked++;
+        m.set(cid, s);
+      }
     }
     return m;
   }, [db.tasks, today]);
@@ -93,13 +95,13 @@ function CompanyView({ company }: { company: Company }) {
   useCaptureContext(company.id);
 
   const tasks = useMemo(() => applyFilter(db.tasks, f), [db.tasks, f]);
-  const notes = db.notes.filter((n) => isActive(n) && n.company_id === company.id).sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+  const notes = db.notes.filter((n) => isActive(n) && n.company_ids.includes(company.id)).sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
   const vendor = useVendor();
   // Offene Anbieter-Punkte, die diese Gesellschaft betreffen (auf der Anbieter-Firma selbst: alle offenen)
   const vendorItems = db.vendor_items
     .filter((i) => isActive(i) && isOpenItem(i) && (company.is_external || affectsCompany(i, company.id)))
     .sort((a, b) => (a.reported_at ?? a.created_at) < (b.reported_at ?? b.created_at) ? -1 : 1);
-  const links = db.links.filter((l) => isActive(l) && l.company_id === company.id).sort((a, b) => a.title.localeCompare(b.title, "de"));
+  const links = db.links.filter((l) => isActive(l) && l.company_ids.includes(company.id)).sort((a, b) => a.title.localeCompare(b.title, "de"));
   const contacts = people.filter((p) => p.company_id === company.id && p.active);
 
   return (
@@ -140,7 +142,7 @@ function CompanyView({ company }: { company: Company }) {
         {(
           [
             ["ms", "Meilensteine"],
-            ["tasks", `Aufgaben (${db.tasks.filter((t) => isActive(t) && isOpen(t) && t.company_id === company.id).length})`],
+            ["tasks", `Aufgaben (${db.tasks.filter((t) => isActive(t) && isOpen(t) && t.company_ids.includes(company.id)).length})`],
             ["notes", `Notizen (${notes.length})`],
             ["links", `Links (${links.length})`],
             ...(vendor ? ([["tacto", `${vendor.name} (${vendorItems.length})`]] as [Tab, string][]) : []),

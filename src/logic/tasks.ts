@@ -43,22 +43,6 @@ export function todayCount(v: TodayView): number {
   return v.overdue.length + v.today.length;
 }
 
-export interface GroupProgress {
-  done: number;
-  total: number;
-  openCompanyIds: Id[];
-}
-
-/** Fortschritt einer "Für mehrere Firmen"-Gruppe (SPEC 6.3). */
-export function groupProgress(tasks: Task[], groupId: Id): GroupProgress {
-  const members = tasks.filter((t) => isActive(t) && t.group_id === groupId);
-  return {
-    done: members.filter((t) => t.status === "done").length,
-    total: members.length,
-    openCompanyIds: members.filter((t) => t.status !== "done").map((t) => t.company_id),
-  };
-}
-
 /** Nächster offener Schritt: zuerst der mit dem frühesten Datum, sonst der erste offene. */
 export function nextStep(t: Pick<Task, "checklist">): ChecklistItem | undefined {
   const open = t.checklist.filter((c) => !c.done);
@@ -72,8 +56,11 @@ export function effectiveDue(t: Pick<Task, "due_date" | "checklist">): IsoDate |
   return dates.length ? dates.sort()[0] : null;
 }
 
+/** Personen eines Schritts (auch Altbestand mit einer Person). */
+export const stepPersons = (c: ChecklistItem): Id[] => c.person_ids ?? (c.person_id ? [c.person_id] : []);
+
 /** Hat die Person einen offenen Schritt in der Aufgabe? */
-export const hasStepFor = (t: Pick<Task, "checklist">, personId: Id) => t.checklist.some((c) => !c.done && c.person_id === personId);
+export const hasStepFor = (t: Pick<Task, "checklist">, personId: Id) => t.checklist.some((c) => !c.done && stepPersons(c).includes(personId));
 
 export function checklistProgress(t: Task): { done: number; total: number } {
   return { done: t.checklist.filter((c) => c.done).length, total: t.checklist.length };

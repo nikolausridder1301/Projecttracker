@@ -3,7 +3,7 @@ import { useLookups, useStore } from "../data/store";
 import type { Id, NoteKind, Priority } from "../data/types";
 import { formatDate, relativeLabel, todayIso } from "../logic/dates";
 import { isValidUrl, overarchingCompany } from "../logic/tasks";
-import { ChipDate, ChipMulti, ChipSelect, ImportantChip, useDraft } from "./common";
+import { ChipDate, ChipSelect, CompaniesChip, ImportantChip, useDraft } from "./common";
 import { useUi, type CaptureType } from "./uiState";
 import { freshNotes } from "../pages/Notes";
 import { AssigneeChip } from "./tasks";
@@ -50,10 +50,8 @@ function CaptureDialog({
   const defaultCompany = prefill.companyId ?? context.companyId ?? overarchingCompany(companies)?.id ?? "";
   const [type, setType] = useState<CaptureType>(prefill.type ?? "task");
   const [title, setTitle, clearTitle] = useDraft("capture-title", "", prefill.title);
-  // Aufgaben: eine oder mehrere Firmen (je Firma eine Aufgabe); Notiz/Link: die erste
-  const [companyIds, setCompanyIds] = useState<Id[]>(defaultCompany ? [defaultCompany] : []);
-  const companyId = companyIds[0] ?? "";
-  const setCompanyId = (id: Id) => setCompanyIds([id]);
+  // Eine oder mehrere Firmen – für Aufgaben, Notizen und Links gleich
+  const [companyIds, setCompanyIds] = useState<Id[]>(prefill.companyIds ?? (defaultCompany ? [defaultCompany] : []));
   const [assignees, setAssignees] = useState<Id[]>([]);
   const [due, setDue] = useState("");
   const [priority, setPriority] = useState<Priority>("medium");
@@ -81,7 +79,7 @@ function CaptureDialog({
           title: typed || `${DEFAULT_TITLE[kind]} – ${formatDate(todayIso())}`,
           body: "",
           kind,
-          company_id: companyId,
+          company_ids: companyIds,
           topic_id: null,
           meeting_date: kind === "note" ? null : todayIso(),
           participant_ids: [],
@@ -104,15 +102,13 @@ function CaptureDialog({
     setBusy(true);
     try {
       if (type === "task") {
-        const targets = companyIds;
-        if (targets.length === 0) return toast("Bitte mindestens eine Firma wählen.", "error");
-        const groupId = targets.length > 1 ? crypto.randomUUID() : null;
-        const created = await insert(
-          "tasks",
-          targets.map((cid) => ({
+        if (companyIds.length === 0) return toast("Bitte mindestens eine Firma wählen.", "error");
+        // Eine Aufgabe – auch bei mehreren Firmen (wie bei mehreren Personen)
+        const created = await insert("tasks", [
+          {
             title: title.trim(),
             description: "",
-            company_id: cid,
+            company_ids: companyIds,
             topic_id: null,
             assignee_person_ids: assignees,
             status: "open" as const,
@@ -122,11 +118,10 @@ function CaptureDialog({
             follow_up_date: null,
             done_at: null,
             checklist: [],
-            group_id: groupId,
             source_note_id: prefill.sourceNoteId ?? null,
-          })),
-        );
-        toast(targets.length > 1 ? `${targets.length} Aufgaben angelegt` : "Aufgabe angelegt", "info");
+          },
+        ]);
+        toast("Aufgabe angelegt", "info");
         // Gleicher Ablauf wie bei Notizen: das Neue öffnet sich – außer beim Mitschreiben im Protokoll
         if (!prefill.sourceNoteId && created[0]) openTask(created[0].id);
       } else if (type === "note" || type === "meeting" || type === "decision") {
@@ -136,7 +131,7 @@ function CaptureDialog({
             title: title.trim(),
             body: "",
             kind,
-            company_id: companyId,
+            company_ids: companyIds,
             topic_id: null,
             meeting_date: kind === "meeting" ? todayIso() : null,
             participant_ids: [],
@@ -150,7 +145,7 @@ function CaptureDialog({
           {
             title: title.trim(),
             url: url.trim(),
-            company_id: companyId,
+            company_ids: companyIds,
             topic_id: null,
             category_id: categoryId || null,
             description: "",
@@ -172,9 +167,6 @@ function CaptureDialog({
     }
   };
 
-  const shortOf = (id: Id) => companies.find((c) => c.id === id)?.short ?? "";
-  const companiesLabel =
-    companyIds.length === 0 ? "Firma" : companyIds.length <= 3 ? companyIds.map(shortOf).join(", ") : `${companyIds.length} Firmen`;
 
   return (
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
@@ -209,19 +201,7 @@ function CaptureDialog({
         )}
 
         <div className="chips">
-          {type === "task" ? (
-            <ChipMulti
-              title="Firmen – bei mehreren entsteht je Firma eine eigene Aufgabe"
-              label={companiesLabel}
-              empty={companyIds.length === 0}
-              options={companies.map((c) => ({ value: c.id, label: c.short }))}
-              selected={companyIds}
-              onChange={setCompanyIds}
-              shortcut={{ label: "Alle Gesellschaften", values: companies.filter((c) => !c.is_overarching && !c.is_external).map((c) => c.id) }}
-            />
-          ) : (
-            <ChipSelect title="Firma" value={companyId} options={companies.map((c) => ({ value: c.id, label: c.short }))} onChange={setCompanyId} />
-          )}
+          <CompaniesChip value={companyIds} onChange={setCompanyIds} />
           {type === "task" && (
             <>
               <AssigneeChip value={assignees} onChange={setAssignees} />

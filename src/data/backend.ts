@@ -90,10 +90,21 @@ function demoBackend(): Backend {
   }
   // Ältere Demo-Stände um neu hinzugekommene Tabellen ergänzen
   for (const t of TABLE_NAMES) (db as Record<string, unknown[]>)[t] ??= [];
-  // Früher eine Person je Aufgabe, jetzt mehrere
-  for (const t of db.tasks as (Db["tasks"][number] & { assignee_person_id?: string | null })[]) {
+  // Früher eine Person bzw. Firma je Eintrag, jetzt mehrere
+  type Legacy = { assignee_person_id?: string | null; company_id?: string | null; contact_person_id?: string | null };
+  for (const t of db.tasks as (Db["tasks"][number] & Legacy)[]) {
     t.assignee_person_ids ??= t.assignee_person_id ? [t.assignee_person_id] : [];
+    t.company_ids ??= t.company_id ? [t.company_id] : [];
     delete t.assignee_person_id;
+    delete t.company_id;
+  }
+  for (const r of [...db.notes, ...db.links] as ((Db["notes"][number] | Db["links"][number]) & Legacy)[]) {
+    r.company_ids ??= r.company_id ? [r.company_id] : [];
+    delete r.company_id;
+  }
+  for (const v of db.vendor_items as (Db["vendor_items"][number] & Legacy)[]) {
+    v.contact_person_ids ??= v.contact_person_id ? [v.contact_person_id] : [];
+    delete v.contact_person_id;
   }
   const save = () => {
     try {

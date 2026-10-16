@@ -1,12 +1,12 @@
 import { CalendarDays, CheckSquare, Gavel, NotebookPen, Plus, Trash2, Users, X, type LucideIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useLookups, useStore } from "../data/store";
+import { useStore } from "../data/store";
 import { NOTE_KIND_LABEL, type Id, type Note, type NoteKind } from "../data/types";
 import { formatDate } from "../logic/dates";
 import { isActive } from "../logic/tasks";
 import { AttachedLinks } from "../ui/links";
-import { AutoText, ChipDate, ChipSelect, CompanyBadge, CompanyFilter, Disclosure, Empty, usePersisted } from "../ui/common";
+import { AutoText, ChipDate, ChipSelect, CompaniesChip, CompanyBadges, CompanyFilter, Disclosure, Empty, PeopleChip, usePersisted } from "../ui/common";
 import { TaskList } from "../ui/tasks";
 import { NoteLink, useCaptureContext, useUi } from "../ui/uiState";
 
@@ -32,7 +32,7 @@ export function NotesPage() {
     return db.notes
       .filter(isActive)
       .filter((n) => !f.kind || n.kind === f.kind)
-      .filter((n) => f.companies.length === 0 || f.companies.includes(n.company_id))
+      .filter((n) => f.companies.length === 0 || n.company_ids.some((c) => f.companies.includes(c)))
       .filter((n) => !q || n.title.toLowerCase().includes(q) || n.body.toLowerCase().includes(q))
       .sort((a, b) => noteDate(b).localeCompare(noteDate(a)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -71,7 +71,7 @@ export function NotesPage() {
                   <span className="task-title">{n.title}</span>
                   {n.body && <span className="task-sub">{excerpt(n.body)}</span>}
                 </span>
-                <CompanyBadge id={n.company_id} />
+                <CompanyBadges ids={n.company_ids} />
                 <span className="due">{formatDate(noteDate(n))}</span>
               </NoteLink>
             );
@@ -148,7 +148,6 @@ function NoteEditor({
   beforeClose: React.MutableRefObject<(() => void) | null>;
 }) {
   const { db, update, trash, purge } = useStore();
-  const { people, companies } = useLookups();
   const { openCapture } = useUi();
   const [title, setTitle] = useState(note.title);
   const [body, setBody] = useState(note.body);
@@ -197,17 +196,10 @@ function NoteEditor({
     openCapture({
       type: "task",
       title: sel.replace(/^[-*]\s*(\[ \]\s*)?/, "").split("\n")[0],
-      companyId: note.company_id,
+      companyIds: note.company_ids,
       sourceNoteId: note.id,
     });
   };
-
-  const toggleParticipant = (pid: Id) =>
-    save({
-      participant_ids: note.participant_ids.includes(pid) ? note.participant_ids.filter((x) => x !== pid) : [...note.participant_ids, pid],
-    });
-
-  const participantCount = note.participant_ids.length + (note.participants_text.trim() ? 1 : 0);
 
   return (
     <div className="editor">
@@ -245,12 +237,16 @@ function NoteEditor({
             options={(Object.keys(NOTE_KIND_LABEL) as NoteKind[]).map((k) => ({ value: k, label: NOTE_KIND_LABEL[k] }))}
             onChange={(v) => save({ kind: v as NoteKind })}
           />
-          <ChipSelect
-            title="Firma"
-            value={note.company_id}
-            options={companies.map((c) => ({ value: c.id, label: c.short }))}
-            onChange={(v) => save({ company_id: v })}
-          />
+          <CompaniesChip value={note.company_ids} onChange={(ids) => save({ company_ids: ids })} />
+          {note.kind === "meeting" && (
+            <PeopleChip
+              title="Teilnehmer"
+              emptyLabel="Teilnehmer"
+              icon={<Users size={14} />}
+              value={note.participant_ids}
+              onChange={(ids) => save({ participant_ids: ids })}
+            />
+          )}
           <ChipDate
             icon={<CalendarDays size={14} />}
             title="Datum"
@@ -275,25 +271,13 @@ function NoteEditor({
         />
 
         {note.kind === "meeting" && (
-          <Disclosure title="Teilnehmer" meta={participantCount > 0 ? participantCount : undefined} defaultOpen={participantCount === 0}>
-            <div className="chip-checks">
-              {people
-                .filter((p) => p.active || note.participant_ids.includes(p.id))
-                .map((p) => (
-                  <label key={p.id} className={`chip${note.participant_ids.includes(p.id) ? " tone-blue" : " chip-empty"}`}>
-                    <input type="checkbox" className="sr-only" checked={note.participant_ids.includes(p.id)} onChange={() => toggleParticipant(p.id)} />
-                    <span className="chip-text">{p.name}</span>
-                  </label>
-                ))}
-            </div>
-            <input
-              className="plain-input"
-              placeholder="Weitere Teilnehmer…"
-              value={participantsText}
-              onChange={(e) => setParticipantsText(e.target.value)}
-              onBlur={() => participantsText !== note.participants_text && save({ participants_text: participantsText })}
-            />
-          </Disclosure>
+          <input
+            className="plain-input"
+            placeholder="Weitere Teilnehmer (extern)…"
+            value={participantsText}
+            onChange={(e) => setParticipantsText(e.target.value)}
+            onBlur={() => participantsText !== note.participants_text && save({ participants_text: participantsText })}
+          />
         )}
 
         <Disclosure title="Aufgaben" meta={derived.length > 0 ? derived.length : undefined} defaultOpen={derived.length > 0}>
@@ -309,7 +293,7 @@ function NoteEditor({
               className="icon-btn"
               title="Neuer Link"
               onClick={() =>
-                openCapture({ type: "link", companyId: note.company_id, attachTo: { noteId: note.id } })
+                openCapture({ type: "link", companyIds: note.company_ids, attachTo: { noteId: note.id } })
               }
             >
               <Plus size={16} />

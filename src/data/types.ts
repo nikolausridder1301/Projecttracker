@@ -70,7 +70,9 @@ export interface Person extends Base, InProject {
 export interface ChecklistItem {
   text: string;
   done: boolean;
-  /** wer – optional */
+  /** wer – optional, mehrere möglich */
+  person_ids?: Id[];
+  /** Altbestand: früher eine Person */
   person_id?: Id | null;
   /** bis wann – optional */
   due?: IsoDate | null;
@@ -79,9 +81,9 @@ export interface ChecklistItem {
 export interface Task extends Base, InProject {
   title: string;
   description: string;
-  company_id: Id;
+  /** betroffene Firmen (mindestens eine) */
+  company_ids: Id[];
   topic_id: Id | null;
-  /** null = "Ich", sonst Delegation */
   /** Verantwortliche Personen; leer = ich selbst */
   assignee_person_ids: Id[];
   status: TaskStatus;
@@ -91,7 +93,6 @@ export interface Task extends Base, InProject {
   follow_up_date: IsoDate | null;
   done_at: IsoDateTime | null;
   checklist: ChecklistItem[];
-  group_id: Id | null;
   source_note_id: Id | null;
 }
 
@@ -105,7 +106,7 @@ export interface Note extends Base, InProject {
   title: string;
   body: string;
   kind: NoteKind;
-  company_id: Id;
+  company_ids: Id[];
   topic_id: Id | null;
   meeting_date: IsoDate | null;
   participant_ids: Id[];
@@ -115,7 +116,7 @@ export interface Note extends Base, InProject {
 export interface Link extends Base, InProject {
   title: string;
   url: string;
-  company_id: Id;
+  company_ids: Id[];
   topic_id: Id | null;
   category_id: Id | null;
   description: string;
@@ -140,7 +141,7 @@ export interface VendorItem extends Base, InProject {
   company_ids: Id[];
   topic_id: Id | null;
   priority: Priority;
-  contact_person_id: Id | null;
+  contact_person_ids: Id[];
   ticket: string;
   answer: string;
   promised: string;

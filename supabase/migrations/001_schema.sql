@@ -91,7 +91,7 @@ create table notes (
   title text not null,
   body text not null default '',
   kind text not null default 'note' check (kind in ('note', 'meeting', 'decision')),
-  company_id uuid not null references companies (id),
+  company_ids uuid[] not null default '{}',
   topic_id uuid references topics (id),
   meeting_date date,
   participant_ids uuid[] not null default '{}',
@@ -106,7 +106,7 @@ create table tasks (
   project_id uuid not null references projects (id),
   title text not null,
   description text not null default '',
-  company_id uuid not null references companies (id),
+  company_ids uuid[] not null default '{}',
   topic_id uuid references topics (id),
   assignee_person_ids uuid[] not null default '{}', -- leer = ich selbst
   status text not null default 'open' check (status in ('open', 'blocked', 'done')),
@@ -116,7 +116,6 @@ create table tasks (
   follow_up_date date,
   done_at timestamptz,
   checklist jsonb not null default '[]',
-  group_id uuid,
   source_note_id uuid references notes (id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -139,7 +138,7 @@ create table links (
   project_id uuid not null references projects (id),
   title text not null,
   url text not null check (url ~* '^https?://'),
-  company_id uuid not null references companies (id),
+  company_ids uuid[] not null default '{}',
   topic_id uuid references topics (id),
   category_id uuid references link_categories (id),
   description text not null default '',
@@ -171,7 +170,7 @@ create table vendor_items (
   company_ids uuid[] not null default '{}',
   topic_id uuid references topics (id),
   priority text not null default 'medium' check (priority in ('high', 'medium')),
-  contact_person_id uuid references people (id),
+  contact_person_ids uuid[] not null default '{}',
   ticket text not null default '',
   answer text not null default '',
   promised text not null default '',
@@ -234,11 +233,10 @@ create index on notes (project_id);
 create index on tasks (project_id);
 create index on links (project_id);
 create index on vendor_items (project_id);
-create index on tasks (company_id);
+create index on tasks using gin (company_ids);
 create index on tasks using gin (assignee_person_ids);
-create index on tasks (group_id);
-create index on notes (company_id);
-create index on links (company_id);
+create index on notes using gin (company_ids);
+create index on links using gin (company_ids);
 create index on task_followups (task_id);
 create index on vendor_items (category);
 create index on traffic_history (company_id);

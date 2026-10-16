@@ -1,7 +1,7 @@
 // Meeting-Briefing: alles Relevante für ein Gespräch mit einer Person bzw. Firma.
 import type { Company, Db, Id, IsoDate, Note, Person, Task, TaskFollowup, VendorItem } from "../data/types";
 import { addDays, formatDate } from "./dates";
-import { compareTasks, hasStepFor, isActive, latestUpdates, standText } from "./tasks";
+import { compareTasks, hasStepFor, isActive, latestUpdates, standText, stepPersons } from "./tasks";
 import { affectsCompany, isOpenItem, statusDef } from "./vendor";
 
 export type MeetingTarget = { kind: "person"; id: Id } | { kind: "company"; id: Id };
@@ -42,9 +42,9 @@ export function buildBriefing(db: Db, target: MeetingTarget, today: IsoDate, top
   // Bei der Person offen: ihr zugeordnet oder sie hat einen offenen nächsten Schritt
   const delegatedToPerson = person ? open.filter((t) => t.assignee_person_ids.includes(person.id) || hasStepFor(t, person.id)) : [];
   const delegatedIds = new Set(delegatedToPerson.map((t) => t.id));
-  const myTasks = companyId ? open.filter((t) => t.company_id === companyId && t.assignee_person_ids.length === 0) : [];
+  const myTasks = companyId ? open.filter((t) => t.company_ids.includes(companyId) && t.assignee_person_ids.length === 0) : [];
   const otherTasks = companyId
-    ? open.filter((t) => t.company_id === companyId && t.assignee_person_ids.length > 0 && !delegatedIds.has(t.id))
+    ? open.filter((t) => t.company_ids.includes(companyId) && t.assignee_person_ids.length > 0 && !delegatedIds.has(t.id))
     : [];
 
   const vendorItems = companyId
@@ -54,19 +54,19 @@ export function buildBriefing(db: Db, target: MeetingTarget, today: IsoDate, top
   // Letztes Treffen: jüngstes Protokoll mit der Person als Teilnehmer, sonst mit der Firma
   const meetings = db.notes
     .filter((n) => isActive(n) && n.kind === "meeting")
-    .filter((n) => (person ? n.participant_ids.includes(person.id) : n.company_id === companyId))
+    .filter((n) => (person ? n.participant_ids.includes(person.id) : companyId !== null && n.company_ids.includes(companyId)))
     .sort((a, b) => noteDate(b).localeCompare(noteDate(a)));
   const lastMeeting = meetings.find((n) => noteDate(n) <= today);
   const doneSinceDate = lastMeeting ? noteDate(lastMeeting) : addDays(today, -14);
 
-  const relevant = (t: Task) => (person && t.assignee_person_ids.includes(person.id)) || (companyId !== null && t.company_id === companyId);
+  const relevant = (t: Task) => (person && t.assignee_person_ids.includes(person.id)) || (companyId !== null && t.company_ids.includes(companyId));
   const doneSince = tasks
     .filter((t) => t.status === "done" && relevant(t) && (t.done_at ?? t.updated_at).slice(0, 10) >= doneSinceDate)
     .sort((a, b) => ((a.done_at ?? "") < (b.done_at ?? "") ? 1 : -1));
 
   const notes = db.notes
     .filter(isActive)
-    .filter((n) => (companyId !== null && n.company_id === companyId) || (person && n.participant_ids.includes(person.id)))
+    .filter((n) => (companyId !== null && n.company_ids.includes(companyId)) || (person && n.participant_ids.includes(person.id)))
     .sort((a, b) => noteDate(b).localeCompare(noteDate(a)));
 
   // Themen, die im Briefing vorkommen (vor dem Filtern gezählt)
@@ -111,7 +111,7 @@ export function agendaText(b: Briefing, personName: (id: Id) => string): string 
     const steps = t.checklist
       .filter((c) => !c.done)
       .map((c) => {
-        const info = [c.person_id ? personName(c.person_id) : "", c.due ? `bis ${formatDate(c.due)}` : ""].filter(Boolean);
+        const info = [stepPersons(c).map(personName).join(", "), c.due ? `bis ${formatDate(c.due)}` : ""].filter(Boolean);
         return `\n  - [ ] ${c.text}${info.length ? ` (${info.join(", ")})` : ""}`;
       })
       .join("");

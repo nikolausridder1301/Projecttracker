@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useStore } from "../data/store";
 import type { Id } from "../data/types";
 import { copyProjectMasterData, suggestShort } from "../logic/projects";
+import { ChipSelect } from "./common";
 
 // Projekt-Umschalter oben links: aktuelles Projekt, Wechsel, neues Projekt.
 
@@ -188,14 +189,15 @@ function NewProjectDialog({ onClose }: { onClose: () => void }) {
         </div>
         <label className="field">
           <span className="muted small">Startet mit</span>
-          <select value={source} onChange={(e) => setSource(e.target.value)}>
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                Firmen, Personen, Meilensteine und Kategorien aus „{p.name}“ übernehmen
-              </option>
-            ))}
-            <option value="">Leer starten</option>
-          </select>
+          <ChipSelect
+            title="Startet mit"
+            value={source}
+            options={[
+              ...projects.map((p) => ({ value: p.id, label: `Firmen, Personen, Meilensteine und Kategorien aus „${p.name}“ übernehmen` })),
+              { value: "", label: "Leer starten" },
+            ]}
+            onChange={setSource}
+          />
         </label>
         <p className="muted small">Aufgaben, Notizen, Links und Anbieter-Punkte werden nicht übernommen. Anpassen kannst du alles danach in den Projekteinstellungen.</p>
         <div className="row">

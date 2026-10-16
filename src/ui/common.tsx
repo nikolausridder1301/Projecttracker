@@ -70,8 +70,8 @@ export function Avatar({ name, title }: { name: string; title?: string }) {
 
 // ---------------------------------------------------------------------------
 // Chips: kompakte Eigenschaften statt beschrifteter Formularfelder.
-// Ein unsichtbares natives <select> liegt über dem Chip – Klick öffnet die
-// normale Auswahlliste, die Breite des Chips bleibt dabei stabil.
+// Alle Auswahlen nutzen dieselbe Liste (Dropdown); Firmen und Personen sind
+// überall Mehrfachauswahl (CompaniesChip, PeopleChip).
 // ---------------------------------------------------------------------------
 
 export interface ChipOption {
@@ -412,6 +412,109 @@ export function ChipMulti({
   );
 }
 
+/** Firmen-Mehrfachauswahl – überall dieselbe Liste (Aufgaben, Notizen, Links, Anbieter). */
+export function CompaniesChip({
+  value,
+  onChange,
+  title = "Firmen",
+  allLabel,
+  only,
+}: {
+  value: Id[];
+  onChange: (v: Id[]) => void;
+  title?: string;
+  /** Eintrag für „keine Auswahl“ (z. B. „Alle Firmen“); ohne: mindestens eine Firma */
+  allLabel?: string;
+  /** nur diese Firmen anbieten */
+  only?: (c: Company) => boolean;
+}) {
+  const { companies, companyById } = useLookups();
+  const list = only ? companies.filter(only) : companies;
+  const label =
+    value.length === 0
+      ? (allLabel ?? "Firma")
+      : value.length <= 3
+        ? value.map((id) => companyById.get(id)?.short ?? "?").join(", ")
+        : `${value.length} Firmen`;
+  // Ohne „Alle“-Eintrag nie die letzte Firma abwählen
+  const set = (ids: Id[]) => (allLabel || ids.length > 0 ? onChange(ids) : undefined);
+  return (
+    <ChipMulti
+      title={title}
+      label={label}
+      empty={value.length === 0 && !allLabel}
+      options={list.map((c) => ({ value: c.id, label: c.name }))}
+      selected={value}
+      onChange={set}
+      allLabel={allLabel}
+      shortcut={{ label: "Alle Gesellschaften", values: list.filter((c) => !c.is_overarching && !c.is_external).map((c) => c.id) }}
+    />
+  );
+}
+
+/** Personen-Mehrfachauswahl – überall dieselbe Liste (Verantwortlich, Schritte, Teilnehmer, Ansprechpartner). */
+export function PeopleChip({
+  value,
+  onChange,
+  title,
+  emptyLabel,
+  noneOption,
+  icon,
+  sortFirst,
+}: {
+  value: Id[];
+  onChange: (v: Id[]) => void;
+  title: string;
+  /** Beschriftung ohne Auswahl, z. B. „Ich“ oder „Wer?“ */
+  emptyLabel: string;
+  /** eigener Eintrag für „niemand“ (z. B. „Ich“) – sonst blasser Chip */
+  noneOption?: string;
+  icon?: ReactNode;
+  /** diese Personen oben anzeigen (z. B. Kontakte des Anbieters) */
+  sortFirst?: (p: { company_id: Id | null }) => boolean;
+}) {
+  const { people, personById, companyById } = useLookups();
+  const names = value.map((id) => personById.get(id)?.name ?? "?");
+  const label =
+    names.length === 0
+      ? emptyLabel
+      : names.length === 1
+        ? names[0]
+        : names.length === 2
+          ? names.map((n) => n.split(" ")[0]).join(", ")
+          : `${names.length} Personen`;
+  const list = people
+    .filter((p) => p.active || value.includes(p.id))
+    .sort((a, b) => (sortFirst ? Number(sortFirst(b)) - Number(sortFirst(a)) : 0));
+  return (
+    <ChipMulti
+      title={names.length > 0 ? `${title}: ${names.join(", ")}` : title}
+      icon={icon}
+      label={label}
+      empty={names.length === 0 && !noneOption}
+      options={list.map((p) => ({
+        value: p.id,
+        label: `${p.name}${p.company_id ? ` · ${companyById.get(p.company_id)?.short ?? ""}` : ""}`,
+      }))}
+      selected={value}
+      onChange={onChange}
+      allLabel={noneOption}
+    />
+  );
+}
+
+/** Mehrere Firmen-Kürzel nebeneinander (max. 3, dann „+n“). */
+export function CompanyBadges({ ids }: { ids: Id[] }) {
+  return (
+    <>
+      {ids.slice(0, 3).map((id) => (
+        <CompanyBadge key={id} id={id} />
+      ))}
+      {ids.length > 3 && <span className="muted small">+{ids.length - 3}</span>}
+    </>
+  );
+}
+
 /** Aufklappbarer Bereich – standardmäßig zu, Inhalt nur bei Bedarf. */
 export function Disclosure({
   title,
@@ -570,27 +673,27 @@ export function ImportantChip({ value, onChange }: { value: boolean; onChange: (
   );
 }
 
+/** Eine Firma wählen (z. B. Firma einer Person) – gleiche Liste wie überall. */
 export function CompanySelect({
   value,
   onChange,
   allowAll,
-  className,
 }: {
   value: Id | "";
   onChange: (v: Id) => void;
+  /** Eintrag für „keine Firma“ */
   allowAll?: string;
   className?: string;
 }) {
   const { companies } = useLookups();
   return (
-    <select className={className} value={value} onChange={(e) => onChange(e.target.value)}>
-      {allowAll !== undefined && <option value="">{allowAll}</option>}
-      {companies.map((c) => (
-        <option key={c.id} value={c.id}>
-          {c.name}
-        </option>
-      ))}
-    </select>
+    <ChipSelect
+      title="Firma"
+      value={value}
+      placeholder={allowAll}
+      options={[...(allowAll !== undefined ? [{ value: "", label: allowAll }] : []), ...companies.map((c) => ({ value: c.id, label: c.name }))]}
+      onChange={onChange}
+    />
   );
 }
 
