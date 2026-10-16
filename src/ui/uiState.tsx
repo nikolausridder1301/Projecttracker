@@ -12,6 +12,8 @@ export interface CapturePrefill {
   type?: CaptureType;
   title?: string;
   companyId?: Id;
+  /** mehrere Firmen vorbelegen (z. B. aus einem Protokoll) */
+  companyIds?: Id[];
   topicId?: Id;
   sourceNoteId?: Id;
   attachTo?: { taskId?: Id; noteId?: Id };

@@ -38,7 +38,7 @@ export function applyFilter(tasks: Task[], f: TaskFilter, today = todayIso()): T
   return tasks
     .filter(isActive)
     .filter((t) => f.showDone || f.status === "done" || t.status !== "done")
-    .filter((t) => f.companies.length === 0 || f.companies.includes(t.company_id))
+    .filter((t) => f.companies.length === 0 || t.company_ids.some((c) => f.companies.includes(c)))
     .filter((t) => !f.topic || t.topic_id === f.topic)
     .filter((t) =>
       !f.assignee
@@ -246,10 +246,10 @@ export function GroupedTasks({ tasks, groupBy, showCompany = true }: { tasks: Ta
       </div>
     );
   }
+  // Aufgaben mit mehreren Firmen stehen in jeder ihrer Firmen-Gruppen
+  const keysOf = (t: Task): string[] => (groupBy === "company" ? t.company_ids : [keyOf(t)]);
   const keyOf = (t: Task): string =>
-    groupBy === "company"
-      ? t.company_id
-      : groupBy === "topic"
+    groupBy === "topic"
         ? (t.topic_id ?? "")
         : groupBy === "person"
           ? t.assignee_person_ids.join(",")
@@ -277,8 +277,7 @@ export function GroupedTasks({ tasks, groupBy, showCompany = true }: { tasks: Ta
 
   const groups = new Map<string, Task[]>();
   for (const t of tasks) {
-    const k = keyOf(t);
-    groups.set(k, [...(groups.get(k) ?? []), t]);
+    for (const k of keysOf(t)) groups.set(k, [...(groups.get(k) ?? []), t]);
   }
   const keys = [...groups.keys()].sort((a, b) => order(a) - order(b) || labelOf(a).localeCompare(labelOf(b), "de"));
 

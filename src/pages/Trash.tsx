@@ -26,14 +26,14 @@ export function TrashPage() {
   const { db, restore, purge, toast } = useStore();
 
   const items: Item[] = KINDS.flatMap(({ table, label }) =>
-    (db[table] as unknown as { id: Id; deleted_at: string | null; title?: string; name?: string; company_id?: Id | null }[])
+    (db[table] as unknown as { id: Id; deleted_at: string | null; title?: string; name?: string; company_id?: Id | null; company_ids?: Id[] }[])
       .filter((r) => r.deleted_at !== null)
       .map((r) => ({
         table,
         label,
         id: r.id,
         title: r.title ?? r.name ?? "",
-        companyId: r.company_id ?? null,
+        companyId: r.company_ids?.[0] ?? r.company_id ?? null,
         deletedAt: r.deleted_at!,
       })),
   ).sort((a, b) => (a.deletedAt < b.deletedAt ? 1 : -1));

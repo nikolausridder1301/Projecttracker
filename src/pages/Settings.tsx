@@ -5,7 +5,7 @@ import { useLookups, useStore } from "../data/store";
 import type { Company, LinkCategory, Topic } from "../data/types";
 import { formatDateTime } from "../logic/dates";
 import { useBackup } from "../ui/backup";
-import { CompanyLogo } from "../ui/common";
+import { ChipSelect, CompanyLogo } from "../ui/common";
 
 export function SettingsPage() {
   const { db, backend, project } = useStore();
@@ -82,18 +82,12 @@ function ProjectSettings() {
         </label>
         <label className="field">
           <span className="muted small">Anbieter-Bereich im Menü</span>
-          <select
+          <ChipSelect
+            title="Anbieter-Bereich"
             value={project.vendor_company_id ?? ""}
-            onChange={(e) => void update("projects", project.id, { vendor_company_id: e.target.value || null }).catch(() => {})}
-          >
-            <option value="">Aus</option>
-            {companies.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-                {c.is_external ? "" : " (Gesellschaft)"}
-              </option>
-            ))}
-          </select>
+            options={[{ value: "", label: "Aus" }, ...companies.map((c) => ({ value: c.id, label: `${c.name}${c.is_external ? "" : " (Gesellschaft)"}` }))]}
+            onChange={(v) => void update("projects", project.id, { vendor_company_id: v || null }).catch(() => {})}
+          />
         </label>
       </div>
       <p className="muted small settings-hint">

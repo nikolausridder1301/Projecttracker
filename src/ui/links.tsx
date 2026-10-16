@@ -2,7 +2,7 @@ import { Link2, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useLookups, useStore } from "../data/store";
 import type { Id, Link } from "../data/types";
-import { CompanyBadge } from "./common";
+import { CompanyBadges } from "./common";
 
 type Target = { taskId?: Id; noteId?: Id };
 
@@ -24,7 +24,7 @@ export function LinkRow({ link, actions }: { link: Link; actions?: React.ReactNo
           {link.title}
         </a>
         <span className="task-meta">
-          <CompanyBadge id={link.company_id} />
+          <CompanyBadges ids={link.company_ids} />
           {link.category_id && <span className="badge">{categoryById.get(link.category_id)?.name}</span>}
           <span className="muted small">{hostOf(link.url)}</span>
         </span>

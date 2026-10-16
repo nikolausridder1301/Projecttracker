@@ -33,7 +33,7 @@ import {
   statusDef,
   statusPatch,
 } from "../logic/vendor";
-import { AutoText, ChipMulti, ChipSelect, CompanyFilter, Empty, ImportantChip, usePersisted } from "../ui/common";
+import { AutoText, ChipSelect, CompaniesChip, CompanyFilter, Empty, ImportantChip, PeopleChip, usePersisted } from "../ui/common";
 import { useVendor } from "../ui/vendor";
 
 export const CATEGORY_ICON: Record<VendorCategory, LucideIcon> = {
@@ -209,7 +209,7 @@ function VendorPage({ vendorName }: { vendorName: string }) {
 
 function VendorPanel({ item, vendorName, onClose }: { item: VendorItem; vendorName: string; onClose: () => void }) {
   const { update, insert, trash, toast } = useStore();
-  const { companies, people, companyById } = useLookups();
+  const { companies } = useLookups();
   const [title, setTitle] = useState(item.title);
   const [body, setBody] = useState(item.body);
   const [answer, setAnswer] = useState(item.answer);
@@ -233,17 +233,9 @@ function VendorPanel({ item, vendorName, onClose }: { item: VendorItem; vendorNa
 
   // Ansprechpartner: Kontakte des Anbieters zuerst
   const tacto = companies.find((c) => c.name === vendorName) ?? companies.find((c) => c.is_external);
-  const contactOptions = [
-    { value: "", label: "Kein Ansprechpartner" },
-    ...people
-      .filter((p) => p.active || p.id === item.contact_person_id)
-      .sort((a, b) => Number(b.company_id === tacto?.id) - Number(a.company_id === tacto?.id))
-      .map((p) => ({ value: p.id, label: `${p.name}${p.company_id ? ` (${companyById.get(p.company_id)?.short ?? ""})` : ""}` })),
-  ];
-  const groupCompanies = companies.filter((c) => !c.is_external);
 
   // Selten gebrauchte Eigenschaften nur zeigen, wenn gesetzt oder über „Mehr…“
-  const showContact = more || item.contact_person_id !== null;
+  const showContact = more || item.contact_person_ids.length > 0;
 
   const toBestPractice = async () => {
     await insert("vendor_items", [
@@ -251,7 +243,7 @@ function VendorPanel({ item, vendorName, onClose }: { item: VendorItem; vendorNa
         ...newVendorItem("best_practice", item.title, item.company_ids),
         body: answer || item.answer,
         topic_id: item.topic_id,
-        contact_person_id: item.contact_person_id,
+        contact_person_ids: item.contact_person_ids,
       },
     ]);
     toast("Als Best Practice übernommen");
@@ -293,23 +285,22 @@ function VendorPanel({ item, vendorName, onClose }: { item: VendorItem; vendorNa
                 onChange={(v) => save(statusPatch(item, v, today))}
               />
             )}
-            <ChipMulti
+            <CompaniesChip
               title="Betroffene Firmen"
-              label={companiesLabel(item.company_ids, companies)}
               allLabel="Alle Firmen"
-              options={groupCompanies.map((c) => ({ value: c.id, label: c.name }))}
-              selected={item.company_ids}
+              only={(c) => !c.is_external}
+              value={item.company_ids}
               onChange={(ids) => save({ company_ids: ids })}
             />
             <ImportantChip value={item.priority === "high"} onChange={(v) => save({ priority: v ? "high" : "medium" })} />
             {showContact && (
-              <ChipSelect
+              <PeopleChip
                 title="Ansprechpartner"
+                emptyLabel="Ansprechpartner"
                 icon={<User size={14} />}
-                value={item.contact_person_id ?? ""}
-                placeholder="Ansprechpartner"
-                options={contactOptions}
-                onChange={(v) => save({ contact_person_id: v || null })}
+                value={item.contact_person_ids}
+                onChange={(ids) => save({ contact_person_ids: ids })}
+                sortFirst={(p) => p.company_id === tacto?.id}
               />
             )}
             {more && (

@@ -85,7 +85,7 @@ export function MeetingPage() {
           title: `Meeting ${who} – ${formatDate(today)}`,
           body: agendaText(briefing, personName),
           kind: "meeting",
-          company_id: companyId,
+          company_ids: [companyId],
           topic_id: null,
           meeting_date: today,
           participant_ids: briefing.person ? [briefing.person.id] : [],

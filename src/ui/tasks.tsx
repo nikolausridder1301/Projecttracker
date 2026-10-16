@@ -1,11 +1,11 @@
-import { ChevronDown, Flag, MessageSquarePlus, Trash2, X } from "lucide-react";
+import { Flag, MessageSquarePlus, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useLookups, useStore } from "../data/store";
 import { STATUS_LABEL, type ChecklistItem, type Task, type TaskStatus } from "../data/types";
 import { formatDate, relativeLabel, todayIso } from "../logic/dates";
-import { checklistProgress, latestUpdates, nextStep, standText, validateTask } from "../logic/tasks";
+import { checklistProgress, latestUpdates, nextStep, standText, stepPersons, validateTask } from "../logic/tasks";
 import { AttachedLinks } from "./links";
-import { AutoText, Avatar, ChipDate, ChipSelect, CompanyBadge, Disclosure, Dropdown, ImportantChip } from "./common";
+import { AutoText, Avatar, ChipDate, ChipSelect, CompaniesChip, CompanyBadges, Disclosure, ImportantChip, PeopleChip } from "./common";
 import { ProjectBadge } from "./ProjectSwitcher";
 import { NoteLink, useUi } from "./uiState";
 
@@ -75,7 +75,10 @@ export function TaskRow({
   if (task.status === "blocked") sub.push(<span key="b" className="tone-red">Blockiert: {task.blocked_reason}</span>);
   const next = done ? undefined : nextStep(task);
   if (next) {
-    const who = next.person_id ? personById.get(next.person_id)?.name.split(" ")[0] : undefined;
+    const who = stepPersons(next)
+      .map((id) => personById.get(id)?.name.split(" ")[0])
+      .filter(Boolean)
+      .join(", ");
     const late = !!next.due && next.due < today;
     sub.push(
       <span key="c" className={`task-next${late ? " tone-red" : ""}`} title="Nächster Schritt">
@@ -116,7 +119,7 @@ export function TaskRow({
       <span className="task-right">
         {extra}
         {showProject && taskProject && <ProjectBadge color={taskProject.color} short={taskProject.short} />}
-        {showCompany && <CompanyBadge id={task.company_id} />}
+        {showCompany && <CompanyBadges ids={task.company_ids} />}
         {persons.length > 0 && (
           <span className="avatars" title={`Delegiert an ${persons.map((p) => p.name).join(", ")}`}>
             {persons.slice(0, 3).map((p) => (
@@ -140,40 +143,7 @@ export function TaskRow({
 // ---------------------------------------------------------------------------
 
 export function AssigneeChip({ value, onChange }: { value: string[]; onChange: (ids: string[]) => void }) {
-  const { people, personById } = useLookups();
-  const ME = "__me__";
-  const names = value.map((id) => personById.get(id)?.name ?? "?");
-  const label =
-    names.length === 0
-      ? "Ich"
-      : names.length === 1
-        ? names[0]
-        : names.length === 2
-          ? names.map((n) => n.split(" ")[0]).join(", ")
-          : `${names.length} Personen`;
-  const toggle = (v: string) => {
-    if (v === ME) return onChange([]);
-    onChange(value.includes(v) ? value.filter((x) => x !== v) : [...value, v]);
-  };
-  return (
-    <Dropdown
-      value=""
-      selected={value.length === 0 ? [ME] : value}
-      options={[
-        { value: ME, label: "Ich" },
-        ...people.filter((p) => p.active || value.includes(p.id)).map((p) => ({ value: p.id, label: p.name })),
-      ]}
-      onChange={toggle}
-      title="Verantwortlich – mehrere möglich"
-    >
-      {(props) => (
-        <button type="button" {...props} className="chip" title={names.length > 0 ? `Verantwortlich: ${names.join(", ")}` : "Verantwortlich"}>
-          <span className="chip-text">{label}</span>
-          <ChevronDown size={14} className="chip-caret" aria-hidden />
-        </button>
-      )}
-    </Dropdown>
-  );
+  return <PeopleChip title="Verantwortlich – mehrere möglich" emptyLabel="Ich" noneOption="Ich" value={value} onChange={onChange} />;
 }
 
 // ---------------------------------------------------------------------------
@@ -188,17 +158,13 @@ export const ddmm = (iso: string) => `${iso.slice(8, 10)}.${iso.slice(5, 7)}.`;
  * Abhaken schreibt automatisch einen Eintrag in den Verlauf.
  */
 function StepsEditor({ task, save }: { task: Task; save: (patch: { checklist: ChecklistItem[] }) => void }) {
-  const { people, personById } = useLookups();
+  const { personById } = useLookups();
   const { addUpdate } = useTaskActions();
   const today = todayIso();
   const [text, setText] = useState("");
-  const [person, setPerson] = useState("");
+  const [persons, setPersons] = useState<string[]>([]);
   const [due, setDue] = useState<string | null>(null);
   const cl = checklistProgress(task);
-  const personOptions = (current?: string | null) => [
-    { value: "", label: "– niemand –" },
-    ...people.filter((p) => p.active || p.id === current).map((p) => ({ value: p.id, label: p.name })),
-  ];
   const setItem = (i: number, patch: Partial<ChecklistItem>) =>
     save({ checklist: task.checklist.map((c, j) => (j === i ? { ...c, ...patch } : c)) });
 
@@ -206,7 +172,10 @@ function StepsEditor({ task, save }: { task: Task; save: (patch: { checklist: Ch
     const item = task.checklist[i];
     setItem(i, { done: !item.done });
     if (!item.done) {
-      const who = item.person_id ? personById.get(item.person_id)?.name : undefined;
+      const who = stepPersons(item)
+        .map((id) => personById.get(id)?.name)
+        .filter(Boolean)
+        .join(", ");
       void addUpdate(task.id, `✓ ${item.text}${who ? ` (${who})` : ""}`, today, true).catch(() => {});
     }
   };
@@ -220,13 +189,7 @@ function StepsEditor({ task, save }: { task: Task; save: (patch: { checklist: Ch
             <span className={`grow${item.done ? " is-done-text" : ""}`}>{item.text}</span>
             {!item.done && (
               <>
-                <ChipSelect
-                  title="Wer?"
-                  value={item.person_id ?? ""}
-                  placeholder="Wer?"
-                  options={personOptions(item.person_id)}
-                  onChange={(v) => setItem(i, { person_id: v || null })}
-                />
+                <PeopleChip title="Wer?" emptyLabel="Wer?" value={stepPersons(item)} onChange={(ids) => setItem(i, { person_ids: ids, person_id: undefined })} />
                 <ChipDate
                   title="Bis wann?"
                   value={item.due ?? null}
@@ -252,14 +215,14 @@ function StepsEditor({ task, save }: { task: Task; save: (patch: { checklist: Ch
         onSubmit={(e) => {
           e.preventDefault();
           if (!text.trim()) return;
-          save({ checklist: [...task.checklist, { text: text.trim(), done: false, person_id: person || null, due }] });
+          save({ checklist: [...task.checklist, { text: text.trim(), done: false, person_ids: persons, due }] });
           setText("");
-          setPerson("");
+          setPersons([]);
           setDue(null);
         }}
       >
         <input className="plain-input grow" value={text} onChange={(e) => setText(e.target.value)} placeholder="Nächsten Schritt hinzufügen… (Enter)" />
-        <ChipSelect title="Wer?" value={person} placeholder="Wer?" options={personOptions()} onChange={setPerson} />
+        <PeopleChip title="Wer?" emptyLabel="Wer?" value={persons} onChange={setPersons} />
         <ChipDate title="Bis wann?" value={due} onChange={setDue} placeholder="Bis?" format={(v) => `bis ${ddmm(v)}`} />
       </form>
     </Disclosure>
@@ -380,7 +343,7 @@ export function TaskPanel() {
 
 function TaskEditor({ task, onClose }: { task: Task; onClose: () => void }) {
   const { db, update, trash, toast } = useStore();
-  const { companies, noteById } = useLookups();
+  const { noteById } = useLookups();
   const { setDone } = useTaskActions();
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description);
@@ -451,12 +414,7 @@ function TaskEditor({ task, onClose }: { task: Task; onClose: () => void }) {
           options={(Object.keys(STATUS_LABEL) as TaskStatus[]).map((s) => ({ value: s, label: STATUS_LABEL[s] }))}
           onChange={(v) => setStatus(v as TaskStatus)}
         />
-        <ChipSelect
-          title="Firma"
-          value={task.company_id}
-          options={companies.map((c) => ({ value: c.id, label: c.short }))}
-          onChange={(v) => save({ company_id: v })}
-        />
+        <CompaniesChip value={task.company_ids} onChange={(ids) => save({ company_ids: ids })} />
         <AssigneeChip value={task.assignee_person_ids} onChange={(ids) => save({ assignee_person_ids: ids })} />
         <ChipDate
           title="Fällig"

@@ -94,11 +94,11 @@ Alle Tabellen: `id`, `created_at`, `updated_at`, `deleted_at` (Papierkorb). Proj
 | `topics` | **Meilensteine** (Name, Sortierung, archiviert) |
 | `milestone_status` | Stand je Meilenstein und Firma: Status, Zieldatum, Kommentar (eindeutig je Paar) |
 | `people` | Personen je Projekt |
-| `tasks` | Titel, Firma, Verantwortliche Personen (`assignee_person_ids`, leer = ich; mehrere möglich), Status (offen/blockiert/erledigt), Grund bei „Blockiert“, Wichtig-Fahne (`priority` high/medium), fällig, Nächste Schritte (`checklist`: Text, erledigt, optional Person und Datum – kein eigenes Objekt), Gruppe (Mehrfirmen), Herkunfts-Protokoll; Beschreibung nur noch für Altbestand |
+| `tasks` | Titel, Firmen (`company_ids`, mindestens eine), Verantwortliche Personen (`assignee_person_ids`, leer = ich; mehrere möglich), Status (offen/blockiert/erledigt), Grund bei „Blockiert“, Wichtig-Fahne (`priority` high/medium), fällig, Nächste Schritte (`checklist`: Text, erledigt, optional Personen und Datum – kein eigenes Objekt), Herkunfts-Protokoll; Beschreibung nur noch für Altbestand |
 | `task_followups` | **Verlauf** je Aufgabe: Datum, Text (ein Update je Eintrag; frühere Nachfragen sind die ersten Einträge). Die Spalte `tasks.follow_up_date` wird nicht mehr genutzt. |
-| `notes` | Notiz / Meeting-Protokoll / Entscheidung, Firma, Datum, Teilnehmer, Text |
-| `links`, `link_categories`, `attachments` | Link-Sammlung; Anhänge an Notizen (an Aufgaben nur Altbestand) |
-| `vendor_items` | Anbieter-Punkte: Kategorie, Status, betroffene Firmen (leer = alle), Wichtig-Fahne, Ansprechpartner, Ticket, Antwort, Versprochen/Tatsächlich/Beleg, Meldedatum |
+| `notes` | Notiz / Meeting-Protokoll / Entscheidung, Firmen (`company_ids`), Datum, Teilnehmer, Text |
+| `links`, `link_categories`, `attachments` | Link-Sammlung mit Firmen (`company_ids`); Anhänge an Notizen (an Aufgaben nur Altbestand) |
+| `vendor_items` | Anbieter-Punkte: Kategorie, Status, betroffene Firmen (leer = alle), Wichtig-Fahne, Ansprechpartner (`contact_person_ids`, mehrere), Ticket, Antwort, Versprochen/Tatsächlich/Beleg, Meldedatum |
 | `app_meta` | letzter Export, **Menü-Reihenfolge** (`nav_order`) |
 | `allowed_users` | Freigabeliste (keine API-Rechte) |
 
@@ -110,7 +110,7 @@ Die Spalten `topic_id` an Aufgaben, Notizen, Links und Anbieter-Punkten bestehen
 
 - Eine Schrift (Inter), feste Größenskala (12/13/14/16/20/24 px), Icons statt Emojis.
 - **Nichts springt:** Aktiv/Hover ändern nur Farben, nie Schriftstärke oder Größe.
-- **Chips statt beschrifteter Felder:** Eigenschaften als kleine Pillen; leere Werte blass. Klick öffnet eine **eigene Auswahlliste im App-Design** (Haken an der Auswahl, Tastatur, Suche ab 9 Einträgen) statt des Browser-Menüs.
+- **Chips statt beschrifteter Felder:** Eigenschaften als kleine Pillen; leere Werte blass. Klick öffnet eine **eigene Auswahlliste im App-Design** (Haken an der Auswahl, Tastatur, Suche ab 9 Einträgen) statt des Browser-Menüs – **überall dieselbe Liste**. **Firmen und Personen sind überall Mehrfachauswahl** (Aufgaben, Notizen, Protokolle, Entscheidungen, Links, Nächste Schritte, Teilnehmer, Tacto-Ansprechpartner); Einzelauswahl nur, wo es nur eins geben kann (Firma einer Person, Anbieter des Projekts).
 - Nebensächliches eingeklappt (Nächste Schritte, solange leer); leere Bereiche ausgeblendet.
 
 ### 6.2 Navigation
@@ -140,7 +140,7 @@ Kopfzeile: globale Suche (Strg+K), Backup-Icon, „+ Neu“ (Taste N). **Alles N
 - **Erledigte getrennt:** offene oben (gruppiert), darunter Trennlinie „Erledigt“ und die erledigten Aufgaben nach Erledigt-Datum, neueste zuerst.
 - **Detail-Panel:** Titel, Chips **Status · Firma · Verantwortlich · Fällig · Wichtig**; Status nur **Offen · Blockiert · Erledigt** („Blockiert“ nur mit Grund); Priorität ist eine Fahne zum An-/Ausschalten statt Hoch/Mittel/Niedrig; darunter **Verlauf** und **Nächste Schritte** (6.6).
 - **Keine neuen Beschreibungen und Link-Anhänge** mehr – vorhandene werden weiter angezeigt.
-- **Mehrere Firmen:** In der Schnellerfassung ist „Firma“ eine Mehrfachauswahl. Eine Firma = eine Aufgabe, mehrere Firmen = je Firma eine eigene Aufgabe (ohne Firmen-Zähler); in der Zeile steht der nächste offene Schritt; Schnellauswahl „Alle Gesellschaften“ (ohne Holding und externe Partner) unten in der Liste. Im Aufgaben-Panel bleibt die Firma eine Einzelauswahl, weil jede Aufgabe zu genau einer Firma gehört.
+- **Mehrere Firmen:** „Firmen“ ist in Schnellerfassung und Panel dieselbe Mehrfachauswahl. Mehrere Firmen = **eine Aufgabe** (wie bei mehreren Personen), sie erscheint bei jeder ihrer Firmen (Gruppierung, Firmenseite, Meeting, Filter). Was je Firma zu tun ist, steht in den Nächsten Schritten. Mindestens eine Firma bleibt gewählt; Schnellauswahl „Alle Gesellschaften“ (ohne Holding und externe Partner) unten in der Liste.
 - Löschen mit „Rückgängig“ und Papierkorb.
 
 ### 6.6 Verlauf und Delegiert
@@ -264,6 +264,7 @@ Seitenleiste als Menü; Heute, Abhaken, Schnellerfassung, Updates und alle Dialo
 | Mehrere Firmen | Kein „x/y Firmen“-Zähler mehr; Fortschritt nur über Nächste Schritte |
 | Nächste Schritte | Checkliste wird zu „Nächste Schritte“ mit optional Person und Datum (Unteraufgabe ohne eigenes Objekt); fällige Schritte auf Heute und im Meeting; Abhaken schreibt in den Verlauf; Verlauf-Datum änderbar |
 | Firmenauswahl | Ein Mehrfach-Dropdown statt Firma + „Mehrere Firmen“ |
+| Mehrfachauswahl überall | Firmen und Personen überall Mehrfachauswahl in derselben Liste; mehrere Firmen = eine Aufgabe (keine Kopien mehr); auch Notizen, Links, Teilnehmer, Schritte, Tacto-Ansprechpartner |
 | Verantwortlich | Mehrfachauswahl: mehrere Personen je Aufgabe (eine Aufgabe, keine Kopien); „Ich“ = niemand sonst |
 | Filterleisten | Firmenfilter als Mehrfach-Dropdown auf Aufgaben, Notizen, Links, Tacto; keine Browser-Auswahlfelder mehr in Filtern |
 | Priorität | Nur noch Fahne „Wichtig“ (an/aus); „Niedrig“ entfällt |

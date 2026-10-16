@@ -14,7 +14,6 @@ import {
   daysSinceUpdate,
   effectiveDue,
   nextStep,
-  groupProgress,
   isValidUrl,
   latestUpdates,
   splitDone,
@@ -33,7 +32,7 @@ const T = (o: Partial<Task>): Task => ({
   project_id: "p1",
   title: "x",
   description: "",
-  company_id: "c1",
+  company_ids: ["c1"],
   topic_id: null,
   assignee_person_ids: [],
   status: "open",
@@ -43,7 +42,6 @@ const T = (o: Partial<Task>): Task => ({
   follow_up_date: null,
   done_at: null,
   checklist: [],
-  group_id: null,
   source_note_id: null,
   ...o,
 });
@@ -103,16 +101,6 @@ describe("todayView", () => {
 });
 
 describe("tasks", () => {
-  it("Gruppenfortschritt nennt offene Firmen", () => {
-    const g = "g1";
-    const tasks = [
-      T({ group_id: g, company_id: "a", status: "done" }),
-      T({ group_id: g, company_id: "b", status: "done" }),
-      T({ group_id: g, company_id: "c" }),
-      T({ group_id: g, company_id: "d", deleted_at: "x" }),
-    ];
-    expect(groupProgress(tasks, g)).toEqual({ done: 2, total: 3, openCompanyIds: ["c"] });
-  });
   it("Blockiert ohne Grund ist ungültig", () => {
     expect(validateTask({ title: "a", status: "blocked", blocked_reason: " " })).toMatch(/Grund/);
     expect(validateTask({ title: "a", status: "blocked", blocked_reason: "ERP" })).toBeNull();
@@ -159,7 +147,7 @@ describe("vendor", () => {
     company_ids: [],
     topic_id: null,
     priority: "medium",
-    contact_person_id: null,
+    contact_person_ids: [],
     ticket: "",
     answer: "",
     promised: "",
@@ -376,15 +364,15 @@ describe("briefing", () => {
     const anna = db.people.find((p) => p.name === "Anna Beispiel")!; // HAZ
     const max = db.people.find((p) => p.name === "Max Muster")!; // FEST
     db.tasks = [
-      T({ title: "Anna offen", company_id: haz.id, assignee_person_ids: [anna.id] }),
-      T({ title: "Anna blockiert", company_id: haz.id, assignee_person_ids: [anna.id], status: "blocked", blocked_reason: "x" }),
-      T({ title: "Meins HAZ", company_id: haz.id }),
-      T({ title: "Max bei HAZ", company_id: haz.id, assignee_person_ids: [max.id] }),
-      T({ title: "Meins FEST", company_id: fest.id }),
-      T({ title: "Anna und Max", company_id: fest.id, assignee_person_ids: [max.id, anna.id] }),
-      T({ title: "Schritt für Anna", company_id: fest.id, checklist: [{ text: "Termin klären", done: false, person_id: anna.id }] }),
-      T({ title: "Erledigt neu", company_id: haz.id, status: "done", done_at: "2026-10-14T10:00:00Z" }),
-      T({ title: "Erledigt alt", company_id: haz.id, status: "done", done_at: "2026-09-01T10:00:00Z" }),
+      T({ title: "Anna offen", company_ids: [haz.id], assignee_person_ids: [anna.id] }),
+      T({ title: "Anna blockiert", company_ids: [haz.id], assignee_person_ids: [anna.id], status: "blocked", blocked_reason: "x" }),
+      T({ title: "Meins HAZ", company_ids: [haz.id] }),
+      T({ title: "Max bei HAZ", company_ids: [haz.id], assignee_person_ids: [max.id] }),
+      T({ title: "Meins FEST", company_ids: [fest.id] }),
+      T({ title: "Anna und Max", company_ids: [fest.id], assignee_person_ids: [max.id, anna.id] }),
+      T({ title: "Schritt für Anna", company_ids: [fest.id], checklist: [{ text: "Termin klären", done: false, person_id: anna.id }] }),
+      T({ title: "Erledigt neu", company_ids: [haz.id], status: "done", done_at: "2026-10-14T10:00:00Z" }),
+      T({ title: "Erledigt alt", company_ids: [haz.id], status: "done", done_at: "2026-09-01T10:00:00Z" }),
     ];
     return { db, haz, anna };
   };

@@ -36,6 +36,7 @@ export function search(db: Db, query: string, limitPerType = 8): Hit[] {
   };
 
   const company = (id: Id | null) => db.companies.find((c) => c.id === id)?.short ?? "";
+  const companies = (ids: Id[]) => ids.map(company).join(", ");
   const hits: Hit[] = [];
   const push = (list: Hit[]) =>
     hits.push(...list.filter((h) => h.score > 0).sort((a, b) => b.score - a.score).slice(0, limitPerType));
@@ -45,7 +46,7 @@ export function search(db: Db, query: string, limitPerType = 8): Hit[] {
       type: "task",
       id: t.id,
       title: t.title,
-      sub: `${company(t.company_id)}${t.status === "done" ? " · erledigt" : ""}`,
+      sub: `${companies(t.company_ids)}${t.status === "done" ? " · erledigt" : ""}`,
       score: score(t.title, `${t.description} ${t.checklist.map((c) => c.text).join(" ")} ${t.blocked_reason}`),
     })),
   );
@@ -54,7 +55,7 @@ export function search(db: Db, query: string, limitPerType = 8): Hit[] {
       type: "note",
       id: n.id,
       title: n.title,
-      sub: company(n.company_id),
+      sub: companies(n.company_ids),
       score: score(n.title, `${n.body} ${n.participants_text}`),
     })),
   );
@@ -72,7 +73,7 @@ export function search(db: Db, query: string, limitPerType = 8): Hit[] {
       type: "link",
       id: l.id,
       title: l.title,
-      sub: company(l.company_id),
+      sub: companies(l.company_ids),
       score: score(l.title, `${l.url} ${l.description}`),
     })),
   );
