@@ -12,16 +12,15 @@ import { affectsCompany, ageLabel, isOpenItem, jourFixeText, newVendorItem, show
 import { localDate } from "./dates";
 import {
   compareTasks,
+  currentMilestone,
+  groupSteps,
+  insertStep,
   personRefs,
   personsOf,
-  daysSinceUpdate,
   effectiveDue,
   nextStep,
   isValidUrl,
-  latestUpdates,
   splitDone,
-  staleLabel,
-  standText,
   todayCount,
   todayView,
   validateTask,
@@ -293,41 +292,6 @@ describe("Nächste Schritte", () => {
   });
 });
 
-describe("Verlauf", () => {
-  const today = "2026-10-15";
-  const U = (task_id: string, date: string, note: string, created_at = `${date}T10:00:00Z`, deleted_at: string | null = null) => ({
-    id: crypto.randomUUID(),
-    created_at,
-    updated_at: created_at,
-    deleted_at,
-    task_id,
-    date,
-    note,
-  });
-  it("jüngstes Update je Aufgabe, Gelöschte zählen nicht", () => {
-    const m = latestUpdates([
-      U("a", "2026-10-01", "alt"),
-      U("a", "2026-10-12", "neu"),
-      U("a", "2026-10-12", "neuer", "2026-10-12T15:00:00Z"),
-      U("a", "2026-10-14", "gelöscht", "2026-10-14T10:00:00Z", "x"),
-      U("b", "2026-09-30", "b"),
-    ]);
-    expect(m.get("a")?.note).toBe("neuer");
-    expect(m.get("b")?.note).toBe("b");
-  });
-  it("Tage ohne Update, sonst seit Anlage", () => {
-    expect(daysSinceUpdate({ created_at: "2026-09-01T08:00:00Z" }, { date: "2026-10-12" }, today)).toBe(3);
-    expect(daysSinceUpdate({ created_at: "2026-10-05T08:00:00Z" }, undefined, today)).toBe(10);
-  });
-  it("Beschriftungen", () => {
-    expect(staleLabel(0, true)).toBe("Update heute");
-    expect(staleLabel(1, true)).toBe("Update gestern");
-    expect(staleLabel(23, true)).toBe("seit 23 T. kein Update");
-    expect(staleLabel(0, false)).toBe("noch kein Update");
-    expect(standText({ date: "2026-10-12", note: "Oliver klärt" })).toBe("Stand 12.10.: Oliver klärt");
-  });
-});
-
 describe("traffic", () => {
   it("Gelb/Rot nur mit Begründung", () => {
     expect(validateTrafficChange({ light: "green", comment: "" }, { light: "red", comment: " " })).toMatch(/begründen/);
@@ -451,11 +415,6 @@ describe("Überarbeitung: Fälligkeit, Personen, Anbieter-Punkte", () => {
     });
     expect(personsOf(t).sort()).toEqual(["p1", "p2", "p4"]);
   });
-  it("Statuszeilen zählen nicht als Stand", () => {
-    const U = (note: string, created_at: string) => ({ id: crypto.randomUUID(), created_at, updated_at: created_at, deleted_at: null, task_id: "a", date: "2026-10-15", note });
-    const m = latestUpdates([U("Testexport läuft", "2026-10-15T08:00:00Z"), U("Verantwortlich: Anna", "2026-10-15T09:00:00Z"), U("Blockiert: x", "2026-10-15T10:00:00Z")]);
-    expect(m.get("a")?.note).toBe("Testexport läuft");
-  });
   it("personRefs: offen nur bei offenen Aufgaben, „irgendwo“ auch Protokolle und Anbieter-Punkte", () => {
     const db = {
       tasks: [T({ status: "done", assignee_person_ids: ["p1"] }), T({ checklist: [{ text: "s", done: false, person_ids: ["p2"] }] })],
@@ -495,5 +454,32 @@ describe("Überarbeitung: Fälligkeit, Personen, Anbieter-Punkte", () => {
     expect(buildBriefing(db, { kind: "person", id: anna.id }, "2026-10-16").todayMeeting).toBeUndefined();
     expect(sectionTitles({ person: anna }).delegated).toBe("Offen bei Anna");
     expect(sectionTitles({}).other).toBe("Delegiert");
+  });
+});
+
+describe("Meilensteine & Schritte", () => {
+  const M = (text: string, done = false, due: string | null = null) => ({ text, done, milestone: true, due });
+  const S = (text: string, done = false) => ({ text, done });
+  it("Gruppen: Schritte ohne Meilenstein, dann je Meilenstein", () => {
+    const list = [S("a"), M("M1"), S("b"), S("c"), M("M2")];
+    expect(groupSteps(list)).toEqual([
+      { milestone: null, steps: [0] },
+      { milestone: 1, steps: [2, 3] },
+      { milestone: 4, steps: [] },
+    ]);
+  });
+  it("Schritt einfügen: in die Gruppe, beim aktuellen Meilenstein oder oben", () => {
+    const list = [S("a"), M("M1", true), S("b"), M("M2"), S("c")];
+    expect(insertStep(list, S("neu"), 1).map((c) => c.text)).toEqual(["a", "M1", "b", "neu", "M2", "c"]);
+    expect(insertStep(list, S("neu"), "current").map((c) => c.text)).toEqual(["a", "M1", "b", "M2", "c", "neu"]);
+    expect(insertStep(list, S("neu"), null).map((c) => c.text)).toEqual(["a", "neu", "M1", "b", "M2", "c"]);
+    expect(insertStep([M("X")], S("neu"), 0).map((c) => c.text)).toEqual(["X", "neu"]);
+    expect(insertStep([], S("neu"), "current").map((c) => c.text)).toEqual(["neu"]);
+  });
+  it("aktueller Meilenstein, Fortschritt nur über Schritte, nächster Schritt kein Meilenstein, Ziel zählt als Termin", () => {
+    const t = T({ checklist: [M("M1", true), S("x", true), M("M2", false, "2026-10-20"), S("y")] });
+    expect(currentMilestone(t)?.text).toBe("M2");
+    expect(nextStep(t)?.text).toBe("y");
+    expect(effectiveDue(t)).toBe("2026-10-20");
   });
 });

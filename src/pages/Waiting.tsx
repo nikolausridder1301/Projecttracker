@@ -2,19 +2,19 @@ import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useLookups, useStore } from "../data/store";
 import type { Task } from "../data/types";
-import { formatDate, todayIso } from "../logic/dates";
-import { STALE_DAYS, daysSinceUpdate, isActive, isOpen, personsOf, staleLabel } from "../logic/tasks";
+import { todayIso } from "../logic/dates";
+import { compareTasks, effectiveDue, isActive, isOpen, personsOf } from "../logic/tasks";
 import { CompanyBadge, Empty } from "../ui/common";
-import { TaskRow, useLatestUpdates } from "../ui/tasks";
+import { TaskRow } from "../ui/tasks";
 
-// „Delegiert“: alle offenen Delegationen nach Person – was am längsten ohne Update ist, steht oben.
+// „Delegiert“: alle offenen Delegationen nach Person – was zuerst fällig ist, steht oben
+// (nächster Termin aus Fälligkeit, Schritten und Meilenstein-Zielen).
 
 export function WaitingPage() {
   const { db } = useStore();
   const { personById } = useLookups();
   const today = todayIso();
-  const latest = useLatestUpdates();
-  const stale = (t: Task) => daysSinceUpdate(t, latest.get(t.id), today);
+  const dueKey = (t: Task) => effectiveDue(t) ?? "9999-99-99";
 
   const groups = useMemo(() => {
     const open = db.tasks.filter((t) => isActive(t) && isOpen(t) && personsOf(t).length > 0);
@@ -22,21 +22,21 @@ export function WaitingPage() {
     // Bei jeder Person, die verantwortlich ist oder einen offenen Schritt hat
     for (const t of open) for (const pid of personsOf(t)) m.set(pid, [...(m.get(pid) ?? []), t]);
     return [...m.entries()]
-      .map(([pid, tasks]) => ({ pid, tasks: tasks.sort((a, b) => stale(b) - stale(a)) }))
-      .sort((a, b) => stale(b.tasks[0]) - stale(a.tasks[0]));
+      .map(([pid, tasks]) => ({ pid, tasks: tasks.sort(compareTasks) }))
+      .sort((a, b) => (dueKey(a.tasks[0]) < dueKey(b.tasks[0]) ? -1 : dueKey(a.tasks[0]) > dueKey(b.tasks[0]) ? 1 : 0));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [db.tasks, latest, today]);
+  }, [db.tasks]);
 
   // Aufgaben mit mehreren Personen nur einmal zählen
   const total = new Set(groups.flatMap((g) => g.tasks.map((t) => t.id))).size;
-  const staleCount = new Set(groups.flatMap((g) => g.tasks.filter((t) => stale(t) >= STALE_DAYS).map((t) => t.id))).size;
+  const overdueCount = new Set(groups.flatMap((g) => g.tasks.filter((t) => dueKey(t) < today).map((t) => t.id))).size;
 
   return (
     <div className="page">
       <div className="page-head">
         <h1>Delegiert</h1>
         <span className="muted">
-          {total} offen{staleCount > 0 && ` · ${staleCount} seit über 2 Wochen ohne Update`}
+          {total} offen{overdueCount > 0 && ` · ${overdueCount} überfällig`}
         </span>
       </div>
       {groups.length === 0 ? (
@@ -55,14 +55,7 @@ export function WaitingPage() {
                 </h3>
                 <div className="task-list">
                   {tasks.map((t) => (
-                    <TaskRow
-                      key={t.id}
-                      task={t}
-                      subExtra={t.due_date ? `fällig ${formatDate(t.due_date)}` : undefined}
-                      rightLabel={
-                        <span className={`due${stale(t) >= STALE_DAYS ? " overdue" : ""}`}>{staleLabel(stale(t), latest.has(t.id))}</span>
-                      }
-                    />
+                    <TaskRow key={t.id} task={t} />
                   ))}
                 </div>
               </section>

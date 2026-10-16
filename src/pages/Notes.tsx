@@ -318,8 +318,8 @@ function urlsIn(text: string): string[] {
 
 /**
  * Im Protokoll: die offenen Punkte der Person (bei genau einem Teilnehmer) bzw.
- * der Firma als Liste mit „Update notieren…“ – was besprochen wird, landet so
- * direkt im Verlauf der Aufgabe statt nur im Text.
+ * der Firma als Liste mit „Schritt notieren…“ – was vereinbart wird, landet so
+ * direkt als nächster Schritt in der Aufgabe statt nur im Text.
  */
 function ProtocolOpenItems({ note }: { note: Note }) {
   const { db } = useStore();

@@ -1,5 +1,5 @@
-import type { ChecklistItem, Company, Id, IsoDate, Priority, Task, TaskFollowup } from "../data/types";
-import { endOfWeek, localDate } from "./dates";
+import type { ChecklistItem, Company, Id, IsoDate, Priority, Task } from "../data/types";
+import { endOfWeek } from "./dates";
 
 const PRIO_RANK: Record<Priority, number> = { high: 0, medium: 1 };
 
@@ -43,14 +43,54 @@ export function todayCount(v: TodayView): number {
   return v.overdue.length + v.today.length;
 }
 
+/** Schritt (kein Meilenstein)? */
+export const isStep = (c: ChecklistItem) => !c.milestone;
+
 /** Nächster offener Schritt: zuerst der mit dem frühesten Datum, sonst der erste offene. */
 export function nextStep(t: Pick<Task, "checklist">): ChecklistItem | undefined {
-  const open = t.checklist.filter((c) => !c.done);
+  const open = t.checklist.filter((c) => isStep(c) && !c.done);
   const dated = open.filter((c) => c.due).sort((a, b) => (a.due! < b.due! ? -1 : 1));
   return dated[0] ?? open[0];
 }
 
-/** Frühestes Datum aus Aufgabe und offenen Schritten. */
+/** Aktueller Meilenstein: der erste noch nicht erreichte. */
+export function currentMilestone(t: Pick<Task, "checklist">): ChecklistItem | undefined {
+  return t.checklist.find((c) => c.milestone && !c.done);
+}
+
+export interface StepGroup {
+  /** Index des Meilensteins in der Liste; null = Schritte ohne Meilenstein */
+  milestone: number | null;
+  /** Indizes der Schritte in der Liste */
+  steps: number[];
+}
+
+/** Liste in Gruppen teilen: Schritte vor dem ersten Meilenstein, dann je Meilenstein seine Schritte. */
+export function groupSteps(list: ChecklistItem[]): StepGroup[] {
+  const groups: StepGroup[] = [{ milestone: null, steps: [] }];
+  list.forEach((c, i) => {
+    if (c.milestone) groups.push({ milestone: i, steps: [] });
+    else groups[groups.length - 1].steps.push(i);
+  });
+  return groups;
+}
+
+/**
+ * Neuen Schritt in eine Gruppe einfügen (ans Ende ihrer Schritte).
+ * `milestone` = Index des Meilensteins, null = vor dem ersten Meilenstein,
+ * "current" = beim aktuellen Meilenstein (sonst ohne Meilenstein).
+ */
+export function insertStep(list: ChecklistItem[], step: ChecklistItem, milestone: number | null | "current"): ChecklistItem[] {
+  const target = milestone === "current" ? (list.findIndex((c) => c.milestone && !c.done) === -1 ? null : list.findIndex((c) => c.milestone && !c.done)) : milestone;
+  const groups = groupSteps(list);
+  const g = groups.find((x) => x.milestone === target) ?? groups[0];
+  const after = g.steps.length > 0 ? g.steps[g.steps.length - 1] : (g.milestone ?? -1);
+  const next = [...list];
+  next.splice(after + 1, 0, step);
+  return next;
+}
+
+/** Frühestes Datum aus Aufgabe, offenen Schritten und Zieldaten offener Meilensteine. */
 export function effectiveDue(t: Pick<Task, "due_date" | "checklist">): IsoDate | null {
   const dates = [t.due_date, ...t.checklist.filter((c) => !c.done).map((c) => c.due ?? null)].filter((x): x is IsoDate => !!x);
   return dates.length ? dates.sort()[0] : null;
@@ -82,8 +122,10 @@ export function personRefs(
 /** Hat die Person einen offenen Schritt in der Aufgabe? */
 export const hasStepFor = (t: Pick<Task, "checklist">, personId: Id) => t.checklist.some((c) => !c.done && stepPersons(c).includes(personId));
 
-export function checklistProgress(t: Task): { done: number; total: number } {
-  return { done: t.checklist.filter((c) => c.done).length, total: t.checklist.length };
+/** Fortschritt der Schritte (Meilensteine zählen nicht mit). */
+export function checklistProgress(t: Pick<Task, "checklist">): { done: number; total: number } {
+  const steps = t.checklist.filter(isStep);
+  return { done: steps.filter((c) => c.done).length, total: steps.length };
 }
 
 export function overarchingCompany(companies: Company[]): Company | undefined {
@@ -105,49 +147,6 @@ export function isValidUrl(url: string): boolean {
   } catch {
     return false;
   }
-}
-
-// ---------------------------------------------------------------------------
-// Verlauf: datierte Updates je Aufgabe (Tabelle task_followups)
-// ---------------------------------------------------------------------------
-
-/** Automatische Verlaufszeilen (Statuswechsel) – im Verlauf sichtbar, aber kein „Stand“. */
-export function isStatusNote(note: string): boolean {
-  return /^(✓ Erledigt|Wieder geöffnet|Blockiert: |Nicht mehr blockiert|Verantwortlich: )/.test(note);
-}
-
-/** Jüngstes Update je Aufgabe (ohne automatische Statuszeilen). */
-export function latestUpdates(updates: TaskFollowup[]): Map<Id, TaskFollowup> {
-  const m = new Map<Id, TaskFollowup>();
-  for (const u of updates) {
-    if (u.deleted_at !== null || isStatusNote(u.note)) continue;
-    const cur = m.get(u.task_id);
-    if (!cur || u.date > cur.date || (u.date === cur.date && u.created_at > cur.created_at)) m.set(u.task_id, u);
-  }
-  return m;
-}
-
-/** Tage seit dem letzten Update – ohne Update seit dem Anlegen. */
-export function daysSinceUpdate(t: Pick<Task, "created_at">, last: Pick<TaskFollowup, "date"> | undefined, today: IsoDate): number {
-  const since = last?.date ?? localDate(t.created_at);
-  return Math.max(0, Math.round((Date.parse(today) - Date.parse(since)) / 86_400_000));
-}
-
-/** „Update heute“, „Update gestern“, „seit 23 T. kein Update“ */
-export function staleLabel(days: number, hasUpdate: boolean): string {
-  if (!hasUpdate) return days === 0 ? "noch kein Update" : `seit ${days} T. kein Update`;
-  if (days === 0) return "Update heute";
-  if (days === 1) return "Update gestern";
-  return `seit ${days} T. kein Update`;
-}
-
-/** Ab so vielen Tagen ohne Update wird es rot markiert. */
-export const STALE_DAYS = 14;
-
-/** „Stand 12.10.: …“ für Listen und Agenda. */
-export function standText(u: Pick<TaskFollowup, "date" | "note">): string {
-  const [, m, d] = u.date.split("-");
-  return `Stand ${d}.${m}.: ${u.note}`;
 }
 
 /** Offene und erledigte Aufgaben trennen; Erledigte nach Erledigt-Datum, neueste zuerst. */

@@ -68,15 +68,22 @@ export interface Person extends Base, InProject {
   active: boolean;
 }
 
-/** Nächster Schritt einer Aufgabe (gespeichert in tasks.checklist). */
+/**
+ * Eintrag in „Meilensteine & Schritte“ einer Aufgabe (gespeichert in tasks.checklist).
+ * Meilensteine (`milestone: true`) sind die Etappen; die Schritte danach gehören
+ * zum vorangehenden Meilenstein, Schritte vor dem ersten Meilenstein zu keinem.
+ */
 export interface ChecklistItem {
   text: string;
+  /** Schritt erledigt bzw. Meilenstein erreicht */
   done: boolean;
+  /** true = Meilenstein (Etappe), sonst Schritt */
+  milestone?: boolean;
   /** wer – optional, mehrere möglich */
   person_ids?: Id[];
   /** Altbestand: früher eine Person */
   person_id?: Id | null;
-  /** bis wann – optional */
+  /** bis wann (Schritt) bzw. Zieldatum (Meilenstein) – optional */
   due?: IsoDate | null;
 }
 

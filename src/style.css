@@ -2093,16 +2093,6 @@ button.traffic-tile:hover {
 }
 
 /* Verlauf (Updates je Aufgabe) */
-.updates {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.section-label {
-  font-size: var(--fs-base);
-  font-weight: 600;
-  margin: 0;
-}
 .update-input {
   display: flex;
   align-items: center;
@@ -2141,13 +2131,6 @@ button.traffic-tile:hover {
 .update-input.compact:focus-within {
   border-color: var(--border);
   background: var(--surface);
-}
-.task-stand {
-  color: var(--text-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 100%;
 }
 .task-sub {
   min-width: 0;
@@ -2560,13 +2543,13 @@ button.traffic-tile:hover {
   opacity: 1;
 }
 /* Ohne Person/Datum nimmt die Zeile keinen Platz ein, bis man darüberfährt */
-.steps .step-meta.empty {
+.steps .step-meta.no-meta {
   height: 0;
   overflow: hidden;
   margin-top: -6px;
 }
-.steps .step-item:hover .step-meta.empty,
-.steps .step-item:focus-within .step-meta.empty {
+.steps .step-item:hover .step-meta.no-meta,
+.steps .step-item:focus-within .step-meta.no-meta {
   height: auto;
   overflow: visible;
   margin-top: 0;
@@ -2575,7 +2558,7 @@ button.traffic-tile:hover {
   .steps .step-meta .chip-empty {
     opacity: 1;
   }
-  .steps .step-meta.empty {
+  .steps .step-meta.no-meta {
     height: auto;
     overflow: visible;
     margin-top: 0;
@@ -2609,4 +2592,107 @@ button.traffic-tile:hover {
 }
 .step-new .chip-empty {
   opacity: 0.8;
+}
+
+/* Meilensteine & Schritte */
+.plan {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.plan-group.has-ms {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px 6px;
+  background: var(--surface);
+}
+.plan-group.has-ms .steps {
+  padding-left: 26px;
+}
+.plan-group.ms-done {
+  background: var(--surface-2);
+}
+.ms-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.ms-toggle {
+  border: 0;
+  background: none;
+  padding: 2px 0 0;
+  color: var(--accent);
+  cursor: pointer;
+  flex-shrink: 0;
+  line-height: 0;
+}
+.ms-toggle.done svg {
+  fill: var(--accent);
+}
+.ms-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ms-text {
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  cursor: text;
+}
+.ms-row > .icon-btn {
+  flex-shrink: 0;
+}
+.plan-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 2px 0 0 30px;
+  align-self: flex-start;
+}
+.plan-group.has-ms .plan-add,
+.plan-group.has-ms .step-new {
+  margin-left: 26px;
+}
+.plan-group .step-new {
+  padding-left: 30px;
+  border-top: 0;
+}
+.plan-group.has-ms .step-new {
+  padding-left: 30px;
+}
+.ms-new {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--surface-3);
+  margin-top: 4px;
+}
+.ms-new .step-edit {
+  flex: 1;
+  border-color: transparent !important;
+  background: transparent !important;
+}
+.ms-new .step-edit:focus {
+  border-color: var(--border) !important;
+  background: var(--surface) !important;
+}
+.ms-new-icon {
+  color: var(--text-faint);
+  flex-shrink: 0;
+}
+.ms-new .chip {
+  height: 26px;
+  font-size: var(--fs-sm);
+  flex-shrink: 0;
+}
+.task-ms .task-next-text {
+  font-weight: 500;
+  color: var(--text);
+}
+.task-ms.tone-red .task-next-text {
+  color: inherit;
 }

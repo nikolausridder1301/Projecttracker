@@ -1,9 +1,9 @@
-import { Ban, Flag, MessageSquarePlus, Trash2, X } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Ban, Diamond, Flag, ListPlus, Trash2, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { useLookups, useStore } from "../data/store";
 import type { ChecklistItem, Task } from "../data/types";
 import { formatDate, localDate, relativeLabel, todayIso } from "../logic/dates";
-import { checklistProgress, effectiveDue, latestUpdates, nextStep, standText, stepPersons, validateTask } from "../logic/tasks";
+import { checklistProgress, currentMilestone, effectiveDue, groupSteps, insertStep, nextStep, stepPersons, validateTask } from "../logic/tasks";
 import { AttachedLinks } from "./links";
 import { AutoText, Avatar, ChipDate, CompaniesChip, CompanyBadges, Disclosure, ImportantChip, PeopleChip } from "./common";
 import { ProjectBadge } from "./ProjectSwitcher";
@@ -14,47 +14,18 @@ import { NoteLink, useUi } from "./uiState";
 // ---------------------------------------------------------------------------
 
 export function useTaskActions() {
-  const { update, insert, toast } = useStore();
-  const { personById } = useLookups();
+  const { update } = useStore();
 
-  /** Zeile im Verlauf – Statuswechsel werden so automatisch festgehalten. */
-  const log = (taskId: string, note: string) => void insert("task_followups", [{ task_id: taskId, date: todayIso(), note }]).catch(() => {});
-
-  const setDone = async (t: Task, done: boolean) => {
-    await update("tasks", t.id, done ? { status: "done", done_at: new Date().toISOString() } : { status: "open", done_at: null });
-    log(t.id, done ? "✓ Erledigt" : "Wieder geöffnet");
-  };
+  const setDone = (t: Task, done: boolean) =>
+    update("tasks", t.id, done ? { status: "done", done_at: new Date().toISOString() } : { status: "open", done_at: null });
 
   /** Blockieren (mit Grund) bzw. wieder freigeben. */
-  const setBlocked = async (t: Task, reason: string | null) => {
-    if (reason) {
-      await update("tasks", t.id, { status: "blocked", blocked_reason: reason, done_at: null });
-      log(t.id, `Blockiert: ${reason}`);
-    } else {
-      await update("tasks", t.id, { status: "open", blocked_reason: "" });
-      log(t.id, "Nicht mehr blockiert");
-    }
-  };
+  const setBlocked = (t: Task, reason: string | null) =>
+    update("tasks", t.id, reason ? { status: "blocked", blocked_reason: reason, done_at: null } : { status: "open", blocked_reason: "" });
 
-  const setAssignees = async (t: Task, ids: string[]) => {
-    await update("tasks", t.id, { assignee_person_ids: ids });
-    const names = ids.map((id) => personById.get(id)?.name ?? "?").join(", ");
-    log(t.id, ids.length ? `Verantwortlich: ${names}` : "Verantwortlich: ich");
-  };
+  const setAssignees = (t: Task, ids: string[]) => update("tasks", t.id, { assignee_person_ids: ids });
 
-  /** Neuen Stand in den Verlauf schreiben (nichts wird überschrieben). */
-  const addUpdate = async (taskId: string, note: string, date: string = todayIso(), quiet = false) => {
-    await insert("task_followups", [{ task_id: taskId, date, note }]);
-    if (!quiet) toast("Update gespeichert");
-  };
-
-  return { setDone, setBlocked, setAssignees, addUpdate };
-}
-
-/** Letzter Stand je Aufgabe (über alle Projekte). */
-export function useLatestUpdates() {
-  const { allDb } = useStore();
-  return useMemo(() => latestUpdates(allDb.task_followups), [allDb.task_followups]);
+  return { setDone, setBlocked, setAssignees };
 }
 
 // ---------------------------------------------------------------------------
@@ -82,7 +53,6 @@ export function TaskRow({
   const { openTask } = useUi();
   const taskProject = projectById.get(task.project_id);
   const { setDone } = useTaskActions();
-  const latest = useLatestUpdates();
   const today = todayIso();
   const cl = checklistProgress(task);
   const persons = task.assignee_person_ids.map((id) => personById.get(id)).filter((p) => p !== undefined);
@@ -94,6 +64,17 @@ export function TaskRow({
 
   const sub: React.ReactNode[] = [];
   if (task.status === "blocked") sub.push(<span key="b" className="tone-red">Blockiert: {task.blocked_reason}</span>);
+  // Worauf hingearbeitet wird: der aktuelle Meilenstein, darunter der nächste Schritt
+  const ms = done ? undefined : currentMilestone(task);
+  if (ms) {
+    const msLate = !!ms.due && ms.due < today;
+    sub.push(
+      <span key="m" className={`task-next task-ms${msLate ? " tone-red" : ""}`} title={`Meilenstein: ${ms.text}`}>
+        <span className="task-next-text">◆ {ms.text}</span>
+        {ms.due && <span className="task-next-meta">· bis {ddmm(ms.due)}</span>}
+      </span>,
+    );
+  }
   const next = done ? undefined : nextStep(task);
   if (next) {
     const who = stepPersons(next)
@@ -110,8 +91,6 @@ export function TaskRow({
     );
   } else if (cl.total > 0) sub.push(<span key="c">{cl.done}/{cl.total} Schritte</span>);
   if (subExtra) sub.push(<span key="x">{subExtra}</span>);
-  const stand = !done ? latest.get(task.id) : undefined;
-  if (stand) sub.push(<span key="s" className="task-stand" title={stand.note}>{standText(stand)}</span>);
 
   return (
     <div className={`task-row${done ? " is-done" : ""}`}>
@@ -175,142 +154,6 @@ export function AssigneeChip({ value, onChange }: { value: string[]; onChange: (
 /** „23.10.“ */
 export const ddmm = (iso: string) => `${iso.slice(8, 10)}.${iso.slice(5, 7)}.`;
 
-/**
- * Nächste Schritte: Unterpunkte mit optional Person und Datum.
- * Abhaken schreibt automatisch einen Eintrag in den Verlauf.
- */
-function StepsEditor({ task, save }: { task: Task; save: (patch: { checklist: ChecklistItem[] }) => void }) {
-  const { personById } = useLookups();
-  const { addUpdate } = useTaskActions();
-  const today = todayIso();
-  const [text, setText] = useState("");
-  const [persons, setPersons] = useState<string[]>([]);
-  const [due, setDue] = useState<string | null>(null);
-  const [editing, setEditing] = useState<{ i: number; text: string } | null>(null);
-  const addStep = () => {
-    if (!text.trim()) return;
-    save({ checklist: [...task.checklist, { text: text.trim(), done: false, person_ids: persons, due }] });
-    setText("");
-    setPersons([]);
-    setDue(null);
-  };
-  const cl = checklistProgress(task);
-  const saveText = () => {
-    if (!editing) return;
-    const t = editing.text.trim();
-    if (t && t !== task.checklist[editing.i]?.text) setItem(editing.i, { text: t });
-    setEditing(null);
-  };
-  const setItem = (i: number, patch: Partial<ChecklistItem>) =>
-    save({ checklist: task.checklist.map((c, j) => (j === i ? { ...c, ...patch } : c)) });
-
-  const toggle = (i: number) => {
-    const item = task.checklist[i];
-    setItem(i, { done: !item.done });
-    if (!item.done) {
-      const who = stepPersons(item)
-        .map((id) => personById.get(id)?.name)
-        .filter(Boolean)
-        .join(", ");
-      void addUpdate(task.id, `✓ ${item.text}${who ? ` (${who})` : ""}`, today, true).catch(() => {});
-    }
-  };
-
-  return (
-    <Disclosure title="Nächste Schritte" meta={cl.total > 0 ? `${cl.done}/${cl.total}` : undefined} defaultOpen={cl.total > 0}>
-      <ul className="checklist steps">
-        {task.checklist.map((item, i) => {
-          const persons = stepPersons(item);
-          const hasMeta = persons.length > 0 || !!item.due;
-          return (
-            <li key={i} className="step-item">
-              <input type="checkbox" className="check" checked={item.done} onChange={() => toggle(i)} aria-label="Schritt erledigt" />
-              <div className="step-body">
-                {editing?.i === i ? (
-                  <AutoText
-                    autoFocus
-                    minRows={1}
-                    className="step-edit"
-                    ariaLabel="Schritt bearbeiten"
-                    value={editing.text}
-                    onChange={(v) => setEditing({ i, text: v.replace(/\n/g, " ") })}
-                    onBlur={saveText}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        saveText();
-                      }
-                      if (e.key === "Escape") {
-                        e.stopPropagation();
-                        setEditing(null);
-                      }
-                    }}
-                  />
-                ) : (
-                  <span
-                    className={`step-text${item.done ? " is-done-text" : ""}`}
-                    title="Klicken zum Bearbeiten"
-                    onClick={() => setEditing({ i, text: item.text })}
-                  >
-                    {item.text}
-                  </span>
-                )}
-                {/* Wer/Bis unter dem Text – leer erst beim Darüberfahren, damit lange Texte die volle Breite haben */}
-                {!item.done && (
-                  <div className={`step-meta${hasMeta ? "" : " empty"}`}>
-                    <PeopleChip title="Wer?" emptyLabel="Wer?" value={persons} onChange={(ids) => setItem(i, { person_ids: ids, person_id: undefined })} />
-                    <ChipDate
-                      title="Bis wann?"
-                      value={item.due ?? null}
-                      onChange={(v) => setItem(i, { due: v })}
-                      placeholder="Bis?"
-                      format={(v) => `bis ${ddmm(v)}`}
-                      tone={item.due && item.due < today ? "red" : undefined}
-                    />
-                  </div>
-                )}
-              </div>
-              <button
-                className="icon-btn hover-only"
-                aria-label="Schritt entfernen"
-                onClick={() => save({ checklist: task.checklist.filter((_, j) => j !== i) })}
-              >
-                <X size={14} />
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-      <form
-        className="step-new"
-        onSubmit={(e) => {
-          e.preventDefault();
-          addStep();
-        }}
-      >
-        <AutoText
-          minRows={1}
-          className="step-edit"
-          ariaLabel="Nächsten Schritt hinzufügen"
-          value={text}
-          onChange={(v) => setText(v.replace(/\n/g, " "))}
-          placeholder="Nächsten Schritt hinzufügen… (Enter)"
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              addStep();
-            }
-          }}
-        />
-        <div className="step-meta">
-          <PeopleChip title="Wer?" emptyLabel="Wer?" value={persons} onChange={setPersons} />
-          <ChipDate title="Bis wann?" value={due} onChange={setDue} placeholder="Bis?" format={(v) => `bis ${ddmm(v)}`} />
-        </div>
-      </form>
-    </Disclosure>
-  );
-}
-
 /** Wochentag + Datum, z. B. „Di, 20.10.“ */
 export function shortDay(iso: string): string {
   const [y, m, d] = iso.split("-").map(Number);
@@ -318,81 +161,251 @@ export function shortDay(iso: string): string {
   return `${wd}, ${String(d).padStart(2, "0")}.${String(m).padStart(2, "0")}.`;
 }
 
-/** Ein Satz, Enter – landet mit heutigem Datum im Verlauf. */
-export function UpdateInput({ taskId, compact = false }: { taskId: string; compact?: boolean }) {
-  const { addUpdate } = useTaskActions();
+/**
+ * Meilensteine & Schritte: die Etappen der Aufgabe (◆, mit Zieldatum) und darunter
+ * die konkreten Schritte (wer, bis wann). Alles in derselben Liste der Aufgabe.
+ */
+function PlanEditor({ task, save }: { task: Task; save: (patch: { checklist: ChecklistItem[] }) => void }) {
   const today = todayIso();
+  const list = task.checklist;
+  const groups = groupSteps(list);
+  const hasMilestones = groups.length > 1;
+  const [editing, setEditing] = useState<{ i: number; text: string } | null>(null);
+  // Offenes „+ Schritt“-Feld: Index des Meilensteins, null = ohne Meilenstein, "none" = keins
+  const [addingTo, setAddingTo] = useState<number | null | "none">(list.length === 0 ? null : "none");
+  const [msText, setMsText] = useState("");
+  const [msDue, setMsDue] = useState<string | null>(null);
+  const cl = checklistProgress(task);
+
+  const setItem = (i: number, patch: Partial<ChecklistItem>) => save({ checklist: list.map((c, j) => (j === i ? { ...c, ...patch } : c)) });
+  const remove = (i: number) => save({ checklist: list.filter((_, j) => j !== i) });
+  const saveText = () => {
+    if (!editing) return;
+    const t = editing.text.trim();
+    if (t && t !== list[editing.i]?.text) setItem(editing.i, { text: t });
+    setEditing(null);
+  };
+  const addMilestone = () => {
+    const t = msText.trim();
+    if (!t) return;
+    save({ checklist: [...list, { text: t, done: false, milestone: true, due: msDue }] });
+    setMsText("");
+    setMsDue(null);
+  };
+
+  const textOf = (i: number, className: string) =>
+    editing?.i === i ? (
+      <AutoText
+        autoFocus
+        minRows={1}
+        className="step-edit"
+        ariaLabel="Text bearbeiten"
+        value={editing.text}
+        onChange={(v) => setEditing({ i, text: v.replace(/\n/g, " ") })}
+        onBlur={saveText}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            saveText();
+          }
+          if (e.key === "Escape") {
+            e.stopPropagation();
+            setEditing(null);
+          }
+        }}
+      />
+    ) : (
+      <span className={`${className}${list[i].done ? " is-done-text" : ""}`} title="Klicken zum Bearbeiten" onClick={() => setEditing({ i, text: list[i].text })}>
+        {list[i].text}
+      </span>
+    );
+
+  return (
+    <Disclosure title="Meilensteine & Schritte" meta={cl.total > 0 ? `${cl.done}/${cl.total}` : undefined} defaultOpen>
+      <div className="plan">
+        {groups.map((g) => {
+          const ms = g.milestone !== null ? list[g.milestone] : undefined;
+          const stepsDone = g.steps.filter((i) => list[i].done).length;
+          // Ohne Meilenstein: Gruppe nur zeigen, wenn sie Schritte hat oder es (noch) keine Meilensteine gibt
+          if (!ms && g.steps.length === 0 && hasMilestones && addingTo !== null) return null;
+          return (
+            <div key={g.milestone ?? "top"} className={`plan-group${ms ? " has-ms" : ""}${ms?.done ? " ms-done" : ""}`}>
+              {ms && g.milestone !== null && (
+                <div className="ms-row">
+                  <button
+                    type="button"
+                    className={`ms-toggle${ms.done ? " done" : ""}`}
+                    onClick={() => setItem(g.milestone!, { done: !ms.done })}
+                    aria-label={ms.done ? "Meilenstein wieder öffnen" : "Meilenstein erreicht"}
+                    title={ms.done ? "Erreicht – wieder öffnen" : "Als erreicht markieren"}
+                  >
+                    <Diamond size={16} />
+                  </button>
+                  <div className="ms-body">
+                    {textOf(g.milestone, "ms-text")}
+                    <div className="step-meta">
+                      {g.steps.length > 0 && <span className="muted small">{stepsDone}/{g.steps.length} Schritte</span>}
+                      {!ms.done && (
+                        <ChipDate
+                          title="Zieldatum"
+                          value={ms.due ?? null}
+                          onChange={(v) => setItem(g.milestone!, { due: v })}
+                          placeholder="Ziel?"
+                          format={(v) => `Ziel ${ddmm(v)}`}
+                          tone={ms.due && ms.due < today ? "red" : undefined}
+                        />
+                      )}
+                    </div>
+                  </div>
+                  <button className="icon-btn hover-only" aria-label="Meilenstein entfernen" title="Meilenstein entfernen (Schritte bleiben)" onClick={() => remove(g.milestone!)}>
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
+              <ul className="checklist steps">
+                {g.steps.map((i) => {
+                  const item = list[i];
+                  const persons = stepPersons(item);
+                  const hasMeta = persons.length > 0 || !!item.due;
+                  return (
+                    <li key={i} className="step-item">
+                      <input type="checkbox" className="check" checked={item.done} onChange={() => setItem(i, { done: !item.done })} aria-label="Schritt erledigt" />
+                      <div className="step-body">
+                        {textOf(i, "step-text")}
+                        {!item.done && (
+                          <div className={`step-meta${hasMeta ? "" : " no-meta"}`}>
+                            <PeopleChip title="Wer?" emptyLabel="Wer?" value={persons} onChange={(ids) => setItem(i, { person_ids: ids, person_id: undefined })} />
+                            <ChipDate
+                              title="Bis wann?"
+                              value={item.due ?? null}
+                              onChange={(v) => setItem(i, { due: v })}
+                              placeholder="Bis?"
+                              format={(v) => `bis ${ddmm(v)}`}
+                              tone={item.due && item.due < today ? "red" : undefined}
+                            />
+                          </div>
+                        )}
+                      </div>
+                      <button className="icon-btn hover-only" aria-label="Schritt entfernen" onClick={() => remove(i)}>
+                        <X size={14} />
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+              {addingTo === g.milestone ? (
+                <StepAddForm
+                  onAdd={(step) => save({ checklist: insertStep(list, step, g.milestone) })}
+                  onClose={() => setAddingTo("none")}
+                  autoFocus={list.length > 0}
+                />
+              ) : (
+                !ms?.done && (
+                  <button className="link-btn small plan-add" onClick={() => setAddingTo(g.milestone)}>
+                    <ListPlus size={14} /> Schritt
+                  </button>
+                )
+              )}
+            </div>
+          );
+        })}
+        <form
+          className="ms-new"
+          onSubmit={(e) => {
+            e.preventDefault();
+            addMilestone();
+          }}
+        >
+          <Diamond size={16} className="ms-new-icon" aria-hidden />
+          <AutoText
+            minRows={1}
+            className="step-edit"
+            ariaLabel="Meilenstein hinzufügen"
+            value={msText}
+            onChange={(v) => setMsText(v.replace(/\n/g, " "))}
+            placeholder="Meilenstein hinzufügen… (Enter)"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                addMilestone();
+              }
+            }}
+          />
+          <ChipDate title="Zieldatum" value={msDue} onChange={setMsDue} placeholder="Ziel?" format={(v) => `Ziel ${ddmm(v)}`} />
+        </form>
+      </div>
+    </Disclosure>
+  );
+}
+
+/** Neuer Schritt: Text, optional Wer/Bis, Enter – das Feld bleibt für den nächsten offen. */
+function StepAddForm({ onAdd, onClose, autoFocus }: { onAdd: (step: ChecklistItem) => void; onClose: () => void; autoFocus: boolean }) {
   const [text, setText] = useState("");
-  // Datum vorbelegt mit heute – änderbar, z. B. für die Mail von gestern
-  const [date, setDate] = useState(today);
-  const [busy, setBusy] = useState(false);
+  const [persons, setPersons] = useState<string[]>([]);
+  const [due, setDue] = useState<string | null>(null);
+  const add = () => {
+    if (!text.trim()) return;
+    onAdd({ text: text.trim(), done: false, person_ids: persons, due });
+    setText("");
+    setPersons([]);
+    setDue(null);
+  };
   return (
     <form
-      className={`update-input${compact ? " compact" : ""}`}
-      onSubmit={async (e) => {
+      className="step-new"
+      onSubmit={(e) => {
         e.preventDefault();
-        const note = text.trim();
-        if (!note || busy) return;
-        setBusy(true);
-        try {
-          await addUpdate(taskId, note, date);
-          setText("");
-          setDate(today);
-        } catch {
-          /* Fehler wurde gemeldet; Text bleibt stehen */
-        } finally {
-          setBusy(false);
-        }
+        add();
       }}
     >
-      <MessageSquarePlus size={compact ? 14 : 16} className="update-icon" aria-hidden />
-      <input
+      <AutoText
+        autoFocus={autoFocus}
+        minRows={1}
+        className="step-edit"
+        ariaLabel="Schritt hinzufügen"
         value={text}
-        onChange={(e) => setText(e.target.value)}
-        placeholder={compact ? "Update notieren…" : "Update hinzufügen… (Enter)"}
-        aria-label="Update hinzufügen"
+        onChange={(v) => setText(v.replace(/\n/g, " "))}
+        onBlur={() => !text.trim() && persons.length === 0 && !due && onClose()}
+        placeholder="Schritt hinzufügen… (Enter)"
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            add();
+          }
+          if (e.key === "Escape") {
+            e.stopPropagation();
+            onClose();
+          }
+        }}
       />
-      {!compact && (
-        <ChipDate
-          title="Datum des Updates"
-          value={date === today ? null : date}
-          onChange={(v) => setDate(v ?? today)}
-          placeholder="heute"
-          format={shortDay}
-        />
-      )}
+      <div className="step-meta">
+        <PeopleChip title="Wer?" emptyLabel="Wer?" value={persons} onChange={setPersons} />
+        <ChipDate title="Bis wann?" value={due} onChange={setDue} placeholder="Bis?" format={(v) => `bis ${ddmm(v)}`} />
+      </div>
     </form>
   );
 }
 
-/** Alle Updates als Zeitleiste, neueste oben; einzelne Einträge löschbar. */
-export function UpdateTimeline({ taskId, limit = 5 }: { taskId: string; limit?: number }) {
-  const { allDb, trash } = useStore();
-  const [all, setAll] = useState(false);
-  const entries = allDb.task_followups
-    .filter((f) => f.task_id === taskId && f.deleted_at === null)
-    .sort((a, b) => (a.date === b.date ? (a.created_at < b.created_at ? 1 : -1) : a.date < b.date ? 1 : -1));
-  if (entries.length === 0) return null;
-  const shown = all ? entries : entries.slice(0, limit);
+/** Im Meeting: vereinbarten Schritt direkt notieren – landet beim aktuellen Meilenstein der Aufgabe. */
+export function StepInput({ task }: { task: Task }) {
+  const { update, toast } = useStore();
+  const [text, setText] = useState("");
   return (
-    <ol className="timeline" aria-label="Verlauf">
-      {shown.map((f) => (
-        <li key={f.id}>
-          <span className="timeline-date">{shortDay(f.date)}</span>
-          <span className="timeline-text">{f.note}</span>
-          <button className="icon-btn hover-only" title="Eintrag löschen" onClick={() => void trash("task_followups", f.id, f.note || "Eintrag").catch(() => {})}>
-            <X size={14} />
-          </button>
-        </li>
-      ))}
-      {entries.length > limit && (
-        <li>
-          <button className="link-btn small" onClick={() => setAll(!all)}>
-            {all ? "Weniger anzeigen" : `Alle ${entries.length} anzeigen`}
-          </button>
-        </li>
-      )}
-    </ol>
+    <form
+      className="update-input compact"
+      onSubmit={(e) => {
+        e.preventDefault();
+        const t = text.trim();
+        if (!t) return;
+        void update("tasks", task.id, { checklist: insertStep(task.checklist, { text: t, done: false, person_ids: [], due: null }, "current") })
+          .then(() => toast("Schritt notiert"))
+          .catch(() => {});
+        setText("");
+      }}
+    >
+      <ListPlus size={14} className="update-icon" aria-hidden />
+      <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Schritt notieren…" aria-label="Schritt notieren" />
+    </form>
   );
 }
 
@@ -568,13 +581,7 @@ function TaskEditor({
         </div>
       )}
 
-      <StepsEditor task={task} save={save} />
-
-      <section className="updates">
-        <h3 className="section-label">Verlauf</h3>
-        <UpdateInput taskId={task.id} />
-        <UpdateTimeline taskId={task.id} />
-      </section>
+      <PlanEditor task={task} save={save} />
 
       {/* Schlank halten: Beschreibung nur, wenn schon eine existiert (keine neuen mehr anlegen) */}
       {hasDescription && (
