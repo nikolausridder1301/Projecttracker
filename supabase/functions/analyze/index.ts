@@ -3,7 +3,7 @@
 //
 // Secrets (Supabase → Edge Functions → Secrets):
 //   GEMINI_API_KEY    – Schlüssel aus aistudio.google.com (hat Vorrang, Gratis-Kontingent möglich)
-//   GEMINI_MODEL      – optional, Standard „gemini-2.5-flash“
+//   GEMINI_MODEL      – optional, Standard „gemini-3.5-flash-lite“ (schnell)
 //   ANTHROPIC_API_KEY – alternativ: Schlüssel aus console.anthropic.com
 //   ANTHROPIC_MODEL   – optional, Standard „claude-sonnet-5-5“
 import { createClient } from "jsr:@supabase/supabase-js@2";
@@ -110,15 +110,16 @@ function toGemini(schema: any): any {
  * nicht an Supabases Grenze (150 s) scheitert: hängt ein Modell oder ist es überlastet, kommt das nächste.
  */
 async function askGemini(key: string, system: string, user: string): Promise<unknown> {
-  const models = [Deno.env.get("GEMINI_MODEL") ?? "gemini-2.5-flash", "gemini-3.8-flash", "gemini-2.5-flash-lite"];
+  // Gemini 2.5 ist für neue Nutzer abgeschaltet – aktuelle Gratis-Modelle, das schnellste zuerst
+  const models = [Deno.env.get("GEMINI_MODEL") ?? "gemini-3.5-flash-lite", "gemini-3.6-flash", "gemini-3.8-flash"];
   const busy = (status: number) => status === 503 || status === 429 || status === 500;
-  const deadline = Date.now() + 130_000;
+  const deadline = Date.now() + 135_000;
   let last = "";
   for (const model of [...new Set(models)]) {
     const left = deadline - Date.now();
     if (left < 10_000) break;
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), Math.min(55_000, left));
+    const timer = setTimeout(() => ctrl.abort(), Math.min(60_000, left));
     try {
       const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
         method: "POST",
@@ -127,7 +128,13 @@ async function askGemini(key: string, system: string, user: string): Promise<unk
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: system }] },
           contents: [{ role: "user", parts: [{ text: user }] }],
-          generationConfig: { temperature: 0.2, responseMimeType: "application/json", responseSchema: toGemini(SCHEMA) },
+          generationConfig: {
+            temperature: 0.2,
+            responseMimeType: "application/json",
+            responseSchema: toGemini(SCHEMA),
+            // Wenig „Nachdenken“ – sonst dauert die Antwort zu lange; für Auszüge reicht das
+            thinkingConfig: { thinkingLevel: "low" },
+          },
         }),
       });
       if (res.ok) {
@@ -138,8 +145,8 @@ async function askGemini(key: string, system: string, user: string): Promise<unk
       }
       last = `${model} antwortet mit ${res.status}: ${(await res.text()).slice(0, 200)}`;
       console.error(last);
-      // Überlastet oder unbekanntes Modell: nächstes Modell; sonst abbrechen
-      if (!busy(res.status) && res.status !== 404) throw new Error(last);
+      // Überlastet, unbekanntes Modell oder Einstellung nicht unterstützt (400): nächstes Modell; sonst abbrechen
+      if (!busy(res.status) && res.status !== 404 && res.status !== 400) throw new Error(last);
     } catch (e) {
       if (e instanceof DOMException && e.name === "AbortError") {
         last = `${model} hat nicht rechtzeitig geantwortet`;
