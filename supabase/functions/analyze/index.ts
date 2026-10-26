@@ -1,10 +1,9 @@
-// KI-Auswertung von Protokollen, Transkripten und E-Mails über Langdock (EU, Anthropic-kompatibel).
+// KI-Auswertung von Protokollen, Transkripten und E-Mails mit Claude (Anthropic-API).
 // Liefert nur VORSCHLÄGE – angelegt wird erst, wenn Nikolaus sie in der App bestätigt.
 //
 // Secrets (Supabase → Edge Functions → Secrets):
-//   LANGDOCK_API_KEY  – API-Schlüssel aus Langdock (Completion-API)
-//   LANGDOCK_MODEL    – optional, Standard „claude-sonnet-4-6-default“
-//   LANGDOCK_REGION   – optional, Standard „eu“
+//   ANTHROPIC_API_KEY – API-Schlüssel aus console.anthropic.com
+//   ANTHROPIC_MODEL   – optional, Standard „claude-sonnet-5-5“
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const CORS = {
@@ -95,10 +94,9 @@ Deno.serve(async (req) => {
   const { data: allowed, error: authError } = await supabase.from("projects").select("id").limit(1);
   if (authError || !allowed || allowed.length === 0) return json({ error: "Kein Zugriff" }, 403);
 
-  const key = Deno.env.get("LANGDOCK_API_KEY");
-  if (!key) return json({ error: "KI ist noch nicht eingerichtet (LANGDOCK_API_KEY fehlt in Supabase)." }, 503);
-  const model = Deno.env.get("LANGDOCK_MODEL") ?? "claude-sonnet-4-6-default";
-  const region = Deno.env.get("LANGDOCK_REGION") ?? "eu";
+  const key = Deno.env.get("ANTHROPIC_API_KEY");
+  if (!key) return json({ error: "KI ist noch nicht eingerichtet (ANTHROPIC_API_KEY fehlt in Supabase)." }, 503);
+  const model = Deno.env.get("ANTHROPIC_MODEL") ?? "claude-sonnet-5-5";
 
   let payload: { text?: string; context?: unknown; today?: string; files?: string[] };
   try {
@@ -135,9 +133,9 @@ Deno.serve(async (req) => {
     text,
   ].join("\n");
 
-  const res = await fetch(`https://api.langdock.com/anthropic/${region}/v1/messages`, {
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
-    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
     body: JSON.stringify({
       model,
       max_tokens: 4096,
