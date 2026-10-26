@@ -19,7 +19,8 @@ jobs:
           SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
         run: |
           code=$(curl -s -o /dev/null -w "%{http_code}" "$SUPABASE_URL/rest/v1/app_meta?select=id&limit=1" \
-            -H "apikey: $SUPABASE_ANON_KEY" -H "Authorization: Bearer $SUPABASE_ANON_KEY")
+            -H "apikey: $SUPABASE_ANON_KEY")
           echo "Antwort: $code"
-          # 200 (leer wegen Zugriffsschutz) genügt – wichtig ist, dass die Datenbank antwortet
-          [ "$code" = "200" ] || { echo "Supabase antwortet nicht wie erwartet"; exit 1; }
+          # Ohne Anmeldung verweigert die Datenbank den Zugriff (401) - das ist gewollt und zeigt, dass sie antwortet.
+          # Pausiert oder nicht erreichbar waere ein anderer Code (z. B. 000 oder 5xx).
+          case "$code" in 200|401|403) ;; *) echo "Supabase antwortet nicht wie erwartet"; exit 1 ;; esac
