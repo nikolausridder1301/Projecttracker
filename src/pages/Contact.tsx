@@ -53,7 +53,7 @@ function DetailPage({ target }: { target: MeetingTarget }) {
  * Gemeinsame Ansicht für Kontakte und Meeting. Mit `picker` (Meeting): schlanke Zeile aus Auswahl und
  * „Protokoll starten“ statt des Kontakt-Kopfs.
  */
-export function ContactView({ target, picker, actions }: { target: MeetingTarget; picker?: React.ReactNode; actions?: React.ReactNode }) {
+export function ContactView({ target, picker }: { target: MeetingTarget; picker?: React.ReactNode }) {
   const { db, insert, toast } = useStore();
   const { companies, people, personById, me } = useLookups();
   const { openNote } = useUi();
@@ -132,7 +132,6 @@ export function ContactView({ target, picker, actions }: { target: MeetingTarget
       {picker ? (
         <div className="meeting-bar">
           {picker}
-          {actions}
           <button className="btn primary" onClick={() => void startProtocol()} title="Meeting-Protokoll anlegen">
             <NotebookPen size={16} /> Protokoll starten
           </button>

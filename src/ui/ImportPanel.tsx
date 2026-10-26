@@ -175,11 +175,11 @@ export function ImportPanel({ focus, onClose }: { focus: { personId?: Id | null;
   return (
     <>
       <div className="panel-backdrop capture-layer" onClick={() => !busy && onClose()} />
-      <aside className="panel wide capture-layer" aria-label="Protokoll hochladen">
+      <aside className="panel wide capture-layer" aria-label="Datei hochladen">
         <div className="editor">
           <div className="panel-head">
             <Sparkles size={18} className="tone-blue" />
-            <h2 className="panel-title">{phase === "review" ? "Vorschläge prüfen" : "Protokoll oder E-Mail auswerten"}</h2>
+            <h2 className="panel-title">{phase === "review" ? "Vorschläge prüfen" : "Datei hochladen und auswerten"}</h2>
             <span className="spacer" />
             <button className="icon-btn" onClick={onClose} aria-label="Schließen" title="Schließen (Esc)" disabled={busy}>
               <X size={18} />
