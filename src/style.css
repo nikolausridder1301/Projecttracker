@@ -2586,3 +2586,30 @@ section.card h2 + p {
   display: block;
   width: 100%;
 }
+
+/* Meeting: Auswahl und „Protokoll starten“ in einer Zeile, Schrift wie im Rest der App */
+.meeting-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.meeting-bar .meeting-picker {
+  flex: 1 1 320px;
+  width: auto;
+  max-width: 560px;
+  height: var(--control-h);
+  margin: 0;
+  padding: 0 12px;
+  font-size: var(--fs-base);
+}
+.meeting-bar .btn {
+  height: var(--control-h);
+}
+.meeting-empty {
+  padding: 14px 16px;
+}
+.meeting-empty-title {
+  font-size: var(--fs-base);
+}
