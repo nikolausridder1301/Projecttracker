@@ -105,22 +105,37 @@ function toGemini(schema: any): any {
   return out;
 }
 
+/** Gemini-Modelle der Reihe nach: bei Überlastung (503/429/500) kurz warten, erneut versuchen, dann nächstes Modell. */
 async function askGemini(key: string, system: string, user: string): Promise<unknown> {
-  const model = Deno.env.get("GEMINI_MODEL") ?? "gemini-3.8-flash";
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-    method: "POST",
-    headers: { "x-goog-api-key": key, "content-type": "application/json" },
-    body: JSON.stringify({
-      systemInstruction: { parts: [{ text: system }] },
-      contents: [{ role: "user", parts: [{ text: user }] }],
-      generationConfig: { temperature: 0.2, responseMimeType: "application/json", responseSchema: toGemini(SCHEMA) },
-    }),
-  });
-  if (!res.ok) throw new Error(`Gemini antwortet mit ${res.status}: ${(await res.text()).slice(0, 300)}`);
-  const data = await res.json();
-  const text = (data.candidates?.[0]?.content?.parts ?? []).map((p: { text?: string }) => p.text ?? "").join("");
-  if (!text) throw new Error("Keine Vorschläge erhalten");
-  return JSON.parse(text);
+  const models = [Deno.env.get("GEMINI_MODEL") ?? "gemini-3.8-flash", "gemini-2.5-flash", "gemini-3.5-flash-lite"];
+  const busy = (status: number) => status === 503 || status === 429 || status === 500;
+  let last = "";
+  for (const model of [...new Set(models)]) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      if (attempt > 0) await new Promise((r) => setTimeout(r, 2500));
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+        method: "POST",
+        headers: { "x-goog-api-key": key, "content-type": "application/json" },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: system }] },
+          contents: [{ role: "user", parts: [{ text: user }] }],
+          generationConfig: { temperature: 0.2, responseMimeType: "application/json", responseSchema: toGemini(SCHEMA) },
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const text = (data.candidates?.[0]?.content?.parts ?? []).map((p: { text?: string }) => p.text ?? "").join("");
+        if (!text) throw new Error("Keine Vorschläge erhalten");
+        return JSON.parse(text);
+      }
+      last = `${model} antwortet mit ${res.status}: ${(await res.text()).slice(0, 200)}`;
+      console.error(last);
+      // Überlastet: erneut bzw. nächstes Modell; unbekanntes Modell (404): gleich nächstes; sonst abbrechen
+      if (res.status === 404) break;
+      if (!busy(res.status)) throw new Error(last);
+    }
+  }
+  throw new Error(`Gemini ist gerade überlastet – bitte in ein paar Minuten erneut versuchen. (${last})`);
 }
 
 async function askClaude(key: string, system: string, user: string): Promise<unknown> {
