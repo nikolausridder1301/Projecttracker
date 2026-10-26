@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { demoProposal, type AnalyzeContext } from "../logic/proposal";
 import { demoSeed } from "./seed";
 import { TABLE_NAMES, type Db, type Id, type NewRow, type Patch, type TableName, type Tables } from "./types";
 
@@ -14,6 +15,8 @@ export interface Backend {
   update<K extends TableName>(table: K, id: Id, patch: Patch<K>): Promise<Tables[K]>;
   /** Endgültig löschen (nur aus dem Papierkorb). */
   remove(table: TableName, id: Id): Promise<void>;
+  /** KI-Vorschläge zu einem Dokument (Rohantwort; die App bereinigt sie). */
+  analyze(input: { text: string; context: AnalyzeContext; today: string; files: string[] }): Promise<unknown>;
 }
 
 // ---------------------------------------------------------------------------
@@ -70,6 +73,21 @@ function supabaseBackend(client: SupabaseClient): Backend {
     async remove(table, id) {
       const { error } = await client.from(table).delete().eq("id", id);
       fail(error);
+    },
+    async analyze(input) {
+      const { data, error } = await client.functions.invoke("analyze", { body: input });
+      if (error) {
+        // Die Funktion liefert eine verständliche Meldung im Text der Antwort
+        let message = "KI-Auswertung fehlgeschlagen.";
+        try {
+          const body = await (error as { context?: Response }).context?.json();
+          if (body?.error) message = body.error;
+        } catch {
+          /* Standardmeldung */
+        }
+        throw new Error(message);
+      }
+      return (data as { proposal?: unknown }).proposal;
     },
   };
 }
@@ -162,6 +180,10 @@ function demoBackend(): Backend {
       rows[i] = { ...rows[i], ...patch, updated_at: new Date().toISOString() };
       save();
       return structuredClone(rows[i]) as never;
+    },
+    async analyze(input) {
+      await delay();
+      return demoProposal(input.text, input.context, input.today);
     },
     async remove(table, id) {
       await delay();
