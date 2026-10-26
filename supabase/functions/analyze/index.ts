@@ -163,6 +163,23 @@ async function askGemini(key: string, system: string, user: string): Promise<unk
   throw new Error(`Gemini ist gerade überlastet oder zu langsam – bitte in ein paar Minuten erneut versuchen. (${last})`);
 }
 
+/**
+ * Vorschläge aus einer Claude-Antwort lesen: bevorzugt der Werkzeug-Aufruf, sonst JSON im Text.
+ * Neuere Modelle erlauben kein erzwungenes Werkzeug – deshalb tool_choice „auto“ plus klare Anweisung.
+ */
+// deno-lint-ignore no-explicit-any
+function readClaude(data: any): unknown {
+  const content = data.content ?? [];
+  const block = content.find((c: { type: string }) => c.type === "tool_use");
+  if (block) return block.input;
+  const text = content.filter((c: { type: string }) => c.type === "text").map((c: { text: string }) => c.text).join("");
+  const match = text.match(/\{[\s\S]*\}/);
+  if (!match) throw new Error("Keine Vorschläge erhalten");
+  return JSON.parse(match[0]);
+}
+
+const TOOL_HINT = "Antworte ausschließlich, indem du das Werkzeug „vorschlaege“ genau einmal aufrufst – ohne weiteren Text.";
+
 /** Langdock (EU, Anthropic-kompatibel). Modell aus LANGDOCK_MODEL, sonst aus der Modellliste des Workspace. */
 async function askLangdock(key: string, system: string, user: string): Promise<unknown> {
   const base = "https://api.langdock.com/anthropic/eu/v1";
@@ -185,17 +202,14 @@ async function askLangdock(key: string, system: string, user: string): Promise<u
       body: JSON.stringify({
         model,
         max_tokens: 4096,
-        system,
+        system: `${system}\n${TOOL_HINT}`,
         tools: [{ name: "vorschlaege", description: "Vorschläge für den Projekttracker", input_schema: SCHEMA }],
-        tool_choice: { type: "tool", name: "vorschlaege" },
+        tool_choice: { type: "auto" },
         messages: [{ role: "user", content: user }],
       }),
     });
     if (!res.ok) throw new Error(`Langdock (${model}) antwortet mit ${res.status}: ${(await res.text()).slice(0, 300)}`);
-    const data = await res.json();
-    const block = (data.content ?? []).find((c: { type: string }) => c.type === "tool_use");
-    if (!block) throw new Error("Keine Vorschläge erhalten");
-    return block.input;
+    return readClaude(await res.json());
   } catch (e) {
     if (e instanceof DOMException && e.name === "AbortError") throw new Error(`Langdock (${model}) hat nicht rechtzeitig geantwortet`);
     throw e;
@@ -212,17 +226,14 @@ async function askClaude(key: string, system: string, user: string): Promise<unk
     body: JSON.stringify({
       model,
       max_tokens: 4096,
-      system,
+      system: `${system}\n${TOOL_HINT}`,
       tools: [{ name: "vorschlaege", description: "Vorschläge für den Projekttracker", input_schema: SCHEMA }],
-      tool_choice: { type: "tool", name: "vorschlaege" },
+      tool_choice: { type: "auto" },
       messages: [{ role: "user", content: user }],
     }),
   });
   if (!res.ok) throw new Error(`Claude antwortet mit ${res.status}: ${(await res.text()).slice(0, 300)}`);
-  const data = await res.json();
-  const block = (data.content ?? []).find((c: { type: string }) => c.type === "tool_use");
-  if (!block) throw new Error("Keine Vorschläge erhalten");
-  return block.input;
+  return readClaude(await res.json());
 }
 
 Deno.serve(async (req) => {
