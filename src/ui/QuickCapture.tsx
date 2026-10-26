@@ -334,7 +334,7 @@ function CaptureDialog({
   );
 }
 
-/** Link-Entwurf: Titel, Adresse, Firma, Kategorie. */
+/** Link-Entwurf: Titel, Firma, Kategorie, Adresse, Beschreibung. */
 function LinkDraftForm({
   link,
   onChange,
@@ -356,7 +356,6 @@ function LinkDraftForm({
       <div className="title-field">
         <input autoFocus className="capture-input" placeholder="Titel des Links" value={link.title} onChange={(e) => onChange({ title: e.target.value })} onKeyDown={enter} />
       </div>
-      <input placeholder="https://…sharepoint.com/…" value={link.url} onChange={(e) => onChange({ url: e.target.value })} onKeyDown={enter} />
       <div className="chips">
         <CompaniesChip value={link.company_ids} onChange={(ids) => onChange({ company_ids: ids })} />
         <ChipSelect
@@ -367,6 +366,8 @@ function LinkDraftForm({
           onChange={(c) => onChange({ category_id: c || null })}
         />
       </div>
+      {/* Wie bei allen Arten: Chips direkt unter dem Titel, weitere Felder darunter – damit beim Wechseln nichts springt */}
+      <input placeholder="https://…sharepoint.com/…" value={link.url} onChange={(e) => onChange({ url: e.target.value })} onKeyDown={enter} />
       <input placeholder="Beschreibung (optional)" value={link.description} onChange={(e) => onChange({ description: e.target.value })} onKeyDown={enter} />
     </>
   );
