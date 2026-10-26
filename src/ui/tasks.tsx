@@ -593,7 +593,7 @@ export function TaskForm({
           value={description}
           onChange={setDescription}
           onBlur={() => description !== task.description && save({ description })}
-          placeholder="Beschreibung"
+          placeholder="Hintergrund"
           minRows={2}
         />
       )}

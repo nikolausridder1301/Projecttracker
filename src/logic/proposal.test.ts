@@ -26,7 +26,7 @@ describe("KI-Vorschläge absichern", () => {
       {
         note: { title: "Jour fixe", kind: "meeting", summary: "- A", meeting_date: "2026-10-26", company_ids: ["c1", "x"], participant_ids: ["p1", "zz"] },
         decisions: [{ title: "Export per API", body: "", company_ids: [], quote: "q" }, { title: "" }],
-        tasks: [{ title: "Freigabe einholen", company_ids: ["c1"], assignee_person_ids: ["p1", "me", "x"], due_date: "Freitag", steps: ["a", ""], quote: "" }],
+        tasks: [{ title: "Freigabe einholen", context: " Hintergrund ", company_ids: ["c1"], assignee_person_ids: ["p1", "me", "x"], due_date: "Freitag", steps: ["a", ""], quote: "" }],
         steps: [
           { task_id: "t1", text: "Termin klären", person_ids: ["p1"], due: "2026-10-30", quote: "" },
           { task_id: "unbekannt", text: "x", person_ids: [], due: null, quote: "" },
@@ -41,6 +41,7 @@ describe("KI-Vorschläge absichern", () => {
     expect(p.tasks[0].assignee_person_ids).toEqual(["p1"]);
     expect(p.tasks[0].due_date).toBeNull();
     expect(p.tasks[0].steps).toEqual(["a"]);
+    expect(p.tasks[0].context).toBe("Hintergrund");
     expect(p.steps.map((s) => s.task_id)).toEqual(["t1"]);
   });
   it("leere oder kaputte Antwort ergibt keine Vorschläge", () => {

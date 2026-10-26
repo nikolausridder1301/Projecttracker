@@ -88,6 +88,10 @@ export function ImportPanel({ focus, onClose }: { focus: { personId?: Id | null;
     try {
       let noteId: Id | null = null;
       const source = usable.map((f) => f.name).join(", ");
+      const withSource = (text: string, quote: string) =>
+        [text.trim(), [`Quelle: ${source}${review.note?.meeting_date ? ` (${formatDate(review.note.meeting_date)})` : ""}`, quote && `„${quote}“`].filter(Boolean).join(" – ")]
+          .filter(Boolean)
+          .join("\n\n");
       if (review.note?.on) {
         const n = review.note;
         const [created] = await insert("notes", [
@@ -110,7 +114,8 @@ export function ImportPanel({ focus, onClose }: { focus: { personId?: Id | null;
           "notes",
           decisions.map((d) => ({
             title: d.title,
-            body: d.body,
+            // Herkunft festhalten, damit die Entscheidung später nachvollziehbar bleibt
+            body: withSource(d.body, d.quote),
             kind: "decision" as const,
             company_ids: fallbackCompany(d.company_ids),
             topic_id: null,
@@ -126,7 +131,7 @@ export function ImportPanel({ focus, onClose }: { focus: { personId?: Id | null;
           "tasks",
           tasks.map((t) => ({
             title: t.title,
-            description: "",
+            description: withSource(t.context, t.quote),
             company_ids: fallbackCompany(t.company_ids),
             topic_id: null,
             assignee_person_ids: t.assignee_person_ids,
@@ -300,7 +305,7 @@ export function ImportPanel({ focus, onClose }: { focus: { personId?: Id | null;
                   <div className="chips">
                     <CompaniesChip value={d.company_ids} onChange={(ids) => set("decisions", i, { company_ids: ids })} />
                   </div>
-                  <AutoText value={d.body} onChange={(v) => set("decisions", i, { body: v })} minRows={1} placeholder="Begründung (optional)" />
+                  <AutoText value={d.body} onChange={(v) => set("decisions", i, { body: v })} minRows={1} placeholder="Kontext und Begründung" />
                   <Quote text={d.quote} />
                 </section>
               ))}
@@ -321,6 +326,7 @@ export function ImportPanel({ focus, onClose }: { focus: { personId?: Id | null;
                       format={(v) => `fällig ${ddmm(v)}`}
                     />
                   </div>
+                  <AutoText value={t.context} onChange={(v) => set("tasks", i, { context: v })} minRows={2} placeholder="Hintergrund (wird bei der Aufgabe gespeichert)" />
                   {t.steps.length > 0 && (
                     <ul className="proposal-steps">
                       {t.steps.map((s, j) => (
