@@ -277,6 +277,7 @@ Seitenleiste als Menü; Heute, Abhaken, Schnellerfassung, Schritte und alle Dial
 | Eigene Person | „Ich“ ist ein echter Kontakt (`people.is_me`, Nikolaus Ridder bei der Holding) statt eines Sondereintrags; Teilnehmer in Protokollen, Auswahl bei Verantwortlich |
 | Protokoll-Ansicht | Text zuerst, offene Punkte darunter; „Aufgabe hinzufügen“ statt „Aufgabe daraus“; kein eigener Aufgaben-Block im Protokoll |
 | Ein Formular für Neu und Ansehen | „+ Neu“ und das Öffnen eines Eintrags zeigen dieselben Formulare (Aufgabe, Notiz/Protokoll/Entscheidung); Neu hat Reiter für die Art und „Speichern“, Ansehen speichert sofort. Bei ungespeicherten Eingaben fragt ein Dialog nach (Speichern/Verwerfen/Zurück). Das Öffnen bleibt nötig, um Vorhandenes zu bearbeiten. Links werden weiter in der Liste bearbeitet |
+| Pausieren verhindern | Der Gratis-Plan von Supabase pausiert das Projekt nach etwa einer Woche ohne Zugriff (dann ist keine Anmeldung möglich); ein GitHub-Workflow `keep-alive` ruft alle 3 Tage die Datenbank an (nur öffentlicher Schlüssel) |
 | Filterleisten | Firmenfilter als Mehrfach-Dropdown auf Aufgaben, Notizen, Links, Tacto; keine Browser-Auswahlfelder mehr in Filtern |
 | Priorität | Nur noch Fahne „Wichtig“ (an/aus); „Niedrig“ entfällt |
 | Status | Offen · Blockiert · Erledigt; „In Arbeit“ entfällt |
