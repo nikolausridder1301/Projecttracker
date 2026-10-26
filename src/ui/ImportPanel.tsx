@@ -234,7 +234,7 @@ export function ImportPanel({ focus, onClose }: { focus: { personId?: Id | null;
                 </ul>
               )}
               <p className="muted small">
-                Die Dateien werden nur gelesen, nicht gespeichert. Der Text geht zur Auswertung an Claude (Anthropic). Angelegt wird erst, was du
+                Die Dateien werden nur gelesen, nicht gespeichert. Der Text geht zur Auswertung an Google Gemini. Angelegt wird erst, was du
                 im nächsten Schritt bestätigst.
               </p>
               <div className="capture-foot">
