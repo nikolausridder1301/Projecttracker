@@ -1,8 +1,10 @@
-// KI-Auswertung von Protokollen, Transkripten und E-Mails – mit Google Gemini oder Claude.
+// KI-Auswertung von Protokollen, Transkripten und E-Mails – über Langdock (EU), sonst Gemini oder Claude.
 // Liefert nur VORSCHLÄGE – angelegt wird erst, wenn Nikolaus sie in der App bestätigt.
 //
 // Secrets (Supabase → Edge Functions → Secrets):
-//   GEMINI_API_KEY    – Schlüssel aus aistudio.google.com (hat Vorrang, Gratis-Kontingent möglich)
+//   LANGDOCK_API_KEY  – Schlüssel aus Langdock (nur „Completion API“) – hat Vorrang, EU-Hosting
+//   LANGDOCK_MODEL    – optional, sonst das erste Claude-Sonnet-Modell aus Langdocks Modellliste
+//   GEMINI_API_KEY    – Ersatz: Schlüssel aus aistudio.google.com
 //   GEMINI_MODEL      – optional, Standard „gemini-3.5-flash-lite“ (schnell)
 //   ANTHROPIC_API_KEY – alternativ: Schlüssel aus console.anthropic.com
 //   ANTHROPIC_MODEL   – optional, Standard „claude-sonnet-5-5“
@@ -161,6 +163,47 @@ async function askGemini(key: string, system: string, user: string): Promise<unk
   throw new Error(`Gemini ist gerade überlastet oder zu langsam – bitte in ein paar Minuten erneut versuchen. (${last})`);
 }
 
+/** Langdock (EU, Anthropic-kompatibel). Modell aus LANGDOCK_MODEL, sonst aus der Modellliste des Workspace. */
+async function askLangdock(key: string, system: string, user: string): Promise<unknown> {
+  const base = "https://api.langdock.com/anthropic/eu/v1";
+  const auth = { Authorization: `Bearer ${key}` };
+  let model = Deno.env.get("LANGDOCK_MODEL");
+  if (!model) {
+    const res = await fetch(`${base}/models`, { headers: auth });
+    if (!res.ok) throw new Error(`Langdock-Modellliste antwortet mit ${res.status}: ${(await res.text()).slice(0, 200)}`);
+    const ids: string[] = ((await res.json()).data ?? []).map((m: { id: string }) => m.id);
+    model = ids.find((id) => /sonnet/i.test(id)) ?? ids.find((id) => /claude/i.test(id)) ?? ids[0];
+    if (!model) throw new Error("Langdock bietet kein passendes Modell an");
+  }
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 120_000);
+  try {
+    const res = await fetch(`${base}/messages`, {
+      method: "POST",
+      signal: ctrl.signal,
+      headers: { ...auth, "content-type": "application/json" },
+      body: JSON.stringify({
+        model,
+        max_tokens: 4096,
+        system,
+        tools: [{ name: "vorschlaege", description: "Vorschläge für den Projekttracker", input_schema: SCHEMA }],
+        tool_choice: { type: "tool", name: "vorschlaege" },
+        messages: [{ role: "user", content: user }],
+      }),
+    });
+    if (!res.ok) throw new Error(`Langdock (${model}) antwortet mit ${res.status}: ${(await res.text()).slice(0, 300)}`);
+    const data = await res.json();
+    const block = (data.content ?? []).find((c: { type: string }) => c.type === "tool_use");
+    if (!block) throw new Error("Keine Vorschläge erhalten");
+    return block.input;
+  } catch (e) {
+    if (e instanceof DOMException && e.name === "AbortError") throw new Error(`Langdock (${model}) hat nicht rechtzeitig geantwortet`);
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function askClaude(key: string, system: string, user: string): Promise<unknown> {
   const model = Deno.env.get("ANTHROPIC_MODEL") ?? "claude-sonnet-5-5";
   const res = await fetch("https://api.anthropic.com/v1/messages", {
@@ -194,9 +237,10 @@ Deno.serve(async (req) => {
   const { data: allowed, error: authError } = await supabase.from("projects").select("id").limit(1);
   if (authError || !allowed || allowed.length === 0) return json({ error: "Kein Zugriff" }, 403);
 
+  const langdockKey = Deno.env.get("LANGDOCK_API_KEY");
   const geminiKey = Deno.env.get("GEMINI_API_KEY");
   const claudeKey = Deno.env.get("ANTHROPIC_API_KEY");
-  if (!geminiKey && !claudeKey) return json({ error: "KI ist noch nicht eingerichtet (GEMINI_API_KEY fehlt in Supabase)." }, 503);
+  if (!langdockKey && !geminiKey && !claudeKey) return json({ error: "KI ist noch nicht eingerichtet (LANGDOCK_API_KEY fehlt in Supabase)." }, 503);
 
   let payload: { text?: string; context?: unknown; today?: string; files?: string[] };
   try {
@@ -234,7 +278,12 @@ Deno.serve(async (req) => {
   ].join("\n");
 
   try {
-    const proposal = geminiKey ? await askGemini(geminiKey, system, user) : await askClaude(claudeKey!, system, user);
+    // Bewusst kein Ausweichen von Langdock auf andere Dienste: die Daten sollen in der EU bleiben
+    const proposal = langdockKey
+      ? await askLangdock(langdockKey, system, user)
+      : geminiKey
+        ? await askGemini(geminiKey, system, user)
+        : await askClaude(claudeKey!, system, user);
     return json({ proposal });
   } catch (e) {
     return json({ error: "KI-Auswertung fehlgeschlagen", detail: e instanceof Error ? e.message : String(e) }, 502);
