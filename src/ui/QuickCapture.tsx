@@ -1,4 +1,4 @@
-import { X } from "lucide-react";
+import { Upload, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useLookups, useStore } from "../data/store";
 import type { Id, Link, Note, NoteKind, Task } from "../data/types";
@@ -8,6 +8,7 @@ import { ChipSelect, CompaniesChip } from "./common";
 import { useUi, type CaptureType } from "./uiState";
 import { NoteForm } from "../pages/Notes";
 import { TaskForm } from "./tasks";
+import { ImportPanel } from "./ImportPanel";
 
 // „+ Neu“ (SPEC 6.5): dasselbe Formular wie beim Öffnen eines Eintrags – nur mit Reitern für die Art
 // und „Speichern“ statt sofortigem Speichern. Alle Arten bleiben im selben Fenster.
@@ -118,6 +119,8 @@ function CaptureDialog({
   // Rückfrage bei ungespeicherten Änderungen: Ziel-Reiter bzw. null = Fenster schließen
   const [pending, setPending] = useState<{ to: CaptureType | null } | null>(null);
   const [formKey, setFormKey] = useState(0);
+  // „Upload“: Datei (Protokoll, Transkript, E-Mail …) von der KI auswerten lassen
+  const [importing, setImporting] = useState(false);
 
   const activeTitle = type === "task" ? task.title : type === "link" ? link.title : note.title;
   // Titel als Entwurf merken (überlebt versehentliches Schließen)
@@ -251,6 +254,9 @@ function CaptureDialog({
     else onClose();
   };
 
+  if (importing)
+    return <ImportPanel focus={{ personId: startAssignees.length === 1 ? startAssignees[0] : null, companyId: defaultCompany || null }} onClose={onClose} />;
+
   return (
     <>
       <div className="panel-backdrop capture-layer" onClick={requestClose} />
@@ -274,6 +280,15 @@ function CaptureDialog({
                 </button>
               ))}
             </div>
+            <button
+              type="button"
+              className="btn small capture-upload"
+              onClick={() => setImporting(true)}
+              disabled={dirty}
+              title={dirty ? "Erst speichern oder verwerfen" : "Protokoll, Transkript, E-Mail oder Dokument hochladen – die KI schlägt vor, du bestätigst"}
+            >
+              <Upload size={15} /> Upload
+            </button>
             <span className="spacer" />
             <button className="icon-btn" onClick={requestClose} aria-label="Schließen" title="Schließen (Esc)">
               <X size={18} />

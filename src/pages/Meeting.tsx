@@ -1,10 +1,9 @@
-import { ChevronDown, Upload } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { ChevronDown } from "lucide-react";
+import { useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useLookups } from "../data/store";
 import type { MeetingTarget } from "../logic/briefing";
 import { Avatar, CompanyLogo, Dropdown, Empty, usePersisted } from "../ui/common";
-import { ImportPanel } from "../ui/ImportPanel";
 import { ContactView } from "./Contact";
 
 // Meeting: Person oder Firma wählen, daneben „Protokoll starten“ – darunter die offenen
@@ -17,7 +16,6 @@ export function MeetingPage() {
   const { people, companies, companyById, personById } = useLookups();
   const [params, setParams] = useSearchParams();
   const [saved, setSaved] = usePersisted<{ target: string }>("meeting", { target: "" });
-  const [importing, setImporting] = useState(false);
 
   // Aufruf mit ?p=… / ?c=… übernimmt die Auswahl
   useEffect(() => {
@@ -64,28 +62,17 @@ export function MeetingPage() {
     </Dropdown>
   );
 
-  // Teams-Protokoll, Transkript oder E-Mail hochladen → KI schlägt vor, ich bestätige
-  const upload = (
-    <button className="btn" onClick={() => setImporting(true)} title="Protokoll, Transkript oder E-Mail hochladen und von der KI auswerten lassen">
-      <Upload size={16} /> Protokoll hochladen
-    </button>
-  );
-
   return (
     <div className="page">
-      {importing && <ImportPanel focus={{ personId: person?.id ?? null, companyId: company?.id ?? null }} onClose={() => setImporting(false)} />}
       <div className="page-head">
         <h1>Meeting</h1>
       </div>
 
       {target ? (
-        <ContactView key={saved.target} target={target} picker={picker} actions={upload} />
+        <ContactView key={saved.target} target={target} picker={picker} />
       ) : (
         <>
-          <div className="meeting-bar">
-            {picker}
-            {upload}
-          </div>
+          <div className="meeting-bar">{picker}</div>
           <Empty>Wähle eine Person oder Firma – dann siehst du alle offenen Punkte und Notizen für das Gespräch.</Empty>
         </>
       )}

@@ -2706,3 +2706,8 @@ section.card h2 + p {
     transform: rotate(360deg);
   }
 }
+
+/* „Upload“ neben den Reitern im Neu-Panel */
+.capture-upload {
+  margin-left: 4px;
+}
