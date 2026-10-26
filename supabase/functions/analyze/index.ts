@@ -1,8 +1,10 @@
-// KI-Auswertung von Protokollen, Transkripten und E-Mails mit Claude (Anthropic-API).
+// KI-Auswertung von Protokollen, Transkripten und E-Mails – mit Google Gemini oder Claude.
 // Liefert nur VORSCHLÄGE – angelegt wird erst, wenn Nikolaus sie in der App bestätigt.
 //
 // Secrets (Supabase → Edge Functions → Secrets):
-//   ANTHROPIC_API_KEY – API-Schlüssel aus console.anthropic.com
+//   GEMINI_API_KEY    – Schlüssel aus aistudio.google.com (hat Vorrang, Gratis-Kontingent möglich)
+//   GEMINI_MODEL      – optional, Standard „gemini-3.8-flash“
+//   ANTHROPIC_API_KEY – alternativ: Schlüssel aus console.anthropic.com
 //   ANTHROPIC_MODEL   – optional, Standard „claude-sonnet-5-5“
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
@@ -82,6 +84,66 @@ const SCHEMA = {
   required: ["note", "decisions", "tasks", "steps"],
 };
 
+/** JSON-Schema → Gemini-Schema: „type: [x, null]“ wird zu „type: X, nullable: true“. */
+// deno-lint-ignore no-explicit-any
+function toGemini(schema: any): any {
+  if (Array.isArray(schema)) return schema.map(toGemini);
+  if (!schema || typeof schema !== "object") return schema;
+  // deno-lint-ignore no-explicit-any
+  const out: any = {};
+  for (const [k, v] of Object.entries(schema)) {
+    if (k === "type") {
+      const types = (Array.isArray(v) ? v : [v]) as string[];
+      out.type = (types.find((t) => t !== "null") ?? "string").toUpperCase();
+      if (types.includes("null")) out.nullable = true;
+    } else if (k === "enum" || k === "required") {
+      out[k] = v;
+    } else {
+      out[k] = typeof v === "object" ? toGemini(v) : v;
+    }
+  }
+  return out;
+}
+
+async function askGemini(key: string, system: string, user: string): Promise<unknown> {
+  const model = Deno.env.get("GEMINI_MODEL") ?? "gemini-3.8-flash";
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+    method: "POST",
+    headers: { "x-goog-api-key": key, "content-type": "application/json" },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: system }] },
+      contents: [{ role: "user", parts: [{ text: user }] }],
+      generationConfig: { temperature: 0.2, responseMimeType: "application/json", responseSchema: toGemini(SCHEMA) },
+    }),
+  });
+  if (!res.ok) throw new Error(`Gemini antwortet mit ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  const data = await res.json();
+  const text = (data.candidates?.[0]?.content?.parts ?? []).map((p: { text?: string }) => p.text ?? "").join("");
+  if (!text) throw new Error("Keine Vorschläge erhalten");
+  return JSON.parse(text);
+}
+
+async function askClaude(key: string, system: string, user: string): Promise<unknown> {
+  const model = Deno.env.get("ANTHROPIC_MODEL") ?? "claude-sonnet-5-5";
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+    body: JSON.stringify({
+      model,
+      max_tokens: 4096,
+      system,
+      tools: [{ name: "vorschlaege", description: "Vorschläge für den Projekttracker", input_schema: SCHEMA }],
+      tool_choice: { type: "tool", name: "vorschlaege" },
+      messages: [{ role: "user", content: user }],
+    }),
+  });
+  if (!res.ok) throw new Error(`Claude antwortet mit ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  const data = await res.json();
+  const block = (data.content ?? []).find((c: { type: string }) => c.type === "tool_use");
+  if (!block) throw new Error("Keine Vorschläge erhalten");
+  return block.input;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ error: "Nur POST" }, 405);
@@ -94,9 +156,9 @@ Deno.serve(async (req) => {
   const { data: allowed, error: authError } = await supabase.from("projects").select("id").limit(1);
   if (authError || !allowed || allowed.length === 0) return json({ error: "Kein Zugriff" }, 403);
 
-  const key = Deno.env.get("ANTHROPIC_API_KEY");
-  if (!key) return json({ error: "KI ist noch nicht eingerichtet (ANTHROPIC_API_KEY fehlt in Supabase)." }, 503);
-  const model = Deno.env.get("ANTHROPIC_MODEL") ?? "claude-sonnet-5-5";
+  const geminiKey = Deno.env.get("GEMINI_API_KEY");
+  const claudeKey = Deno.env.get("ANTHROPIC_API_KEY");
+  if (!geminiKey && !claudeKey) return json({ error: "KI ist noch nicht eingerichtet (GEMINI_API_KEY fehlt in Supabase)." }, 503);
 
   let payload: { text?: string; context?: unknown; today?: string; files?: string[] };
   try {
@@ -133,24 +195,10 @@ Deno.serve(async (req) => {
     text,
   ].join("\n");
 
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-    body: JSON.stringify({
-      model,
-      max_tokens: 4096,
-      system,
-      tools: [{ name: "vorschlaege", description: "Vorschläge für den Projekttracker", input_schema: SCHEMA }],
-      tool_choice: { type: "tool", name: "vorschlaege" },
-      messages: [{ role: "user", content: user }],
-    }),
-  });
-  if (!res.ok) {
-    const detail = (await res.text()).slice(0, 300);
-    return json({ error: `KI-Dienst antwortet mit ${res.status}`, detail }, 502);
+  try {
+    const proposal = geminiKey ? await askGemini(geminiKey, system, user) : await askClaude(claudeKey!, system, user);
+    return json({ proposal });
+  } catch (e) {
+    return json({ error: "KI-Auswertung fehlgeschlagen", detail: e instanceof Error ? e.message : String(e) }, 502);
   }
-  const data = await res.json();
-  const block = (data.content ?? []).find((c: { type: string }) => c.type === "tool_use");
-  if (!block) return json({ error: "Keine Vorschläge erhalten" }, 502);
-  return json({ proposal: block.input });
 });
