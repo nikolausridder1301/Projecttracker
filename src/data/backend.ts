@@ -81,7 +81,8 @@ function supabaseBackend(client: SupabaseClient): Backend {
         let message = "KI-Auswertung fehlgeschlagen.";
         try {
           const body = await (error as { context?: Response }).context?.json();
-          if (body?.error) message = body.error;
+          // Grund mit anzeigen (z. B. Antwort des KI-Dienstes), damit Fehler nachvollziehbar sind
+          if (body?.error) message = body.detail ? `${body.error}: ${body.detail}` : body.error;
         } catch {
           /* Standardmeldung */
         }
