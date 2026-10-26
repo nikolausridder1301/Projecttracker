@@ -6,8 +6,8 @@ import type { MeetingTarget } from "../logic/briefing";
 import { Avatar, CompanyLogo, Dropdown, Empty, usePersisted } from "../ui/common";
 import { ContactView } from "./Contact";
 
-// Meeting: schnell Person oder Firma wählen – darunter dieselbe Ansicht wie
-// unter „Kontakte“ (offene Punkte, Protokoll starten).
+// Meeting: Person oder Firma wählen, daneben „Protokoll starten“ – darunter die offenen
+// Punkte, Notizen und Links wie unter „Kontakte“ (ohne den großen Kontakt-Kopf).
 
 const parseTarget = (v: string): MeetingTarget | null =>
   v.startsWith("p:") ? { kind: "person", id: v.slice(2) } : v.startsWith("c:") ? { kind: "company", id: v.slice(2) } : null;
@@ -50,26 +50,31 @@ export function MeetingPage() {
       ? `${company.name} (ganze Firma)`
       : "Mit wem triffst du dich?";
 
+  const picker = (
+    <Dropdown value={saved.target} options={options} onChange={(v) => setSaved({ target: v })} title="Mit wem triffst du dich?">
+      {(props) => (
+        <button type="button" {...props} className={`meeting-picker${target ? "" : " empty"}`}>
+          {person ? <Avatar name={person.name} /> : company ? <CompanyLogo company={company} size={22} /> : null}
+          <span className="grow">{currentLabel}</span>
+          <ChevronDown size={16} className="chip-caret" />
+        </button>
+      )}
+    </Dropdown>
+  );
+
   return (
     <div className="page">
       <div className="page-head">
         <h1>Meeting</h1>
       </div>
 
-      <Dropdown value={saved.target} options={options} onChange={(v) => setSaved({ target: v })} title="Mit wem triffst du dich?">
-        {(props) => (
-          <button type="button" {...props} className={`meeting-picker${target ? "" : " empty"}`}>
-            {person ? <Avatar name={person.name} /> : company ? <CompanyLogo company={company} size={24} /> : null}
-            <span className="grow">{currentLabel}</span>
-            <ChevronDown size={18} className="chip-caret" />
-          </button>
-        )}
-      </Dropdown>
-
       {target ? (
-        <ContactView key={saved.target} target={target} />
+        <ContactView key={saved.target} target={target} picker={picker} />
       ) : (
-        <Empty>Wähle eine Person oder Firma – dann siehst du alle offenen Punkte und Notizen für das Gespräch.</Empty>
+        <>
+          <div className="meeting-bar">{picker}</div>
+          <Empty>Wähle eine Person oder Firma – dann siehst du alle offenen Punkte und Notizen für das Gespräch.</Empty>
+        </>
       )}
     </div>
   );
