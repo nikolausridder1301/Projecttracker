@@ -2571,3 +2571,18 @@ section.card h2 + p {
 .modal.confirm p {
   margin: 0;
 }
+
+/* Nichts springt beim Reiterwechsel: Platz für die Bildlaufleiste immer reserviert,
+   Eingabefeld und Textfeld mit gleicher Zeilenhöhe */
+.panel {
+  scrollbar-gutter: stable;
+}
+.capture-layer .title-field .capture-input {
+  line-height: 1.4;
+}
+/* Textfeld und Eingabefeld als Block – sonst erzeugt die Textzeile darunter ein paar Pixel Abstand */
+.title-field textarea,
+.title-field input {
+  display: block;
+  width: 100%;
+}
