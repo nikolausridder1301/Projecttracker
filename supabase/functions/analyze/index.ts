@@ -44,7 +44,7 @@ const SCHEMA = {
         type: "object",
         properties: {
           title: { type: "string" },
-          body: { type: "string", description: "Begründung/Kontext in 1–3 Sätzen" },
+          body: { type: "string", description: "Kontext in 2–5 Sätzen: worum es geht (System, Firma, Thema), Ausgangslage/Frage, wer was entschieden oder bestätigt hat, Begründung und Folgen" },
           company_ids: { type: "array", items: { type: "string" } },
           quote: { type: "string", description: "Kurze Stelle aus dem Dokument als Beleg" },
         },
@@ -58,13 +58,14 @@ const SCHEMA = {
         type: "object",
         properties: {
           title: { type: "string" },
+          context: { type: "string", description: "Hintergrund in 2–5 Sätzen: Ausgangslage, warum die Aufgabe nötig ist, was genau zu tun ist und was als Ergebnis erwartet wird, wer beteiligt ist" },
           company_ids: { type: "array", items: { type: "string" } },
           assignee_person_ids: { type: "array", items: { type: "string" }, description: "Leer = ich (Nikolaus)" },
           due_date: { type: ["string", "null"] },
           steps: { type: "array", items: { type: "string" }, description: "Optionale erste Schritte" },
           quote: { type: "string" },
         },
-        required: ["title", "company_ids", "assignee_person_ids", "due_date", "steps", "quote"],
+        required: ["title", "context", "company_ids", "assignee_person_ids", "due_date", "steps", "quote"],
       },
     },
     steps: {
@@ -74,7 +75,7 @@ const SCHEMA = {
         type: "object",
         properties: {
           task_id: { type: "string" },
-          text: { type: "string" },
+          text: { type: "string", description: "Selbsterklärend in 1–2 Sätzen: was genau, mit wem, wozu – verständlich auch ohne das Dokument" },
           person_ids: { type: "array", items: { type: "string" } },
           due: { type: ["string", "null"] },
           quote: { type: "string" },
@@ -201,7 +202,7 @@ async function askLangdock(key: string, system: string, user: string): Promise<u
       headers: { ...auth, "content-type": "application/json" },
       body: JSON.stringify({
         model,
-        max_tokens: 4096,
+        max_tokens: 8192,
         system: `${system}\n${TOOL_HINT}`,
         tools: [{ name: "vorschlaege", description: "Vorschläge für den Projekttracker", input_schema: SCHEMA }],
         tool_choice: { type: "auto" },
@@ -225,7 +226,7 @@ async function askClaude(key: string, system: string, user: string): Promise<unk
     headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
     body: JSON.stringify({
       model,
-      max_tokens: 4096,
+      max_tokens: 8192,
       system: `${system}\n${TOOL_HINT}`,
       tools: [{ name: "vorschlaege", description: "Vorschläge für den Projekttracker", input_schema: SCHEMA }],
       tool_choice: { type: "auto" },
@@ -275,7 +276,10 @@ Deno.serve(async (req) => {
     "- Verwende ausschließlich IDs aus dem Kontext (Firmen, Personen, Aufgaben). Ist eine Person nicht im Kontext, lass die ID weg und nenne den Namen im Text.",
     "- Ist Nikolaus selbst verantwortlich, lass assignee_person_ids bzw. person_ids leer.",
     "- Daten als JJJJ-MM-TT; relative Angaben („bis Freitag“) vom heutigen Datum aus umrechnen.",
-    "- Alles auf Deutsch, knapp und sachlich. Titel als Tätigkeit formulieren („Pflichtenheft an Hannes Schulte schicken“).",
+    "- Alles muss später OHNE das Dokument verständlich sein. Nikolaus liest Aufgaben und Entscheidungen oft Wochen später isoliert.",
+    "- Titel: konkret und selbsterklärend mit Thema bzw. System und Firma, als Tätigkeit bei Aufgaben („Tacto-Export FEST: Zieladresse der Zolltarifnummer mit Tacto klären“), als Aussage bei Entscheidungen („Tacto-Export FEST: bis zu 5 Zusatzfelder je Bestellung/Rechnung möglich“).",
+    "- Kontext (Aufgaben: context, Entscheidungen: body): 2–5 Sätze mit Ausgangslage, wer was gesagt/entschieden hat, Begründung, nächste Folgen. Fachbegriffe kurz einordnen.",
+    "- Alles auf Deutsch und sachlich.",
     "- quote: eine kurze, wörtliche Stelle als Beleg (max. 200 Zeichen).",
   ].join("\n");
 

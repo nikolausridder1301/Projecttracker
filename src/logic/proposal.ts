@@ -19,6 +19,8 @@ export interface ProposedDecision {
 }
 export interface ProposedTask {
   title: string;
+  /** Hintergrund, damit die Aufgabe später ohne das Dokument verständlich ist */
+  context: string;
   company_ids: Id[];
   assignee_person_ids: Id[];
   due_date: IsoDate | null;
@@ -105,6 +107,7 @@ export function sanitizeProposal(raw: unknown, ctx: AnalyzeContext): Proposal {
       .filter((t) => str(t.title))
       .map((t) => ({
         title: str(t.title),
+        context: str(t.context),
         company_ids: withCompany(ids(t.company_ids, companyIds)),
         assignee_person_ids: others(t.assignee_person_ids),
         due_date: iso(t.due_date),
@@ -139,7 +142,7 @@ export function demoProposal(text: string, ctx: AnalyzeContext, today: IsoDate):
     decisions: lines.filter((l) => /^entscheidung:/i.test(l)).map((l) => ({ title: after(l, "Entscheidung:"), body: "", company_ids: company, quote: l })),
     tasks: lines
       .filter((l) => /^aufgabe:/i.test(l))
-      .map((l) => ({ title: after(l, "Aufgabe:"), company_ids: company, assignee_person_ids: ctx.focus.person_id ? [ctx.focus.person_id] : [], due_date: null, steps: [], quote: l })),
+      .map((l) => ({ title: after(l, "Aufgabe:"), context: `Aus dem Dokument: ${l}`, company_ids: company, assignee_person_ids: ctx.focus.person_id ? [ctx.focus.person_id] : [], due_date: null, steps: [], quote: l })),
     steps: firstTask
       ? lines.filter((l) => /^schritt:/i.test(l)).map((l) => ({ task_id: firstTask.id, text: after(l, "Schritt:"), person_ids: [], due: null, quote: l }))
       : [],
