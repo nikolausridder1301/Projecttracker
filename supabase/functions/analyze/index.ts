@@ -3,7 +3,7 @@
 //
 // Secrets (Supabase → Edge Functions → Secrets):
 //   GEMINI_API_KEY    – Schlüssel aus aistudio.google.com (hat Vorrang, Gratis-Kontingent möglich)
-//   GEMINI_MODEL      – optional, Standard „gemini-3.8-flash“
+//   GEMINI_MODEL      – optional, Standard „gemini-2.5-flash“
 //   ANTHROPIC_API_KEY – alternativ: Schlüssel aus console.anthropic.com
 //   ANTHROPIC_MODEL   – optional, Standard „claude-sonnet-5-5“
 import { createClient } from "jsr:@supabase/supabase-js@2";
@@ -105,16 +105,24 @@ function toGemini(schema: any): any {
   return out;
 }
 
-/** Gemini-Modelle der Reihe nach: bei Überlastung (503/429/500) kurz warten, erneut versuchen, dann nächstes Modell. */
+/**
+ * Gemini-Modelle der Reihe nach. Jeder Versuch hat ein eigenes Zeitlimit, damit die Funktion
+ * nicht an Supabases Grenze (150 s) scheitert: hängt ein Modell oder ist es überlastet, kommt das nächste.
+ */
 async function askGemini(key: string, system: string, user: string): Promise<unknown> {
-  const models = [Deno.env.get("GEMINI_MODEL") ?? "gemini-3.8-flash", "gemini-2.5-flash", "gemini-3.5-flash-lite"];
+  const models = [Deno.env.get("GEMINI_MODEL") ?? "gemini-2.5-flash", "gemini-3.8-flash", "gemini-2.5-flash-lite"];
   const busy = (status: number) => status === 503 || status === 429 || status === 500;
+  const deadline = Date.now() + 130_000;
   let last = "";
   for (const model of [...new Set(models)]) {
-    for (let attempt = 0; attempt < 2; attempt++) {
-      if (attempt > 0) await new Promise((r) => setTimeout(r, 2500));
+    const left = deadline - Date.now();
+    if (left < 10_000) break;
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), Math.min(55_000, left));
+    try {
       const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
         method: "POST",
+        signal: ctrl.signal,
         headers: { "x-goog-api-key": key, "content-type": "application/json" },
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: system }] },
@@ -130,12 +138,20 @@ async function askGemini(key: string, system: string, user: string): Promise<unk
       }
       last = `${model} antwortet mit ${res.status}: ${(await res.text()).slice(0, 200)}`;
       console.error(last);
-      // Überlastet: erneut bzw. nächstes Modell; unbekanntes Modell (404): gleich nächstes; sonst abbrechen
-      if (res.status === 404) break;
-      if (!busy(res.status)) throw new Error(last);
+      // Überlastet oder unbekanntes Modell: nächstes Modell; sonst abbrechen
+      if (!busy(res.status) && res.status !== 404) throw new Error(last);
+    } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") {
+        last = `${model} hat nicht rechtzeitig geantwortet`;
+        console.error(last);
+        continue;
+      }
+      throw e;
+    } finally {
+      clearTimeout(timer);
     }
   }
-  throw new Error(`Gemini ist gerade überlastet – bitte in ein paar Minuten erneut versuchen. (${last})`);
+  throw new Error(`Gemini ist gerade überlastet oder zu langsam – bitte in ein paar Minuten erneut versuchen. (${last})`);
 }
 
 async function askClaude(key: string, system: string, user: string): Promise<unknown> {
