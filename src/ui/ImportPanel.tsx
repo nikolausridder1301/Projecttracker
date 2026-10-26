@@ -267,7 +267,7 @@ export function ImportPanel({ focus, onClose }: { focus: { personId?: Id | null;
                     on={review.note.on}
                     onToggle={(on) => setNote({ on })}
                   />
-                  <input className="proposal-title" value={review.note.title} onChange={(e) => setNote({ title: e.target.value })} placeholder="Titel" />
+                  <AutoText className="proposal-title" minRows={1} value={review.note.title} onChange={(v) => setNote({ title: v.replace(/\n/g, " ") })} placeholder="Titel" />
                   <div className="chips">
                     <CompaniesChip value={review.note.company_ids} onChange={(ids) => setNote({ company_ids: ids })} />
                     {review.note.kind === "meeting" && (
@@ -296,7 +296,7 @@ export function ImportPanel({ focus, onClose }: { focus: { personId?: Id | null;
               {review.decisions.map((d, i) => (
                 <section key={`d${i}`} className={`proposal${d.on ? "" : " off"}`}>
                   <ProposalHead icon={<Gavel size={15} />} label="Entscheidung" on={d.on} onToggle={(on) => set("decisions", i, { on })} />
-                  <input className="proposal-title" value={d.title} onChange={(e) => set("decisions", i, { title: e.target.value })} />
+                  <AutoText className="proposal-title" minRows={1} value={d.title} onChange={(v) => set("decisions", i, { title: v.replace(/\n/g, " ") })} />
                   <div className="chips">
                     <CompaniesChip value={d.company_ids} onChange={(ids) => set("decisions", i, { company_ids: ids })} />
                   </div>
@@ -309,7 +309,7 @@ export function ImportPanel({ focus, onClose }: { focus: { personId?: Id | null;
               {review.tasks.map((t, i) => (
                 <section key={`t${i}`} className={`proposal${t.on ? "" : " off"}`}>
                   <ProposalHead icon={<ListPlus size={15} />} label="Aufgabe" on={t.on} onToggle={(on) => set("tasks", i, { on })} />
-                  <input className="proposal-title" value={t.title} onChange={(e) => set("tasks", i, { title: e.target.value })} />
+                  <AutoText className="proposal-title" minRows={1} value={t.title} onChange={(v) => set("tasks", i, { title: v.replace(/\n/g, " ") })} />
                   <div className="chips">
                     <CompaniesChip value={t.company_ids} onChange={(ids) => set("tasks", i, { company_ids: ids })} />
                     <AssigneeChip value={{ ids: t.assignee_person_ids, me: false }} onChange={(a) => set("tasks", i, { assignee_person_ids: a.ids })} />
@@ -336,7 +336,7 @@ export function ImportPanel({ focus, onClose }: { focus: { personId?: Id | null;
               {review.steps.map((s, i) => (
                 <section key={`s${i}`} className={`proposal${s.on ? "" : " off"}`}>
                   <ProposalHead icon={<ListPlus size={15} />} label={`zu „${taskTitle(s.task_id)}“`} on={s.on} onToggle={(on) => set("steps", i, { on })} />
-                  <input className="proposal-title" value={s.text} onChange={(e) => set("steps", i, { text: e.target.value })} />
+                  <AutoText className="proposal-title" minRows={1} value={s.text} onChange={(v) => set("steps", i, { text: v.replace(/\n/g, " ") })} />
                   <div className="chips">
                     <PeopleChip title="Wer?" emptyLabel="Wer?" tone="blue" value={s.person_ids} onChange={(ids) => set("steps", i, { person_ids: ids })} />
                     <ChipDate
