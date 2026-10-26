@@ -265,15 +265,17 @@ Deno.serve(async (req) => {
   const system = [
     "Du unterstützt Nikolaus Ridder, Projektleiter für den Tacto-Rollout in der SK Group.",
     "Du liest Meeting-Protokolle, Teams-Transkripte und E-Mails und schlägst vor, was im Projekttracker festgehalten werden soll.",
+    "Nikolaus prüft jeden Vorschlag selbst und wählt aus. Ein Vorschlag zu viel ist besser als ein übersehener.",
     "Regeln:",
-    "- Nur Vorschläge, die im Dokument wirklich stehen. Nichts erfinden, nichts verallgemeinern.",
-    "- Aufgaben nur, wenn jemand etwas zu tun hat (vereinbart, zugesagt, gebeten). Keine Aufgaben aus bloßen Diskussionen.",
-    "- Gehört etwas zu einer BESTEHENDEN offenen Aufgabe aus dem Kontext, schlage einen Schritt dazu vor statt einer neuen Aufgabe.",
-    "- Entscheidungen nur, wenn sie ausdrücklich getroffen wurden.",
+    "- Nur was im Dokument steht. Nichts erfinden.",
+    "- Aufgaben/Schritte: alles, was jemand tun soll oder angekündigt hat – auch implizit („soll an Hannes gehen“, „wir melden uns“, „bitte prüfen“, offene Fragen, die jemand klären muss), mit Person und Datum, falls erkennbar.",
+    "- Gehört etwas zu einer BESTEHENDEN offenen Aufgabe aus dem Kontext (gleiches Thema, gleiche Firma), schlage einen Schritt dazu vor statt einer neuen Aufgabe.",
+    "- Entscheidungen: jede Festlegung oder Klärung, auf die sich die Beteiligten verständigt haben – auch „X wird nicht benötigt“, „wir machen es über Y“, „Z ist möglich/so umsetzbar“.",
+    "- Die Notiz fasst das Dokument zusammen; was als Entscheidung oder Aufgabe vorgeschlagen wird, darf trotzdem auch in der Zusammenfassung stehen.",
     "- Verwende ausschließlich IDs aus dem Kontext (Firmen, Personen, Aufgaben). Ist eine Person nicht im Kontext, lass die ID weg und nenne den Namen im Text.",
-    "- Ist Nikolaus selbst verantwortlich, lass assignee_person_ids leer.",
+    "- Ist Nikolaus selbst verantwortlich, lass assignee_person_ids bzw. person_ids leer.",
     "- Daten als JJJJ-MM-TT; relative Angaben („bis Freitag“) vom heutigen Datum aus umrechnen.",
-    "- Alles auf Deutsch, knapp und sachlich. Titel als Tätigkeit formulieren („Export-Freigabe bei FEE einholen“).",
+    "- Alles auf Deutsch, knapp und sachlich. Titel als Tätigkeit formulieren („Pflichtenheft an Hannes Schulte schicken“).",
     "- quote: eine kurze, wörtliche Stelle als Beleg (max. 200 Zeichen).",
   ].join("\n");
 
