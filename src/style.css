@@ -849,19 +849,44 @@ kbd {
   flex-direction: column;
   gap: 14px;
 }
+/* Titel: ruhig, ohne Rahmen; beim Darüberfahren/Bearbeiten wie ein normales Feld */
 .title-field .autotext {
-  font-size: var(--fs-xl);
+  font-size: var(--fs-lg);
   font-weight: 600;
-  padding: 4px 6px;
-  margin-left: -7px;
+  line-height: 1.4;
+  padding: 8px 10px;
   border-color: transparent;
-  line-height: 1.3;
+  background: transparent;
 }
 .title-field .autotext:hover {
-  border-color: var(--border);
+  border-color: transparent;
+  background: var(--surface-2);
 }
 .title-field .autotext:focus {
+  border-color: var(--border);
+  background: var(--surface);
+  box-shadow: none;
+}
+/* Beim Anlegen ist es ein Eingabefeld (kein Titel): sichtbar, normale Stärke – gleich für alle Arten */
+.capture-layer .title-field .autotext,
+.capture-layer .title-field .capture-input {
+  font-size: var(--fs-base) !important;
+  font-weight: 400;
+  height: auto !important;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+}
+.capture-layer .title-field .autotext:hover,
+.capture-layer .title-field .capture-input:hover {
+  background: var(--surface-2);
+  border-color: var(--border-strong);
+}
+.capture-layer .title-field .autotext:focus,
+.capture-layer .title-field .capture-input:focus {
+  background: var(--surface);
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-bg);
 }
 .autotext {
   overflow: hidden;
