@@ -2,8 +2,9 @@ import Placeholder from "@tiptap/extension-placeholder";
 import { EditorContent, useEditor, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Bold, Heading2, Italic, List, ListOrdered, Strikethrough } from "lucide-react";
-import { useEffect, type MutableRefObject, type ReactNode } from "react";
+import { useEffect, useRef, type MutableRefObject, type ReactNode } from "react";
 import { Markdown } from "tiptap-markdown";
+import { personMention, type MentionPerson } from "./mention";
 
 // Formatierbarer Text für Notizen: Fett, Kursiv, Aufzählungen usw. – sichtbar formatiert,
 // gespeichert wird weiterhin Markdown (so bleiben bestehende Notizen und die KI-Zusammenfassungen gültig).
@@ -20,19 +21,45 @@ export function RichText({
   onBlur,
   placeholder,
   handleRef,
+  people,
+  onPersonClick,
 }: {
   value: string;
   onChange: (markdown: string) => void;
   onBlur?: (markdown: string) => void;
   placeholder?: string;
   handleRef?: MutableRefObject<RichTextHandle | null>;
+  /** Kontakte für @-Erwähnungen */
+  people?: MentionPerson[];
+  /** Klick auf eine Erwähnung */
+  onPersonClick?: (id: string) => void;
 }) {
+  // Die Erweiterungen entstehen einmal – aktuelle Werte über Refs
+  const peopleRef = useRef(people ?? []);
+  peopleRef.current = people ?? [];
+  const clickRef = useRef(onPersonClick);
+  clickRef.current = onPersonClick;
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({ heading: { levels: [2, 3] }, codeBlock: false }),
       Placeholder.configure({ placeholder: placeholder ?? "" }),
       Markdown.configure({ html: false, tightLists: true, bulletListMarker: "-", breaks: true, transformPastedText: true }),
+      personMention(() => peopleRef.current),
     ],
+    editorProps: {
+      handleDOMEvents: {
+        // Klick auf @Person öffnet den Kontakt
+        click: (_view, event) => {
+          const a = (event.target as HTMLElement).closest("a.mention");
+          const id = a?.getAttribute("data-id");
+          if (!id) return false;
+          event.preventDefault();
+          clickRef.current?.(id);
+          return true;
+        },
+      },
+    },
     content: value,
     onUpdate: ({ editor }) => onChange(markdownOf(editor)),
     onBlur: ({ editor }) => onBlur?.(markdownOf(editor)),
