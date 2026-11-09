@@ -1,5 +1,5 @@
 import { CalendarDays, ExternalLink, Gavel, ListPlus, NotebookPen, Trash2, Users, X, type LucideIcon } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useLookups, useStore } from "../data/store";
 import { NOTE_KIND_LABEL, type Id, type Note, type NoteKind, type Patch } from "../data/types";
@@ -10,6 +10,10 @@ import { AttachedLinks } from "../ui/links";
 import { AutoText, ChipDate, ChipSelect, CompaniesChip, CompanyBadges, CompanyFilter, Disclosure, Empty, PeopleChip, usePersisted } from "../ui/common";
 import { TaskList } from "../ui/tasks";
 import { NoteLink, useCaptureContext, useUi } from "../ui/uiState";
+import type { RichTextHandle } from "../ui/RichText";
+
+// Der Editor ist groß – erst laden, wenn eine Notiz geöffnet wird
+const RichText = lazy(() => import("../ui/RichText").then((m) => ({ default: m.RichText })));
 import { useVendor } from "../ui/vendor";
 import { OpenItems } from "./Contact";
 
@@ -85,7 +89,7 @@ export function NotesPage() {
 }
 
 const noteDate = (n: Note) => n.meeting_date ?? n.created_at.slice(0, 10);
-const excerpt = (s: string) => s.replace(/[#*_>`[\]()-]/g, "").replace(/\s+/g, " ").slice(0, 100);
+const excerpt = (s: string) => s.replace(/[#*_~>`[\]()\\-]/g, "").replace(/\s+/g, " ").slice(0, 100);
 
 // ---------------------------------------------------------------------------
 
@@ -199,7 +203,7 @@ export function NoteForm({
   const [title, setTitle] = useState(note.title);
   const [body, setBody] = useState(note.body);
   const [participantsText, setParticipantsText] = useState(note.participants_text);
-  const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const bodyRef = useRef<RichTextHandle | null>(null);
 
   const save = onPatch;
 
@@ -276,17 +280,19 @@ export function NoteForm({
         />
       </div>
 
-      <AutoText
-        textRef={bodyRef}
+      {/* Formatierbarer Text (Fett, Kursiv, Aufzählungen …), gespeichert als Markdown */}
+      <Suspense fallback={<div className="rich rich-loading" />}>
+      <RichText
+        handleRef={bodyRef}
         value={body}
         onChange={(v) => {
           setBody(v);
           if (draft) save({ body: v });
         }}
-        onBlur={() => body !== note.body && save({ body })}
-        minRows={10}
+        onBlur={(v) => v !== note.body && save({ body: v })}
         placeholder="Schreiben…"
       />
+      </Suspense>
 
       {note.kind === "meeting" && (
         <input

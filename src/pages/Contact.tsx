@@ -181,7 +181,7 @@ export function ContactView({ target, picker }: { target: MeetingTarget; picker?
                   <Icon size={18} className={`row-icon${n.kind === "decision" ? " tone-blue" : ""}`} aria-label={NOTE_KIND_LABEL[n.kind]} />
                   <span className="note-main">
                     <span className="task-title">{n.title}</span>
-                    {n.body && <span className="task-sub">{n.body.replace(/[#*_>`[\]-]/g, "").replace(/\s+/g, " ").slice(0, 90)}</span>}
+                    {n.body && <span className="task-sub">{n.body.replace(/[#*_~>`[\]\\-]/g, "").replace(/\s+/g, " ").slice(0, 90)}</span>}
                   </span>
                   <span className="due">{formatDate(n.meeting_date ?? n.created_at.slice(0, 10))}</span>
                 </NoteLink>
