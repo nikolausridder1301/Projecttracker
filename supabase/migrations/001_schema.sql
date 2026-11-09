@@ -300,3 +300,13 @@ create or replace function ping() returns integer
 language sql stable set search_path = '' as $$ select 1 $$;
 
 grant execute on function ping() to anon;
+
+-- Wachhalten gegen das Pausieren im Gratis-Plan (siehe 019_keep_alive.sql)
+create or replace function public.keep_alive()
+returns timestamptz
+language sql
+stable
+set search_path = ''
+as $$ select now() $$;
+revoke all on function public.keep_alive() from public;
+grant execute on function public.keep_alive() to anon, authenticated;
