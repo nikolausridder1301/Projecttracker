@@ -2546,16 +2546,12 @@ section.card h2 + p {
 .panel-head .seg-group {
   flex-wrap: wrap;
 }
+/* Speichern-Zeile: einfach unter dem Inhalt, ohne fixierte Leiste */
 .capture-foot {
-  position: sticky;
-  bottom: 0;
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-top: auto;
-  padding: 12px 0 4px;
-  background: var(--surface);
-  border-top: 1px solid var(--surface-3);
+  padding-top: 4px;
 }
 .modal-backdrop.confirm-layer {
   z-index: 45;
