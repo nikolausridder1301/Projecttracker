@@ -316,7 +316,6 @@ function CaptureDialog({
           {type === "link" && <LinkDraftForm key={`link-${formKey}`} link={link} onChange={(p) => setLink((l) => ({ ...l, ...p }))} onEnter={() => void save()} />}
 
           <div className="capture-foot">
-            <span className="muted small">Strg+Enter speichert</span>
             <span className="spacer" />
             <button type="button" className="btn primary" onClick={() => void save()} disabled={busy}>
               Speichern
