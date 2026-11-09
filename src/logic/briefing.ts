@@ -83,7 +83,8 @@ export function buildBriefing(db: Db, target: MeetingTarget, today: IsoDate): Br
 
   const notes = db.notes
     .filter(isActive)
-    .filter((n) => (companyId !== null && n.company_ids.includes(companyId)) || (person && n.participant_ids.includes(person.id)))
+    // Person: Teilnehmer oder im Text mit @ erwähnt
+    .filter((n) => (companyId !== null && n.company_ids.includes(companyId)) || (person && (n.participant_ids.includes(person.id) || n.body.includes(`#/personen/${person.id})`))))
     .sort((a, b) => noteDate(b).localeCompare(noteDate(a)));
 
   const todayMeeting = notes.find(

@@ -89,7 +89,7 @@ export function NotesPage() {
 }
 
 const noteDate = (n: Note) => n.meeting_date ?? n.created_at.slice(0, 10);
-const excerpt = (s: string) => s.replace(/[#*_~>`[\]()\\-]/g, "").replace(/\s+/g, " ").slice(0, 100);
+const excerpt = (s: string) => s.replace(/\[([^\]]*)\]\([^)]*\)/g, "$1").replace(/[#*_~>`[\]()\\-]/g, "").replace(/\s+/g, " ").slice(0, 100);
 
 // ---------------------------------------------------------------------------
 
@@ -198,8 +198,14 @@ export function NoteForm({
   onAddTask?: () => void;
 }) {
   const { db } = useStore();
-  const { openCapture } = useUi();
-  const { me } = useLookups();
+  const { openCapture, openNote } = useUi();
+  const { me, people, companyById } = useLookups();
+  const navigate = useNavigate();
+  // Kontakte für @-Erwähnungen im Text
+  const mentionPeople = useMemo(
+    () => people.filter((p) => p.active).map((p) => ({ id: p.id, name: p.name, company: p.company_id ? (companyById.get(p.company_id)?.short ?? "") : "" })),
+    [people, companyById],
+  );
   const [title, setTitle] = useState(note.title);
   const [body, setBody] = useState(note.body);
   const [participantsText, setParticipantsText] = useState(note.participants_text);
@@ -290,7 +296,14 @@ export function NoteForm({
           if (draft) save({ body: v });
         }}
         onBlur={(v) => v !== note.body && save({ body: v })}
-        placeholder="Schreiben…"
+        placeholder="Schreiben… (@ erwähnt einen Kontakt)"
+        people={mentionPeople}
+        onPersonClick={(id) => {
+          // Notiz sichern und schließen, dann zum Kontakt
+          beforeClose?.current?.();
+          openNote(null);
+          navigate(`/personen/${id}`);
+        }}
       />
       </Suspense>
 

@@ -311,6 +311,16 @@ describe("briefing", () => {
     return { db, haz, anna };
   };
 
+  it("Person: Notizen, in denen sie mit @ erwähnt ist, gehören dazu", () => {
+    const { db, anna } = setup();
+    db.notes = [
+      { id: "n1", project_id: "p", created_at: "2026-10-16T08:00:00Z", updated_at: "", deleted_at: null, title: "Mit Erwähnung", body: `Bitte [@Anna](#/personen/${anna.id}) fragen`, kind: "note", company_ids: [], topic_id: null, meeting_date: null, participant_ids: [], participants_text: "" },
+      { id: "n2", project_id: "p", created_at: "2026-10-16T08:00:00Z", updated_at: "", deleted_at: null, title: "Ohne", body: "nichts", kind: "note", company_ids: [], topic_id: null, meeting_date: null, participant_ids: [], participants_text: "" },
+    ];
+    const titles = buildBriefing(db, { kind: "person", id: anna.id }, "2026-10-16").notes.map((x) => x.title);
+    expect(titles).toContain("Mit Erwähnung");
+    expect(titles).not.toContain("Ohne");
+  });
   it("Eigene Person: alles, wofür ich verantwortlich bin", () => {
     const { db, anna, haz } = setup();
     db.people.push({ ...anna, id: "me", name: "Nikolaus Ridder", company_id: haz.id, is_me: true });
